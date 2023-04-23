@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Tex To Canvas</title>
+<script>
+MathJax = {
+  tex: {
+    inlineMath: [
+      ['$', '$'],
+      ['\\(', '\\)']
+    ],
+    displayMath: [
+      ['$$', '$$'],
+      ['\\[', '\\]']
+    ],
+    processEscapes: true // use \$ to produce a literal dollar sign (true is default)
+  },
+  svg: {
+    scale: 1,                      // global scaling factor for all expressions
+    minScale: .5,                  // smallest scaling factor to use
+    //matchFontHeight: true,         // true to match ex-height of surrounding font
+    mtextInheritFont: false,       // true to make mtext elements use surrounding font
+    merrorInheritFont: true,       // true to make merror text use surrounding font
+    mathmlSpacing: false,          // true for MathML spacing rules, false for TeX rules
+    skipAttributes: {},            // RFDa and other attributes NOT to copy to the output
+    exFactor: .5,                  // default size of ex in em units
+    displayAlign: 'center',        // default for indentalign when set to 'auto'
+    displayIndent: '0',            // default for indentshift when set to 'auto'
+    fontCache: 'local',            // or 'global' or 'none'
+    localID: null,                 // ID to use for local font cache (for single equation processing)
+    internalSpeechTitles: true,    // insert <title> tags with speech content
+    titleID: 0                     // initial id number to use for aria-labeledby titles
+  },
+};
+</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg-full.js"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+// 参考URL
+// https://stackoverflow.com/questions/71031646/write-svg-latex-into-a-canvas-html
+// 課題
+// インラインの表示がうまくいかない
+// 改行ができない
+// もうね \begin{eqnarray}日本語x^2\\x^3\end{eqnarray}でいいと思うんだ
+// textareaに色付けたいかな -> ace.jsでいけそう
+// 文字の色、黒板に白いチョークで書いたようにしたい -> 以前動画のタイトルを作ったやつがあるはずなので、探す
+$(() => {
+
+    init();	
+    attachEvents();
+
+    svg2canvas();
+
+    function init() {
+
+        const text = 
+`\\huge{\\begin{eqnarray}
+x=4\\\\
+x=8
+\\end{eqnarray}}`;
+        $('#textarea').val(text);
+    }
+
+    function attachEvents() {
+        $('#button').click(svg2canvas);
+    }
+
+    function svg2canvas() {
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const equation = $('#textarea').val();
+        const svg = MathJax.tex2svg(equation).firstElementChild;
+        if(!svg) { return; }
+
+        const img = document.createElement('img');
+        img.onload = (e) => {
+            let tempWidth = e.target.naturalWidth;
+            let tempHeight = e.target.naturalHeight;
+            console.log(tempWidth, tempHeight);
+            ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+            ctx.drawImage(e.target, 
+                0,//canvas.width / 2 - tempWidth / 2, 
+                0,//canvas.height / 2 - tempHeight / 2, 
+                tempWidth, tempHeight);
+        }
+        img.src = 'data:image/svg+xml;base64,' + btoa('<?xml version="1.0" encoding="UTF-8" standalone="no" ?>\n' + unescape(encodeURIComponent(svg.outerHTML)));
+    }
+});
+	
+	
+</script>
+<style>
+#textarea {
+	width: 600px;
+	height: 200px;
+    font-size: 18px;
+}
+#canvas {
+  border: 1px solid #eeeeee;
+}
+</style>
+</head>
+<body>
+	<textarea id="textarea"></textarea><br>
+	<button id="button">tex2svg</button><br><br>
+	<canvas id="canvas" width="1280" height="720"></canvas>
+</body>
+</html>
