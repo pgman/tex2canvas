@@ -34,8 +34,8 @@ MathJax = {
   },
 };
 </script>
-<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg-full.js"></script>
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script id="MathJax-script" async src="js/tex-svg-full.js"></script>
+<script src="js/matrix.js"></script>
 <script>
 // 参考URL
 // https://stackoverflow.com/questions/71031646/write-svg-latex-into-a-canvas-html
@@ -45,48 +45,365 @@ MathJax = {
 // もうね \begin{eqnarray}日本語x^2\\x^3\end{eqnarray}でいいと思うんだ
 // textareaに色付けたいかな -> ace.jsでいけそう
 // 文字の色、黒板に白いチョークで書いたようにしたい -> 以前動画のタイトルを作ったやつがあるはずなので、探す
-$(() => {
+
+// TODO
+// matrix組み込み
+// 矩形を取得してみる
+
+document.addEventListener('DOMContentLoaded', () => {
 
     init();	
     attachEvents();
 
-    svg2canvas();
-
     function init() {
-
+        // 入力の初期化
         const text = 
 `\\huge{\\begin{eqnarray}
-x=4\\\\
-x=8
+\\int_0^1\\\\
 \\end{eqnarray}}`;
-        $('#textarea').val(text);
+        document.querySelector('#textarea').value = text;        
     }
 
     function attachEvents() {
-        $('#button').click(svg2canvas);
+        // ボタン押下時の処理
+        document.querySelector('#button').addEventListener('click', svg2canvas);
+
+        // テキストでCtrl + Sした時の処理
+        document.querySelector('#textarea').addEventListener('keydown', e => {
+            if(e.ctrlKey && e.key === 's') {
+                // Prevent the Save dialog to open
+                e.preventDefault();
+                // Place your code here
+                svg2canvas();
+            }
+        });
     }
 
     function svg2canvas() {
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
-        const equation = $('#textarea').val();
+        const equation = document.querySelector('#textarea').value;
         const svg = MathJax.tex2svg(equation).firstElementChild;
         if(!svg) { return; }
 
+        parseSvg(unescape(encodeURIComponent(svg.outerHTML)));
+
+        //const img = new Image();
         const img = document.createElement('img');
         img.onload = (e) => {
             let tempWidth = e.target.naturalWidth;
             let tempHeight = e.target.naturalHeight;
-            console.log(tempWidth, tempHeight);
             ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
             ctx.drawImage(e.target, 
                 0,//canvas.width / 2 - tempWidth / 2, 
                 0,//canvas.height / 2 - tempHeight / 2, 
                 tempWidth, tempHeight);
+            
         }
         img.src = 'data:image/svg+xml;base64,' + btoa('<?xml version="1.0" encoding="UTF-8" standalone="no" ?>\n' + unescape(encodeURIComponent(svg.outerHTML)));
+        //console.log(unescape(encodeURIComponent(svg.outerHTML)));
+
+        function parseSvg(svgText) {            
+            const domParser = new DOMParser();
+            const parsedSVGDoc = domParser.parseFromString(svgText, 'image/svg+xml');
+            const parsedSVG = parsedSVGDoc.childNodes[0];
+            // 記号がいくつあるか調べてみる
+
+            // <defs>
+            let defs = null;
+            if(parsedSVG.childNodes[0].tagName === 'defs') {
+                defs = parsedSVG.children[0];
+            } else {
+                return;
+            }
+
+            // defs.childNodes を列挙する
+            const paths = [];
+            for(let i = 0; i < defs.childNodes.length; i += 1) {
+                const child = defs.childNodes[i];
+                if(child.tagName === 'path') {
+                    paths.push({
+                        id: child.getAttribute('id'),
+                        d: child.getAttribute('d'),
+                    });
+                }
+            }
+            console.log('paths.length', paths.length);
+            paths.forEach(path => {
+                console.log(path.id);
+            })
+        }
     }
 });
+/**
+ * 記号メモ
+ * MJX-29-TEX-N-32 のように MJX-の後ろの数値は増えるので TEX以下をメモとして残す。
+ * TEX-N-30 ～ TEX-N-39: 0 ～ 9
+ * TEX-I-1D44E ～ TEX-I-1D467: a ～ z
+ * TEX-I-1D434 ～ TEX-I-1D44D: A ～ Z
+ * TEX-N-2B: +
+ * TEX-N-2212: -
+ * TEX-N-2217: *
+ * TEX-N-2F: /
+ * TEX-LO-222B: \int
+ **/
+/**
+SVGメモ
+Q(x1,y1, x,y)+: 
+開始位置からx,yで指定される終端位置までの2次ベジエ曲線を描きます。
+制御点はx1,y1で指定されます。
+
+T(x,y)+: 
+開始位置からx,yで指定される終端位置までの滑らかな2次ベジエ曲線を描きます。
+制御点は、直前の曲線コマンドの終端制御点が反映されます。
+
+Z: 
+パスの最終位置とその初期位置とを接続することで、現在のサブパスを閉じます。 
+*/
+/* 2を貼り付けた場合
+<svg xmlns="http://www.w3.org/2000/svg" 
+    width="2.342ex" 
+    height="4.683ex" 
+    role="img" 
+    focusable="false" 
+    viewBox="0 -1552.5 1035 2070" 
+    xmlns:xlink="http://www.w3.org/1999/xlink" 
+    aria-hidden="true" 
+    style="vertical-align: -1.171ex;">
+    <defs>
+        <path 
+            id="MJX-1-TEX-N-32" 
+            d="M109 429
+                Q82 429 66 447T50 491
+                Q50 562 103 614
+                T235 666
+                Q326 666 387 610
+                T449 465
+                Q449 422 429 383
+                T381 315
+                T301 241
+                Q265 210 201 149
+                L142 93L218 92
+                Q375 92 385 97
+                Q392 99 409 186
+                V189
+                H449
+                V186
+                Q448 183 436 95
+                T421 3
+                V0H50V19V31
+                Q50 38 56 46T86 81
+                Q115 113 136 137
+                Q145 147 170 174
+                T204 211
+                T233 244
+                T261 278
+                T284 308
+                T305 340
+                T320 369
+                T333 401
+                T340 431
+                T343 464
+                Q343 527 309 573
+                T212 619
+                Q179 619 154 602
+                T119 569
+                T109 550
+                Q109 549 114 549
+                Q132 549 151 535
+                T170 489
+                Q170 464 154 447
+                T109 429Z">
+        </path>
+    </defs>
+    <g stroke="currentColor" fill="currentColor" stroke-width="0" transform="scale(1,-1)">
+        <g data-mml-node="math">
+            <g data-mml-node="mstyle" transform="scale(2.07)">
+                <g data-mml-node="TeXAtom" data-mjx-texclass="ORD">
+                    <g data-mml-node="mtable">
+                        <g data-mml-node="mtr">
+                            <g data-mml-node="mtd">
+                                <g data-mml-node="mn">
+                                    <use data-c="32" xlink:href="#MJX-1-TEX-N-32">
+                                    </use>
+                                </g>
+                            </g>
+                        </g>
+                    </g>
+                </g>
+            </g>
+        </g>
+    </g>
+</svg>
+*/ 
+
+/*
+\ 2 を貼り付けた場合
+<svg xmlns="http://www.w3.org/2000/svg" 
+    width="3.512ex" 
+    height="4.683ex" 
+    role="img" 
+    focusable="false" 
+    viewBox="0 -1552.5 1552.5 2070" 
+    xmlns:xlink="http://www.w3.org/1999/xlink" 
+    aria-hidden="true" style="vertical-align: -1.171ex;">
+    <defs>
+        <path id="MJX-3-TEX-N-A0" d="">
+        </path>
+        <path id="MJX-3-TEX-N-32" d="M109 429Q82 429 66 447T50 491Q50 562 103 614T235 666Q326 666 387 610T449 465Q449 422 429 383T381 315T301 241Q265 210 201 149L142 93L218 92Q375 92 385 97Q392 99 409 186V189H449V186Q448 183 436 95T421 3V0H50V19V31Q50 38 56 46T86 81Q115 113 136 137Q145 147 170 174T204 211T233 244T261 278T284 308T305 340T320 369T333 401T340 431T343 464Q343 527 309 573T212 619Q179 619 154 602T119 569T109 550Q109 549 114 549Q132 549 151 535T170 489Q170 464 154 447T109 429Z">
+        </path>
+    </defs>
+    <g stroke="currentColor" fill="currentColor" stroke-width="0" transform="scale(1,-1)">
+        <g data-mml-node="math">
+            <g data-mml-node="mstyle" transform="scale(2.07)">
+                <g data-mml-node="TeXAtom" data-mjx-texclass="ORD">
+                    <g data-mml-node="mtable">
+                        <g data-mml-node="mtr">
+                            <g data-mml-node="mtd">
+                                <g data-mml-node="mtext">
+                                    <use data-c="A0" xlink:href="#MJX-3-TEX-N-A0">
+                                    </use>
+                                </g>
+                                <g data-mml-node="mn" transform="translate(250,0)">
+                                    <use data-c="32" xlink:href="#MJX-3-TEX-N-32">
+                                    </use>
+                                </g>
+                            </g>
+                        </g>
+                    </g>
+                </g>
+            </g>
+        </g>
+    </g>
+</svg>
+*/
+
+/*
+22 を貼り付けた場合
+<svg xmlns="http://www.w3.org/2000/svg" 
+    width="4.683ex" 
+    height="4.683ex" 
+    role="img" 
+    focusable="false" 
+    viewBox="0 -1552.5 2070 2070" 
+    xmlns:xlink="http://www.w3.org/1999/xlink" 
+    aria-hidden="true" 
+    style="vertical-align: -1.171ex;">
+    <defs>
+        <path id="MJX-4-TEX-N-32" d="M109 429Q82 429 66 447T50 491Q50 562 103 614T235 666Q326 666 387 610T449 465Q449 422 429 383T381 315T301 241Q265 210 201 149L142 93L218 92Q375 92 385 97Q392 99 409 186V189H449V186Q448 183 436 95T421 3V0H50V19V31Q50 38 56 46T86 81Q115 113 136 137Q145 147 170 174T204 211T233 244T261 278T284 308T305 340T320 369T333 401T340 431T343 464Q343 527 309 573T212 619Q179 619 154 602T119 569T109 550Q109 549 114 549Q132 549 151 535T170 489Q170 464 154 447T109 429Z">
+        </path>
+    </defs>
+    <g stroke="currentColor" fill="currentColor" stroke-width="0" transform="scale(1,-1)">
+        <g data-mml-node="math">
+            <g data-mml-node="mstyle" transform="scale(2.07)">
+                <g data-mml-node="TeXAtom" data-mjx-texclass="ORD">
+                    <g data-mml-node="mtable">
+                        <g data-mml-node="mtr">
+                            <g data-mml-node="mtd">
+                                <g data-mml-node="mn">
+                                    <use data-c="32" xlink:href="#MJX-4-TEX-N-32">
+                                    </use>
+                                    <use data-c="32" xlink:href="#MJX-4-TEX-N-32" transform="translate(500,0)">
+                                    </use>
+                                </g>
+                            </g>
+                        </g>
+                    </g>
+                </g>
+            </g>
+        </g>
+    </g>
+</svg>
+*/
+
+/*
+2{\large 2} を貼り付けた場合
+<svg xmlns="http://www.w3.org/2000/svg" 
+    width="3.699ex" 
+    height="4.683ex" 
+    role="img" 
+    focusable="false" 
+    viewBox="0 -1552.5 1635 2070" 
+    xmlns:xlink="http://www.w3.org/1999/xlink" 
+    aria-hidden="true" style="vertical-align: -1.171ex;">
+    <defs>
+        <path id="MJX-6-TEX-N-32" d="M109 429Q82 429 66 447T50 491Q50 562 103 614T235 666Q326 666 387 610T449 465Q449 422 429 383T381 315T301 241Q265 210 201 149L142 93L218 92Q375 92 385 97Q392 99 409 186V189H449V186Q448 183 436 95T421 3V0H50V19V31Q50 38 56 46T86 81Q115 113 136 137Q145 147 170 174T204 211T233 244T261 278T284 308T305 340T320 369T333 401T340 431T343 464Q343 527 309 573T212 619Q179 619 154 602T119 569T109 550Q109 549 114 549Q132 549 151 535T170 489Q170 464 154 447T109 429Z">
+        </path>
+    </defs>
+    <g stroke="currentColor" fill="currentColor" stroke-width="0" transform="scale(1,-1)">
+        <g data-mml-node="math">
+            <g data-mml-node="mstyle" transform="scale(2.07)">
+                <g data-mml-node="TeXAtom" data-mjx-texclass="ORD">
+                    <g data-mml-node="mtable">
+                        <g data-mml-node="mtr">
+                            <g data-mml-node="mtd">
+                                <g data-mml-node="mn">
+                                    <use data-c="32" xlink:href="#MJX-6-TEX-N-32">
+                                    </use>
+                                </g>
+                                <g data-mml-node="TeXAtom" data-mjx-texclass="ORD" transform="translate(500,0)">
+                                    <g data-mml-node="mstyle" transform="scale(0.58)">
+                                        <g data-mml-node="mn">
+                                            <use data-c="32" xlink:href="#MJX-6-TEX-N-32">
+                                            </use>
+                                        </g>
+                                    </g>
+                                </g>
+                            </g>
+                        </g>
+                    </g>
+                </g>
+            </g>
+        </g>
+    </g>
+</svg>
+ */ 
+
+/*
+\frac{2}{3} を貼り付けた場合
+<svg xmlns="http://www.w3.org/2000/svg" 
+    width="4.402ex" 
+    height="9.601ex" 
+    role="img" 
+    focusable="false" 
+    viewBox="0 -2639.3 1945.8 4243.5" 
+    xmlns:xlink="http://www.w3.org/1999/xlink" 
+    aria-hidden="true" 
+    style="vertical-align: -3.63ex;">
+    <defs>
+        <path id="MJX-1-TEX-N-32" d="M109 429Q82 429 66 447T50 491Q50 562 103 614T235 666Q326 666 387 610T449 465Q449 422 429 383T381 315T301 241Q265 210 201 149L142 93L218 92Q375 92 385 97Q392 99 409 186V189H449V186Q448 183 436 95T421 3V0H50V19V31Q50 38 56 46T86 81Q115 113 136 137Q145 147 170 174T204 211T233 244T261 278T284 308T305 340T320 369T333 401T340 431T343 464Q343 527 309 573T212 619Q179 619 154 602T119 569T109 550Q109 549 114 549Q132 549 151 535T170 489Q170 464 154 447T109 429Z">
+        </path>
+        <path id="MJX-1-TEX-N-33" d="M127 463Q100 463 85 480T69 524Q69 579 117 622T233 665Q268 665 277 664Q351 652 390 611T430 522Q430 470 396 421T302 350L299 348Q299 347 308 345T337 336T375 315Q457 262 457 175Q457 96 395 37T238 -22Q158 -22 100 21T42 130Q42 158 60 175T105 193Q133 193 151 175T169 130Q169 119 166 110T159 94T148 82T136 74T126 70T118 67L114 66Q165 21 238 21Q293 21 321 74Q338 107 338 175V195Q338 290 274 322Q259 328 213 329L171 330L168 332Q166 335 166 348Q166 366 174 366Q202 366 232 371Q266 376 294 413T322 525V533Q322 590 287 612Q265 626 240 626Q208 626 181 615T143 592T132 580H135Q138 579 143 578T153 573T165 566T175 555T183 540T186 520Q186 498 172 481T127 463Z">
+        </path>
+    </defs>
+    <g stroke="currentColor" fill="currentColor" stroke-width="0" transform="scale(1,-1)">
+        <g data-mml-node="math">
+            <g data-mml-node="mstyle" transform="scale(2.07)">
+                <g data-mml-node="TeXAtom" data-mjx-texclass="ORD">
+                    <g data-mml-node="mtable">
+                        <g data-mml-node="mtr" transform="translate(0,-67)">
+                            <g data-mml-node="mtd">
+                                <g data-mml-node="mfrac">
+                                    <g data-mml-node="mn" transform="translate(220,676)">
+                                        <use data-c="32" xlink:href="#MJX-1-TEX-N-32">
+                                        </use>
+                                    </g>
+                                    <g data-mml-node="mn" transform="translate(220,-686)">
+                                        <use data-c="33" xlink:href="#MJX-1-TEX-N-33">
+                                        </use>
+                                    </g>
+                                    <rect width="700" height="60" x="120" y="220">
+                                    </rect>
+                                </g>
+                            </g>
+                        </g>
+                    </g>
+                </g>
+            </g>
+        </g>
+    </g>
+</svg>
+*/
 	
 	
 </script>
