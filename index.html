@@ -47,8 +47,10 @@ MathJax = {
 // 文字の色、黒板に白いチョークで書いたようにしたい -> 以前動画のタイトルを作ったやつがあるはずなので、探す
 
 // TODO
-// matrix組み込み
 // 矩形を取得してみる
+// 3001.4/8189.7 = 0.36648473082042077
+// 6.791/11.572 = 0.5868475630833045
+// 60/102 = 0.5882352941176471
 
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -86,22 +88,26 @@ document.addEventListener('DOMContentLoaded', () => {
         const svg = MathJax.tex2svg(equation).firstElementChild;
         if(!svg) { return; }
 
-        parseSvg(unescape(encodeURIComponent(svg.outerHTML)));
+        const svgText = unescape(encodeURIComponent(svg.outerHTML));
+        const data = parseSvg(svgText);
 
         //const img = new Image();
         const img = document.createElement('img');
         img.onload = (e) => {
             let tempWidth = e.target.naturalWidth;
             let tempHeight = e.target.naturalHeight;
+            console.log(tempWidth, tempHeight);
             ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
             ctx.drawImage(e.target, 
                 0,//canvas.width / 2 - tempWidth / 2, 
                 0,//canvas.height / 2 - tempHeight / 2, 
                 tempWidth, tempHeight);
+
+            drawString(data.parsedSVG, data.paths);
             
         }
         img.src = 'data:image/svg+xml;base64,' + btoa('<?xml version="1.0" encoding="UTF-8" standalone="no" ?>\n' + unescape(encodeURIComponent(svg.outerHTML)));
-        //console.log(unescape(encodeURIComponent(svg.outerHTML)));
+        console.log(svgText);
 
         function parseSvg(svgText) {            
             const domParser = new DOMParser();
@@ -131,10 +137,129 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log('paths.length', paths.length);
             paths.forEach(path => {
                 console.log(path.id);
-            })
+            });
+            return {
+                parsedSVG: parsedSVG,
+                paths: paths,
+            };
+        }
+
+        function drawString(parsedSVG, paths) {
+            if(paths.length === 0) { return; }
+            const d = paths[0].d;
+            console.log(d);
+            let loopCnt = 0;
+            const separated = [];
+            let startIndex = 0;
+            let count = 0;
+            let curString = '';
+
+            function isNumeric(s) {
+                return '0123456789-'.indexOf(s) >= 0;
+            }
+
+            // アルファベットで区切る
+            while(true) {
+                if(loopCnt > 10000) { console.log('bug'); return; }
+                curString += d[startIndex + count];
+                count++;
+                if(startIndex + count >= d.length) {
+                    //console.log(curString);
+                    separated.push(curString);
+                    console.log('最後まで行った');
+                    break;
+                }
+                if(d[startIndex + count] !== ' ' && !isNumeric(d[startIndex + count])) {
+                    if(curString === 'T275 -6') {
+                        debugger;
+                    }
+                    //console.log(curString);
+                    separated.push(curString);
+                    startIndex = startIndex + count;
+                    count = 0;
+                    curString = '';
+                }                
+            }
+
+            // 描画してみる
+            ctx.save();
+            ctx.strokeStyle = 'red';
+            ctx.beginPath();
+
+            for(let i = 0; i < separated.length; i += 1) {
+                const cur = separated[i];
+                if(cur[0] === 'M') {
+                    const str = cur.slice(1);
+                    const splits = str.split(' ');
+                    const values = splits.map(elm => Number(elm));
+                    ctx.moveTo(values[0], values[1]);
+                } else if(cur[0] === 'Q' || cur[0] === 'T') {
+                    const str = cur.slice(1);
+                    const splits = str.split(' ');
+                    const values = splits.map(elm => Number(elm));
+                    ctx.lineTo(values[0], values[1]);
+                }  
+                else if(cur[0] === 'Z') {
+                    console.log('Z');
+                } else {
+                    console.log(cur);
+                }
+            }
+
+            ctx.closePath();
+            ctx.stroke();
+
+            ctx.restore();
         }
     }
 });
+
+/*
+\int_0^1
+<svg xmlns="http://www.w3.org/2000/svg" 
+    width="6.791ex" height="11.572ex" 
+    role="img" focusable="false" 
+    viewBox="0 -3074.9 3001.4 5114.8" 
+    xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" 
+    style="vertical-align: -4.615ex;">
+    <defs>
+        <path id="MJX-1-TEX-LO-222B" d="M114 -798Q132 -824 165 -824H167Q195 -824 223 -764T275 -600T320 -391T362 -164Q365 -143 367 -133Q439 292 523 655T645 1127Q651 1145 655 1157T672 1201T699 1257T733 1306T777 1346T828 1360Q884 1360 912 1325T944 1245Q944 1220 932 1205T909 1186T887 1183Q866 1183 849 1198T832 1239Q832 1287 885 1296L882 1300Q879 1303 874 1307T866 1313Q851 1323 833 1323Q819 1323 807 1311T775 1255T736 1139T689 936T633 628Q574 293 510 -5T410 -437T355 -629Q278 -862 165 -862Q125 -862 92 -831T55 -746Q55 -711 74 -698T112 -685Q133 -685 150 -700T167 -741Q167 -789 114 -798Z">
+        </path>
+        <path id="MJX-1-TEX-N-31" d="M213 578L200 573Q186 568 160 563T102 556H83V602H102Q149 604 189 617T245 641T273 663Q275 666 285 666Q294 666 302 660V361L303 61Q310 54 315 52T339 48T401 46H427V0H416Q395 3 257 3Q121 3 100 0H88V46H114Q136 46 152 46T177 47T193 50T201 52T207 57T213 61V578Z">
+        </path>
+        <path id="MJX-1-TEX-N-30" d="M96 585Q152 666 249 666Q297 666 345 640T423 548Q460 465 460 320Q460 165 417 83Q397 41 362 16T301 -15T250 -22Q224 -22 198 -16T137 16T82 83Q39 165 39 320Q39 494 96 585ZM321 597Q291 629 250 629Q208 629 178 597Q153 571 145 525T137 333Q137 175 145 125T181 46Q209 16 250 16Q290 16 318 46Q347 76 354 130T362 333Q362 478 354 524T321 597Z">
+        </path>
+    </defs>
+    <g stroke="currentColor" fill="currentColor" stroke-width="0" transform="scale(1,-1)">
+        <g data-mml-node="math">
+            <g data-mml-node="mstyle" transform="scale(2.07)">
+                <g data-mml-node="TeXAtom" data-mjx-texclass="ORD">
+                    <g data-mml-node="mtable">
+                        <g data-mml-node="mtr" transform="translate(0,-73.5)">
+                            <g data-mml-node="mtd">
+                                <g data-mml-node="msubsup">
+                                    <g data-mml-node="mo" transform="translate(0 1)">
+                                        <use data-c="222B" xlink:href="#MJX-1-TEX-LO-222B">
+                                        </use>
+                                    </g>
+                                    <g data-mml-node="mn" transform="translate(1046.4,1088.1) scale(0.707)">
+                                        <use data-c="31" xlink:href="#MJX-1-TEX-N-31">
+                                        </use>
+                                    </g>
+                                    <g data-mml-node="mn" transform="translate(589,-896.4) scale(0.707)">
+                                        <use data-c="30" xlink:href="#MJX-1-TEX-N-30">
+                                        </use>
+                                    </g>
+                                </g>
+                            </g>
+                        </g>
+                    </g>
+                </g>
+            </g>
+        </g>
+    </g>
+</svg>
+*/
 /**
  * 記号メモ
  * MJX-29-TEX-N-32 のように MJX-の後ろの数値は増えるので TEX以下をメモとして残す。
