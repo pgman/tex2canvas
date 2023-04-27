@@ -46,11 +46,15 @@ MathJax = {
 // textareaに色付けたいかな -> ace.jsでいけそう
 // 文字の色、黒板に白いチョークで書いたようにしたい -> 以前動画のタイトルを作ったやつがあるはずなので、探す
 
-// TODO
-// 矩形を取得してみる
-// 3001.4/8189.7 = 0.36648473082042077
-// 6.791/11.572 = 0.5868475630833045
-// 60/102 = 0.5882352941176471
+// TODO 
+// ・線分, ベジェ曲線の線分の矩形を求める関数 => これ、実際描画するのが一番良いと思う
+// ・日本語入力したときはpathが取れない？
+// ・なので日本語入力には対応しないでいいんじゃないかな？
+// objectMatrix, viewportMatrix,
+// ・分数などpathの存在しないものもあるので調べる。分数の区切り線は<rect>
+
+// <path> の id が - でいくつに区切られているか
+const PATH_ID_SEPARATE_COUNT = 5;
 
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -73,10 +77,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // テキストでCtrl + Sした時の処理
         document.querySelector('#textarea').addEventListener('keydown', e => {
             if(e.ctrlKey && e.key === 's') {
-                // Prevent the Save dialog to open
-                e.preventDefault();
-                // Place your code here
-                svg2canvas();
+                e.preventDefault(); // Prevent the Save dialog to open
+                svg2canvas();   // Place your code here
             }
         });
     }
@@ -84,133 +86,298 @@ document.addEventListener('DOMContentLoaded', () => {
     function svg2canvas() {
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
+        // 数式
         const equation = document.querySelector('#textarea').value;
+        // Mathjaxよりsvg
         const svg = MathJax.tex2svg(equation).firstElementChild;
         if(!svg) { return; }
 
+        // エスケープする
         const svgText = unescape(encodeURIComponent(svg.outerHTML));
-        const data = parseSvg(svgText);
 
-        //const img = new Image();
+        // svgの高さと幅を取得するため、divのinnerHTMLにぶち込む
+        document.querySelector('#temp-div').innerHTML = svgText;
+        const svgDom = document.querySelector('#temp-div').childNodes[0];
+        const data = parseSvg2(svgText, svgDom);
+        
         const img = document.createElement('img');
         img.onload = (e) => {
-            let tempWidth = e.target.naturalWidth;
-            let tempHeight = e.target.naturalHeight;
-            console.log(tempWidth, tempHeight);
             ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-            ctx.drawImage(e.target, 
-                0,//canvas.width / 2 - tempWidth / 2, 
-                0,//canvas.height / 2 - tempHeight / 2, 
-                tempWidth, tempHeight);
-
-            drawString(data.parsedSVG, data.paths);
-            
+            ctx.drawImage(e.target, 0, 0, e.target.naturalWidth, e.target.naturalHeight);
+            drawSvg(data);  
         }
-        img.src = 'data:image/svg+xml;base64,' + btoa('<?xml version="1.0" encoding="UTF-8" standalone="no" ?>\n' + unescape(encodeURIComponent(svg.outerHTML)));
-        console.log(svgText);
+        img.src = 'data:image/svg+xml;base64,' + btoa('<?xml version="1.0" encoding="UTF-8" standalone="no" ?>\n' + svgText);        
 
-        function parseSvg(svgText) {            
+        function setTransform(ctx, mat) {
+            ctx.setTransform(mat[0], mat[3], mat[1], mat[4], mat[2], mat[5]);
+        }
+
+        // dataに基づいて描画
+        function drawSvg(data) {
+            
+            ctx.save();
+
+            // ビューポート変換行列
+            ctx.setTransform(data.vpMat[0], data.vpMat[3], data.vpMat[1], data.vpMat[4], data.vpMat[2], data.vpMat[5]);
+
+            data.geoms.forEach(geom => {
+                ctx.save();
+                // オブジェクト変換行列をかける
+                ctx.transform(geom.mat[0], geom.mat[3], geom.mat[1], geom.mat[4], geom.mat[2], geom.mat[5]);
+
+                // 描画するpathを取得する
+                const path = data.paths.find(p => p.c === geom.c);
+                if(!path) { return; } // continue;
+                const d = path.d;
+                
+                const separated = [];
+                let startIndex = 0;
+                let count = 0;
+                let curString = '';
+                let loopCnt = 0;// for debug
+
+                function isNumeric(s) {
+                    return '0123456789-'.indexOf(s) >= 0;
+                }
+
+                // アルファベットで区切る
+                while(true) {
+                    if(loopCnt++ > 10000) { console.log('bug'); return; }
+                    curString += d[startIndex + count];
+                    count++;
+                    if(startIndex + count >= d.length) {
+                        separated.push(curString);
+                        break;
+                    }
+                    if(d[startIndex + count] !== ' ' && !isNumeric(d[startIndex + count])) {
+                        separated.push(curString);
+                        startIndex = startIndex + count;
+                        count = 0;
+                        curString = '';
+                    }                
+                }
+
+                // 描画する
+                ctx.strokeStyle = 'green';
+                ctx.fillStyle = 'green';
+                ctx.lineWidth = 10;
+                ctx.beginPath();
+
+                for(let i = 0; i < separated.length; i += 1) {
+                    const cur = separated[i];
+                    if(cur[0] === 'M') {
+                        const str = cur.slice(1);
+                        const splits = str.split(' ');
+                        const values = splits.map(elm => Number(elm));
+                        ctx.moveTo(values[0], values[1]);
+                    } else if(cur[0] === 'Q' || cur[0] === 'T') {
+                        const str = cur.slice(1);
+                        const splits = str.split(' ');
+                        const values = splits.map(elm => Number(elm));
+                        ctx.lineTo(values[0], values[1]);
+                    } else if(cur[0] === 'Z') {
+                        //console.log('Z');
+                    } else {// L V H
+                        //console.log(cur);
+                    }
+                }
+
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.restore();
+            });
+
+            ctx.restore();
+        }
+
+        // svgを解析して、オブジェクトに変換する
+        function parseSvg2(svgText, svgDom) {
+            // パースする
             const domParser = new DOMParser();
-            const parsedSVGDoc = domParser.parseFromString(svgText, 'image/svg+xml');
-            const parsedSVG = parsedSVGDoc.childNodes[0];
-            // 記号がいくつあるか調べてみる
+            const parsedSvgDoc = domParser.parseFromString(svgText, 'image/svg+xml');
+            const parsedSvg = parsedSvgDoc.childNodes[0];
 
-            // <defs>
+            if(parsedSvg.childNodes.length !== 2) {
+                throw 'svg child nodes length is not 2.'
+            }
+            // ビューボリューム
+            const vv = parsedSvg.viewBox.baseVal;
+            // SVGの高さ (単位はex?)
+            const svgWidth = parsedSvg.width.baseVal.valueAsString;
+            const svgHeight = parsedSvg.height.baseVal.valueAsString;
+            // <svg>の矩形
+            const svgRect = svgDom.getBoundingClientRect();
+
+            // ビューポート変換の定義
+            const transMat = Matrix.translate(-vv.x, -vv.y); // ビューボリュームの左上隅を原点へ移動する
+            const scaleMat = Matrix.scale(svgRect.width / vv.width, svgRect.height / vv.height);
+            const vpMat = Matrix.multiply(scaleMat, transMat);    // matがビューポート変換を実現する
+
+            // <defs> を取得する
             let defs = null;
-            if(parsedSVG.childNodes[0].tagName === 'defs') {
-                defs = parsedSVG.children[0];
+            if(parsedSvg.childNodes[0].tagName === 'defs') {
+                defs = parsedSvg.children[0];
             } else {
-                return;
+                throw 'parse error: def is not found.';
             }
 
+            // <path> を取得する
             // defs.childNodes を列挙する
             const paths = [];
             for(let i = 0; i < defs.childNodes.length; i += 1) {
                 const child = defs.childNodes[i];
                 if(child.tagName === 'path') {
-                    paths.push({
-                        id: child.getAttribute('id'),
-                        d: child.getAttribute('d'),
+                    const id = child.getAttribute('id');
+                    const splits = id.split('-');
+                    if(splits.length !== PATH_ID_SEPARATE_COUNT) {
+                        throw 'path id is invalid.'
+                    }
+                    // 実際のidにする そうしないと MJX-2-TEX-LO-222B のように MJX-の直後の数字がインクリメントする
+                    const c = splits[4];
+                    const d = child.getAttribute('d');
+                    // curves
+                    const curves = [];
+                    paths.push({ id, c, d, curves, });
+                }
+            }
+
+            // 図形(c, mat)
+            let gElm;
+            if(parsedSvg.childNodes[1].tagName === 'g') {
+                gElm = parsedSvg.childNodes[1];
+            } else {
+                throw 'parse error: g is not found.';
+            }
+            const geoms = [];
+            let loopCnt = 0;
+            const matStacks = [];
+
+            // ツリー構造をたどる
+            traceGElm(gElm);
+
+            /**
+             * transformの値を取得する
+             * @param {Number} str transformの値
+             * @param {String} type 'scale' or 'translate'
+             * @return {Array<Number>} transformの値を配列にしたもの
+             */
+            function getTransformOneValues(str, type) {
+                const index = str.indexOf(type);
+                if(index < 0) { return []; }
+
+                const start = str.slice(index).indexOf('(');
+                if(start < 0) { return []; }
+
+                const end = str.slice(index).indexOf(')');
+                if(end < 0) { return []; }
+
+                // 数値の文字列
+                const sliced = str.slice(index + start + 1, index + end);
+
+                // 1つの数値または2の数値がスペースまたはカンマで区切られている可能性がある
+                const splitsBySpace = sliced.split(' ');
+                const splitsByCommma = sliced.split(',');
+                if(splitsBySpace.length === 2) {// スペース区切り
+                    return [ Number(splitsBySpace[0]), Number(splitsBySpace[1]) ]
+                } else if(splitsByCommma.length === 2) {// カンマ区切り
+                    return [ Number(splitsByCommma[0]), Number(splitsByCommma[1])]
+                } else {// 1つの数値
+                    return [ Number(sliced) ];
+                }
+            }
+
+            function getTransformValues(str) {
+                const translateIndex = str.indexOf('translate');
+                const translateValues = getTransformOneValues(str, 'translate');
+                const scaleIndex = str.indexOf('scale');
+                const scaleValues = getTransformOneValues(str, 'scale');
+                if(translateIndex < 0 && scaleIndex < 0) {// no
+                    return [];
+                } else if(translateIndex >= 0 && scaleIndex < 0) {// translate
+                    return [ { type: 'translate', values: translateValues, } ];
+                } else if(translateIndex < 0 && scaleIndex >= 0) {// scale
+                    return [ { type: 'scale', values: scaleValues, } ];
+                } else if(translateIndex < scaleIndex) {// translate scale
+                    return [ 
+                        { type: 'translate', values: translateValues, },
+                        { type: 'scale', values: scaleValues, },
+                    ];
+                } else {// scale translate
+                    return [ 
+                        { type: 'scale', values: scaleValues, },
+                        { type: 'translate', values: translateValues, },                        
+                    ];
+                }
+            }
+
+            function traceGElm(g) {
+                if(loopCnt++ > 10000) {
+
+                }
+                // 行列を取得する          
+                if(typeof g.getAttribute !== 'function') {
+                    console.log('getAttribute is not a function.');
+                    return;
+                }      
+                let tranformString = g.getAttribute('transform');
+                let mat = Matrix.identify();
+                if(tranformString) {
+                    const trans = getTransformValues(tranformString);
+                    trans.forEach(t => {
+                        let m = Matrix.identify();
+                        if(t.type === 'translate') {
+                            if(t.values.length === 2) {
+                                m = Matrix.translate(t.values[0], t.values[1]);
+                            } else if(t.values.length === 1)  {
+                                m = Matrix.translate(t.values[0], t.values[0]);
+                            }                            
+                        } else if(t.type === 'scale') {
+                            if(t.values.length === 2) {
+                                m = Matrix.scale(t.values[0], t.values[1]);
+                            } else if(t.values.length === 1)  {
+                                m = Matrix.scale(t.values[0], t.values[0]);
+                            }     
+                        }
+                        mat = Matrix.multiply(mat, m);
                     });
                 }
+                matStacks.push(mat);
+
+                if(!g.childNodes || g.childNodes.length === 0) {
+                    // 今の所、<use>,<rect>のみを拾う
+                    if(g.nodeName === 'use') {
+                        // cを取得する
+                        const c = g.getAttribute('data-c');
+                        // 現在の行列を求める
+                        let curMat = Matrix.identify();
+                        for(let i = 0; i < matStacks.length; i += 1) {
+                            curMat = Matrix.multiply(curMat, matStacks[i]);
+                        }
+                        geoms.push({ c, mat: curMat });
+                    } else if(g.nodeName === 'rect') {
+
+                    }
+                } else {
+                    for(let i = 0; i < g.childNodes.length; i += 1) {
+                        traceGElm(g.childNodes[i]);
+                    }
+                }
+                matStacks.pop();
             }
-            console.log('paths.length', paths.length);
-            paths.forEach(path => {
-                console.log(path.id);
-            });
+            
             return {
-                parsedSVG: parsedSVG,
-                paths: paths,
+                parsedSvg,
+                vv,
+                svgWidth,
+                svgHeight,
+                svgRect,
+                vpMat,
+                paths,
+                geoms,
             };
         }
-
-        function drawString(parsedSVG, paths) {
-            if(paths.length === 0) { return; }
-            const d = paths[0].d;
-            console.log(d);
-            let loopCnt = 0;
-            const separated = [];
-            let startIndex = 0;
-            let count = 0;
-            let curString = '';
-
-            function isNumeric(s) {
-                return '0123456789-'.indexOf(s) >= 0;
-            }
-
-            // アルファベットで区切る
-            while(true) {
-                if(loopCnt > 10000) { console.log('bug'); return; }
-                curString += d[startIndex + count];
-                count++;
-                if(startIndex + count >= d.length) {
-                    //console.log(curString);
-                    separated.push(curString);
-                    console.log('最後まで行った');
-                    break;
-                }
-                if(d[startIndex + count] !== ' ' && !isNumeric(d[startIndex + count])) {
-                    if(curString === 'T275 -6') {
-                        debugger;
-                    }
-                    //console.log(curString);
-                    separated.push(curString);
-                    startIndex = startIndex + count;
-                    count = 0;
-                    curString = '';
-                }                
-            }
-
-            // 描画してみる
-            ctx.save();
-            ctx.strokeStyle = 'red';
-            ctx.beginPath();
-
-            for(let i = 0; i < separated.length; i += 1) {
-                const cur = separated[i];
-                if(cur[0] === 'M') {
-                    const str = cur.slice(1);
-                    const splits = str.split(' ');
-                    const values = splits.map(elm => Number(elm));
-                    ctx.moveTo(values[0], values[1]);
-                } else if(cur[0] === 'Q' || cur[0] === 'T') {
-                    const str = cur.slice(1);
-                    const splits = str.split(' ');
-                    const values = splits.map(elm => Number(elm));
-                    ctx.lineTo(values[0], values[1]);
-                }  
-                else if(cur[0] === 'Z') {
-                    console.log('Z');
-                } else {
-                    console.log(cur);
-                }
-            }
-
-            ctx.closePath();
-            ctx.stroke();
-
-            ctx.restore();
-        }
+        
     }
 });
 
@@ -546,6 +713,7 @@ Z:
 <body>
 	<textarea id="textarea"></textarea><br>
 	<button id="button">tex2svg</button><br><br>
-	<canvas id="canvas" width="1280" height="720"></canvas>
+	<canvas id="canvas" width="400" height="400"></canvas>
+    <div id="temp-div"></div>
 </body>
 </html>
