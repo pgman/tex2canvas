@@ -88,7 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const ctx = canvas.getContext('2d');
         // 数式
         const equation = document.querySelector('#textarea').value;
-        // Mathjaxよりsvg
+        // Mathjaxよりsvgを取得する(恐らく同期処理)
         const svg = MathJax.tex2svg(equation).firstElementChild;
         if(!svg) { return; }
 
