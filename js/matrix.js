@@ -24,25 +24,51 @@ class Matrix {
             };
         }
     }
-    // 単位行列
+
+    /**
+     * 単位行列作成
+     * @returns {Array<Number>} 行列
+     */
     static identify() {
         return [1, 0, 0, 0, 1, 0, 0, 0, 1];
     }
-    // 平行移動行列
+
+    /**
+     * 平行移動行列作成
+     * @param {Number} x x方向の平行移動量
+     * @param {Number} y y方向の平行移動量
+     * @returns {Array<Number>} 行列
+     */
     static translate(x, y) {
         return [1, 0, x, 0, 1, y, 0, 0, 1];
     }
-    // 拡大縮小行列
+
+    /**
+     * 拡大縮小行列作成
+     * @param {Number} x x方向の拡大率
+     * @param {Number} y y方向の拡大率
+     * @returns {Array<Number>} 行列
+     */
     static scale(x, y) {
         return [x, 0, 0, 0, y, 0, 0, 0, 1];
     }
-    // 回転行列
+    
+    /**
+     * 回転行列作成
+     * @param {Number} theta 回転角度(ラジアン)
+     * @returns {Array<Number>} 行列
+     */
     static rotate(theta) {
         const cos = Math.cos(theta),
             sin = Math.sin(theta);
         return [cos, -sin, 0, sin, cos, 0, 0, 0, 1];
     }
-    // 逆行列を求める
+
+    /**
+     * 逆行列作成
+     * @param {Array<Number>} m 行列
+     * @returns {Array<Number>} 逆行列
+     */
     static inverse(m) {
         const det = Matrix.determinant(m),
             inv = [
@@ -52,7 +78,12 @@ class Matrix {
             ];
         return inv.map(elm => elm / det);
     }
-    // 行列式を求める
+
+    /**
+     * 行列式を求める
+     * @param {Array<Number>} m 行列
+     * @returns {Number} 行列式の値
+     */
     static determinant(m) {
         return m[0] * m[4] * m[8] 
         + m[1] * m[5] * m[6] 
