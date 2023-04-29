@@ -27,7 +27,7 @@ class Matrix {
 
     /**
      * 単位行列作成
-     * @returns {Array<Number>} 行列
+     * @returns {Array<number>} 行列
      */
     static identify() {
         return [1, 0, 0, 0, 1, 0, 0, 0, 1];
@@ -35,9 +35,9 @@ class Matrix {
 
     /**
      * 平行移動行列作成
-     * @param {Number} x x方向の平行移動量
-     * @param {Number} y y方向の平行移動量
-     * @returns {Array<Number>} 行列
+     * @param {number} x x方向の平行移動量
+     * @param {number} y y方向の平行移動量
+     * @returns {Array<number>} 行列
      */
     static translate(x, y) {
         return [1, 0, x, 0, 1, y, 0, 0, 1];
@@ -45,9 +45,9 @@ class Matrix {
 
     /**
      * 拡大縮小行列作成
-     * @param {Number} x x方向の拡大率
-     * @param {Number} y y方向の拡大率
-     * @returns {Array<Number>} 行列
+     * @param {number} x x方向の拡大率
+     * @param {number} y y方向の拡大率
+     * @returns {Array<number>} 行列
      */
     static scale(x, y) {
         return [x, 0, 0, 0, y, 0, 0, 0, 1];
@@ -55,8 +55,8 @@ class Matrix {
     
     /**
      * 回転行列作成
-     * @param {Number} theta 回転角度(ラジアン)
-     * @returns {Array<Number>} 行列
+     * @param {number} theta 回転角度(ラジアン)
+     * @returns {Array<number>} 行列
      */
     static rotate(theta) {
         const cos = Math.cos(theta),
@@ -66,8 +66,8 @@ class Matrix {
 
     /**
      * 逆行列作成
-     * @param {Array<Number>} m 行列
-     * @returns {Array<Number>} 逆行列
+     * @param {Array<number>} m 行列
+     * @returns {Array<number>} 逆行列
      */
     static inverse(m) {
         const det = Matrix.determinant(m),
@@ -81,8 +81,8 @@ class Matrix {
 
     /**
      * 行列式を求める
-     * @param {Array<Number>} m 行列
-     * @returns {Number} 行列式の値
+     * @param {Array<number>} m 行列
+     * @returns {number} 行列式の値
      */
     static determinant(m) {
         return m[0] * m[4] * m[8] 
@@ -96,7 +96,7 @@ class Matrix {
     /**
      * コンテキストに行列をセットする(ctx.setTransformに対応)
      * @param {CanvasRenderingContext2D} ctx コンテキスト
-     * @param {Array<Number>} m 行列
+     * @param {Array<number>} m 行列
      * @returns {void} なし
      */
     static setTransform(ctx, m) {
@@ -106,7 +106,7 @@ class Matrix {
     /**
      * コンテキストに行列をセットする(ctx.transformに対応)
      * @param {CanvasRenderingContext2D} ctx コンテキスト
-     * @param {Array<Number>} m 行列
+     * @param {Array<number>} m 行列
      * @returns {void} なし
      */
     static transform(ctx, m) {

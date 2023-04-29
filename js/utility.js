@@ -1,8 +1,8 @@
 class Utility {
     /**
      * 2点間の距離を求める
-     * @param {object} [pos0] - 線分の始点
-     * @param {object} [pos1] - 線分の終点
+     * @param {{ x:number, y: number }} pos0 線分の始点
+     * @param {{ x:number, y: number }} pos1 線分の終点
      * @return {number} 2点間の距離を返す
      */
     static distance(pos0, pos1) {
@@ -11,12 +11,12 @@ class Utility {
 
     /**
 	 * 線形補間する
-	 * @param {object} [pos0] - 線分の始点
-	 * @param {object} [pos1] - 線分の終点
-	 * @param {number} [t] - 補間パラメータ
-	 * @return {object} 線形補間された座標を返す
+	 * @param {{ x:number, y: number }} pos0 線分の始点
+	 * @param {{ x:number, y: number }} pos1 線分の終点
+	 * @param {number} t 補間パラメータ
+	 * @return {{ x:number, y: number }} 線形補間された座標を返す
 	 */
-	static linearInterpolation = (pos0, pos1, t) => {
+	static linearInterpolation(pos0, pos1, t) {
 		return { 
 			x: (1 - t) * pos0.x + t * pos1.x,
 			y: (1 - t) * pos0.y + t * pos1.y
@@ -25,8 +25,8 @@ class Utility {
 
 	/**
 	 * 数値かどうか
-	 * @param {String} s 文字列
-	 * @returns {Boolean} 0123456789-.のいづれかか？
+	 * @param {string} s 文字列
+	 * @returns {boolean} 0123456789-.のいづれかか？
 	 */
 	static isNumeric(s) {
 		return '0123456789+-.'.indexOf(s) >= 0;
@@ -34,9 +34,9 @@ class Utility {
 
     /**
 	 * canvasを作成する
-	 * @param {number} [width] - 幅
-	 * @param {number} [width] - 高さ
-	 * @return {object} canvasを返す
+	 * @param {number} width 幅
+	 * @param {number} height 高さ
+	 * @return {Object} canvas
 	 */
 	static createCanvas(width, height) {
 		const canvas = document.createElement('canvas');
@@ -45,9 +45,22 @@ class Utility {
 		return canvas;
 	}
 
-    static clearCanvas = (ctx) => {
-		ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);	// クリア
+	/**
+	 * Canvasをクリアする
+	 * @param {CanvasRenderingContext2D} ctx Canvasのコンテキスト
+	 * @returns {void} なし
+	 */
+    static clearCanvas = ctx => {
+		ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);	
 	}
+
+	/**
+	 * 要素作成
+	 * @param {string} tagName タグの名称 
+	 * @param {string} innerHtml 要素のinnerHTML 
+	 * @param {string} styles 要素のスタイル 
+	 * @returns {Object} 要素
+	 */
 	static createElement(tagName, innerHtml, styles) {
 		const elm = document.createElement(tagName);
 		elm.innerHTML = innerHtml;
@@ -57,8 +70,10 @@ class Utility {
 
     /**
 	 * 線分を描画する
-	 * @param {object} [pos0] - 線分の始点座標
-	 * @param {object} [pos1] - 線分の終点座標
+	 * @param {CanvasRenderingContext2D} ctx Canvasのコンテキスト
+	 * @param {{ x:number, y: number }} pos0 線分の始点座標
+	 * @param {{ x:number, y: number }} pos1 線分の終点座標
+	 * @return {void} なし
 	 */
 	static drawLine(ctx, pos0, pos1) {
 		ctx.beginPath();
@@ -69,9 +84,9 @@ class Utility {
 
     /**
 	 * 点配列を拡大する
-	 * @param {array} [curves] - 点群
-	 * @param {number} [rate] - 拡大率
-	 * @return {array} 拡大された点群
+	 * @param {Array<T>} curves 点群
+	 * @param {number} rate 拡大率
+	 * @return {Array<T>} 拡大された点群
 	 */
 	static zoomCurves(curves, rate) {
 		return curves.map(array => 
