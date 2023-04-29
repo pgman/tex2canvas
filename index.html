@@ -88,7 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelector('#textarea').addEventListener('keydown', e => {
             if(e.ctrlKey && e.key === 's') {
                 e.preventDefault(); // Prevent the Save dialog to open
-                svg2canvas();   // Place your code here
+                svg2canvas();   
             }
         });
     }
@@ -98,19 +98,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const ctx = canvas.getContext('2d');
         // 数式
         const equation = document.querySelector('#textarea').value;
-        // Mathjaxよりsvgを取得する(恐らく同期処理)
+        // Mathjaxよりsvgを取得する(同期処理)
         const svg = MathJax.tex2svg(equation).firstElementChild;
         if(!svg) { return; }
 
         // エスケープする
         const svgText = unescape(encodeURIComponent(svg.outerHTML));
-
-        // svgの高さと幅を取得するため、divのinnerHTMLにぶち込む
-        
-
-        document.querySelector('#temp-div').innerHTML = svgText;
-        const svgDom = document.querySelector('#temp-div').childNodes[0];
-        const data = parseSvg2(svgText, svgDom);
+        // パースする
+        const data = parseSvg(svgText);
         
         const img = document.createElement('img');
         img.onload = (e) => {
@@ -120,22 +115,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         img.src = 'data:image/svg+xml;base64,' + btoa('<?xml version="1.0" encoding="UTF-8" standalone="no" ?>\n' + svgText);        
 
-        function setTransform(ctx, mat) {
-            ctx.setTransform(mat[0], mat[3], mat[1], mat[4], mat[2], mat[5]);
-        }
-
         // dataに基づいて描画
         function drawSvg(data) {
             
             ctx.save();
 
             // ビューポート変換行列
-            ctx.setTransform(data.vpMat[0], data.vpMat[3], data.vpMat[1], data.vpMat[4], data.vpMat[2], data.vpMat[5]);
+            Matrix.setTransform(ctx, data.vpMat);
 
             data.geoms.forEach(geom => {
                 ctx.save();
                 // オブジェクト変換行列をかける
-                ctx.transform(geom.mat[0], geom.mat[3], geom.mat[1], geom.mat[4], geom.mat[2], geom.mat[5]);
+                Matrix.transform(ctx, geom.mat);
 
                 // 描画するpathを取得する
                 const path = data.paths.find(p => p.c === geom.c);
@@ -204,7 +195,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // svgを解析して、オブジェクトに変換する
-        function parseSvg2(svgText, svgDom) {
+        function parseSvg(svgText) {
             // パースする
             const domParser = new DOMParser();
             const parsedSvgDoc = domParser.parseFromString(svgText, 'image/svg+xml');
@@ -732,6 +723,5 @@ Z:
 	<textarea id="textarea"></textarea><br>
 	<button id="button">tex2svg</button><br><br>
 	<canvas id="canvas" width="400" height="400"></canvas>
-    <div id="temp-div"></div>
 </body>
 </html>

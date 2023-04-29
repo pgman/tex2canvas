@@ -92,4 +92,24 @@ class Matrix {
         - m[1] * m[3] * m[8]
         - m[0] * m[5] * m[7];
     }
+
+    /**
+     * コンテキストに行列をセットする(ctx.setTransformに対応)
+     * @param {CanvasRenderingContext2D} ctx コンテキスト
+     * @param {Array<Number>} m 行列
+     * @returns {void} なし
+     */
+    static setTransform(ctx, m) {
+        ctx.setTransform(m[0], m[3], m[1], m[4], m[2], m[5]);
+    }
+
+    /**
+     * コンテキストに行列をセットする(ctx.transformに対応)
+     * @param {CanvasRenderingContext2D} ctx コンテキスト
+     * @param {Array<Number>} m 行列
+     * @returns {void} なし
+     */
+    static transform(ctx, m) {
+        ctx.transform(m[0], m[3], m[1], m[4], m[2], m[5]);
+    }
 }
