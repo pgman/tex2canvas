@@ -36,6 +36,7 @@ MathJax = {
 </script>
 <script id="MathJax-script" async src="js/tex-svg-full.js"></script>
 <script src="js/matrix.js"></script>
+<script src="js/utility.js"></script>
 <script>
 // 参考URL
 // https://stackoverflow.com/questions/71031646/write-svg-latex-into-a-canvas-html
@@ -52,6 +53,15 @@ MathJax = {
 // ・なので日本語入力には対応しないでいいんじゃないかな？
 // objectMatrix, viewportMatrix,
 // ・分数などpathの存在しないものもあるので調べる。分数の区切り線は<rect>
+
+// TODO 図形のtexはいけるはず
+// 以下がいけない。texclipではいける。うーん問題だね
+/*
+\begin{picture}(40,40)(-20,-20)
+  \put(-20,-20){\framebox(40,40){}}% 外見の領域全体を囲む枠
+  \put(0,0){\circle*{4}}% 原点の位置
+\end{picture}
+*/
 
 // <path> の id が - でいくつに区切られているか
 const PATH_ID_SEPARATE_COUNT = 5;
@@ -96,6 +106,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const svgText = unescape(encodeURIComponent(svg.outerHTML));
 
         // svgの高さと幅を取得するため、divのinnerHTMLにぶち込む
+        
+
         document.querySelector('#temp-div').innerHTML = svgText;
         const svgDom = document.querySelector('#temp-div').childNodes[0];
         const data = parseSvg2(svgText, svgDom);
@@ -206,8 +218,14 @@ document.addEventListener('DOMContentLoaded', () => {
             // SVGの高さ (単位はex?)
             const svgWidth = parsedSvg.width.baseVal.valueAsString;
             const svgHeight = parsedSvg.height.baseVal.valueAsString;
+
             // <svg>の矩形
-            const svgRect = svgDom.getBoundingClientRect();
+            // 単位がexになっているのでdivの子要素として、<svg>の矩形サイズをpx単位で取得する
+            const divElm = Utility.createElement('div', svgText, 
+                { position: 'absolute', left: '-10000px', top: '-10000px', visibility: 'hidden', });
+            document.body.appendChild(divElm);            
+            const svgRect = divElm.firstElementChild.getBoundingClientRect();
+            document.body.removeChild(divElm);
 
             // ビューポート変換の定義
             const transMat = Matrix.translate(-vv.x, -vv.y); // ビューボリュームの左上隅を原点へ移動する

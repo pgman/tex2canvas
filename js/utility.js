@@ -1,4 +1,4 @@
-class Util {
+class Utility {
     /**
      * 2点間の距離を求める
      * @param {object} [pos0] - 線分の始点
@@ -38,6 +38,12 @@ class Util {
 
     static clearCanvas = (ctx) => {
 		ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);	// クリア
+	}
+	static createElement(tagName, innerHtml, styles) {
+		const elm = document.createElement(tagName);
+		elm.innerHTML = innerHtml;
+		Object.keys(styles).forEach(prop => { elm.style[prop] = styles[prop]; });
+		return elm;
 	}
 
     /**
