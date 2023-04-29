@@ -23,6 +23,15 @@ class Utility {
 		};
 	}
 
+	/**
+	 * 数値かどうか
+	 * @param {String} s 文字列
+	 * @returns {Boolean} 0123456789-.のいづれかか？
+	 */
+	static isNumeric(s) {
+		return '0123456789+-.'.indexOf(s) >= 0;
+	}
+
     /**
 	 * canvasを作成する
 	 * @param {number} [width] - 幅
