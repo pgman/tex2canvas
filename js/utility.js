@@ -121,6 +121,27 @@ class Utility {
 	    	z2: mean + z2 * sd
 	    };
 	}
+
+	// 文字の UTF-16 コードを16進数で取得
+	static getCharCode(str) {
+		let ret;
+		if(str.length !== 1) { return ''; }
+		ret = str.charCodeAt(0).toString(16);	// 16進数で取得
+		ret = Utility.zeroPadding(ret, 5);	// 0 padding する
+		return ret;
+	}
+
+	// 0 paddingする
+	static zeroPadding(num, length) {
+    	return ('0000000000' + num).slice(-length);
+	}
+
+	/**
+	 * 
+	 */
+	static getPathRect() {
+
+	}
 }
 	
 
