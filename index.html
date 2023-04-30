@@ -58,13 +58,11 @@ MathJax = {
 // 改行ができない
 // もうね \begin{eqnarray}日本語x^2\\x^3\end{eqnarray}でいいと思うんだ
 // textareaに色付けたいかな -> ace.jsでいけそう
-// 文字の色、黒板に白いチョークで書いたようにしたい -> 以前動画のタイトルを作ったやつがあるはずなので、探す
 
 // TODO 
 // ・線分, ベジェ曲線の線分の矩形を求める関数 => これ、実際描画するのが一番良いと思う
 // ・日本語入力したときはpathが取れない？
 // ・なので日本語入力には対応しないでいいんじゃないかな？
-// objectMatrix, viewportMatrix,
 // ・分数などpathの存在しないものもあるので調べる。分数の区切り線は<rect>
 
 // TODO 図形のtexはいけるはず
@@ -78,7 +76,9 @@ MathJax = {
 
 /**
  * 開発用TODO
- * 
+ * <rect> 対応する
+ * []について調べる
+ * サイズを指定せずに svg の幅と高さを変えた方がよいかもしれない
  */
 
 // <path> の id が - でいくつに区切られているか
@@ -195,15 +195,11 @@ document.addEventListener('DOMContentLoaded', () => {
 #canvas {
   border: 1px solid #eeeeee;
 }
-#debug-canvas {
-  border: 1px solid blue;
-}
 </style>
 </head>
 <body>
 	<textarea id="textarea"></textarea><br>
 	<button id="button">tex2svg</button><br><br>
-	<canvas id="canvas" width="400" height="400"></canvas>
-    <canvas id="debug-canvas" width="400" height="400"></canvas>
+	<canvas id="canvas" width="600" height="600"></canvas>
 </body>
 </html>

@@ -24,7 +24,7 @@ class Curve {
 
     /**
      * Canvasにpathを作成する
-     * @param {*} ctx 
+     * @param {CanvasRenderingContext2D} ctx 
      * @param {boolean} move moveToメソッドを呼ぶか 
      */
     path(ctx, move = false) {
@@ -40,6 +40,11 @@ class Curve {
         }        
     }
 
+    /**
+     * 矩矩形を取得する
+     * @param {number} divLength パラメータの分割数
+     * @returns {{ x: number, y: number, width: number, height: number, }} 
+     */
     rect(divLength = 1000) {
         const points = this.points;
         if(this.type === 'ls') {// line segment
@@ -64,7 +69,11 @@ class Curve {
         }    
     }
 
-    // 保管する
+    /**
+     * tの値に対応する点を求める
+     * @param {number} t パラメータ(0 <= t <= 1)
+     * @returns {{ x: number, y: number, }} tの値に対応した座標
+     */
 	interpolate(t) {
 		// エラーチェック
         if(this.type === 'ls') {// line segment
