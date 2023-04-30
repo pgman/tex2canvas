@@ -167,8 +167,21 @@ class SvgParser {
             return separated;
         }
     } 
-    static getCurvesRect(curves) {
+    static getCurvesArrayRect(ca) {
+        // ca : [ [curve, curve, ...], [curve, curve, ...], ... ]
+        let minX = Number.MAX_VALUE, minY = Number.MAX_VALUE,
+            maxX = Number.MIN_VALUE, maxY = Number.MIN_VALUE;
 
+        ca.forEach(curves => {
+            curves.forEach(curve => {
+                const rect = curve.rect();
+                if(rect.x < minX) { minX = rect.x; }
+                if(rect.y < minY) { minY = rect.y; }
+                if(rect.x + rect.width > maxX) { maxX = rect.x + rect.width; }
+                if(rect.y + rect.height > maxY) { maxY = rect.y + rect.height; }
+            });
+        });
+        return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
     }
 
     // svgを解析して、オブジェクトに変換する
@@ -225,9 +238,9 @@ class SvgParser {
                 // そうしないと MJX-2-TEX-LO-222B のように MJX-の直後の数字がインクリメントする
                 const c = splits[4];
                 const d = child.getAttribute('d');
-                console.log(d);
-                const curves = SvgParser.parsePathD(d);
-                paths.push({ id, c, d, curves, });
+                const curvesArray = SvgParser.parsePathD(d);
+                const rect = SvgParser.getCurvesArrayRect(curvesArray);
+                paths.push({ id, c, d, curvesArray, rect, });
             }
         }
 

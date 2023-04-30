@@ -78,7 +78,7 @@ MathJax = {
 
 /**
  * 開発用TODO
- * path毎に矩形を取得する
+ * 
  */
 
 // <path> の id が - でいくつに区切られているか
@@ -145,7 +145,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // 描画するpathを取得する
                 const path = svgData.paths.find(p => p.c === geom.c);
-                if(!path) { return; } // continue;
+                if(!path) { return; } // continue;                
 
                 // 描画する
                 ctx.strokeStyle = 'green';
@@ -153,14 +153,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 ctx.lineWidth = 10;
                 ctx.beginPath();
 
-                path.curves.forEach(curve => {
-                    curve.forEach((elm, i) => { 
-                        elm.path(ctx, i === 0); 
+                path.curvesArray.forEach(curves => {
+                    curves.forEach((curve, i) => { 
+                        curve.path(ctx, i === 0); 
                     });
                 });
 
                 ctx.closePath();
                 ctx.fill();
+
+                const rect = path.rect;
+                ctx.strokeStyle = 'red';
+                ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
+
                 ctx.restore();
             });
 
@@ -190,11 +195,15 @@ document.addEventListener('DOMContentLoaded', () => {
 #canvas {
   border: 1px solid #eeeeee;
 }
+#debug-canvas {
+  border: 1px solid blue;
+}
 </style>
 </head>
 <body>
 	<textarea id="textarea"></textarea><br>
 	<button id="button">tex2svg</button><br><br>
 	<canvas id="canvas" width="400" height="400"></canvas>
+    <canvas id="debug-canvas" width="400" height="400"></canvas>
 </body>
 </html>
