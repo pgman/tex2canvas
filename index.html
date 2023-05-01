@@ -101,8 +101,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     attachEvents();
 
-    await SvgParser.loadSvg('00030');
-
     function attachEvents() {
         // ボタン押下時の処理
         document.querySelector('#button').addEventListener('click', svg2canvas);
@@ -128,15 +126,52 @@ document.addEventListener('DOMContentLoaded', async () => {
         //const svgText = await SvgParser.getMathJaxSvgTextAsync(equation, display);
         // パースする
         const svgData = SvgParser.parseMathJaxSvg(svgText);
+
+        const kanjiVGPathsArray = [];
+        for(let i = 0; i < svgData.paths.length; i += 1) {
+          const path = svgData.paths[i];
+          let code = SvgParser.toKanjiVGCodeById(path.id);
+          code = Utility.zeroPadding(code, 5);
+          try {
+            const paths = await SvgParser.loadSvg(code);
+            kanjiVGPathsArray.push(paths);
+          } catch(e) {
+            console.log(`${code} is error.`);
+          }          
+        }
         
         const img = document.createElement('img');
         img.onload = (e) => {
             ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
             ctx.drawImage(e.target, 0, 0, e.target.naturalWidth, e.target.naturalHeight);
             drawSvg(svgData);  
+            drawKanjiVG(kanjiVGPathsArray, svgData);
         }
         img.src = 'data:image/svg+xml;base64,' + btoa('<?xml version="1.0" encoding="UTF-8" standalone="no" ?>\n' + svgText);        
 
+        // 
+        function drawKanjiVG(kanjiVGPathsArray, svgData) {
+          ctx.save();
+          kanjiVGPathsArray.forEach((paths, i) => {
+            //if(i === 0) {return;}
+            ctx.strokeStyle = 'blue';
+            ctx.fillStyle = 'blue';
+            ctx.lineWidth = 2;
+            paths.forEach(path => {
+              ctx.beginPath();
+
+              path.curvesArray.forEach(curves => {
+                  curves.forEach((curve, j) => { 
+                      curve.path(ctx); 
+                  });
+              });
+
+              ctx.stroke();
+            });
+
+          });
+          ctx.restore();
+        }
         // svgDataに基づいて描画
         function drawSvg(svgData) {
             
@@ -194,7 +229,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 </head>
 <body>
 	<textarea id="textarea">\huge{\begin{eqnarray}
-\int_0^1
+2
 \end{eqnarray}}</textarea><br>
 	<input id="display-checkbox" type="checkbox" checked="true"/><label for="display-checkbox">display</label>    
     <button id="button">tex2svg</button>

@@ -57,7 +57,7 @@ class SvgParser {
         separated.forEach(elm => {
             // 'Q186 568 160 563' => [186, 568, 160, 563]
             const type = elm[0];
-            const values = getValues(elm);
+            const values = getValues(elm.replaceAll('-',',-'));
             
             if(type === 'M' || type === 'm') {
                 datas.push([]);
@@ -181,7 +181,7 @@ class SvgParser {
                 if(curPos + 1 >= d.length) { break; }
                 curPos++;
             }
-            if(curStr && sep.indexOf(d[curPos]) >= 0) {// 区切り文字
+            if(curStr){ //} && sep.indexOf(d[curPos]) >= 0) {// 区切り文字
                 ret.push(curStr);
             }
         
@@ -447,13 +447,18 @@ class SvgParser {
     static async loadSvg(code) {
         return fetch(Define.KANJI_SVG_FOLDER + code + '.svg')
         .then(e => { 
+            console.log(e);
             if(e.ok) { return e.text(); }
             throw 'no get svg file.';			
         })
         .then(xml => {
             //console.log(xml);
-            SvgParser.parseKanjiVG(xml);
-        });
+            const curves = SvgParser.parseKanjiVG(xml);
+            return new Promise(resolve => { resolve(curves); })
+        })
+        // .catch((error) => {
+        //     console.error('Error:', error);
+        // });
     }
 /**
  * 記号メモ
@@ -486,18 +491,18 @@ class SvgParser {
         }
 
         if(type === 'N' && code.length === 2 && '30' <= code && code <= '39') {// N-30 ～ N-39: 0 ～ 9
-            console.log('normal number.');
+            //console.log('normal number.');
         } else if(type === 'I' && code.length === 5 && '1D44E' <= code && code <= '1D467') {// I-1D44E ～ I-1D467: a ～ z
-            console.log('lowercase alphabet.');
+            //console.log('lowercase alphabet.');
         } else if(type === 'I' && code.length === 5 && '1D434' <= code && code <= '1D44D') {// I-1D434 ～ I-1D44D: A ～ Z
-            console.log('uppercase alphabet.');
+            //console.log('uppercase alphabet.');
         } else if(type === 'B' && code.length === 5 && '1D41A' <= code && code <= '1D433') {// B-1D41A ～ B-1D433: {\bf a} ～ {\bf z}
-            console.log('bold lowercase alphabet.');
+            //console.log('bold lowercase alphabet.');
         } else if(type === 'B' && code.length === 5 && '1D400' <= code && code <= '1D419') {// B-1D400 ～ B-1D419: {\bf A} ～ {\bf Z}
-            console.log('bold uppercase alphabet.');
+            //console.log('bold uppercase alphabet.');
         }
 
-        console.log(id);
+        //console.log(id);
         
         return code;        
     }
@@ -522,6 +527,7 @@ class SvgParser {
             if(path.tagName === 'path') {
                 const id = path.getAttribute('id');
                 const d = path.getAttribute('d');
+                console.log(d);
                 const curvesArray = SvgParser.parsePathD(d);
                 const rect = SvgParser.getCurvesArrayRect(curvesArray);
                 paths.push({ id, d, curvesArray, rect, });
