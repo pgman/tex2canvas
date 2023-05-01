@@ -4,37 +4,38 @@
 <meta charset="UTF-8">
 <title>Tex To Canvas</title>
 <script>
-MathJax = {
-  tex: {
-    inlineMath: [
-      ['$', '$'],
-      ['\\(', '\\)']
-    ],
-    displayMath: [
-      ['$$', '$$'],
-      ['\\[', '\\]']
-    ],
-    processEscapes: true // use \$ to produce a literal dollar sign (true is default)
-  },
-  svg: {
-    scale: 1,                      // global scaling factor for all expressions
-    minScale: .5,                  // smallest scaling factor to use
-    //matchFontHeight: true,         // true to match ex-height of surrounding font
-    mtextInheritFont: false,       // true to make mtext elements use surrounding font
-    merrorInheritFont: true,       // true to make merror text use surrounding font
-    mathmlSpacing: false,          // true for MathML spacing rules, false for TeX rules
-    skipAttributes: {},            // RFDa and other attributes NOT to copy to the output
-    exFactor: .5,                  // default size of ex in em units
-    displayAlign: 'center',        // default for indentalign when set to 'auto'
-    displayIndent: '0',            // default for indentshift when set to 'auto'
-    fontCache: 'local',            // or 'global' or 'none'
-    localID: null,                 // ID to use for local font cache (for single equation processing)
-    internalSpeechTitles: true,    // insert <title> tags with speech content
-    titleID: 0                     // initial id number to use for aria-labeledby titles
-  },
-};
+// MathJax = {
+//   tex: {
+//     inlineMath: [
+//       ['$', '$'],
+//       ['\\(', '\\)']
+//     ],
+//     displayMath: [
+//       ['$$', '$$'],
+//       ['\\[', '\\]']
+//     ],
+//     processEscapes: true // use \$ to produce a literal dollar sign (true is default)
+//   },
+//   svg: {
+//     scale: 1,                      // global scaling factor for all expressions
+//     minScale: .5,                  // smallest scaling factor to use
+//     //matchFontHeight: true,         // true to match ex-height of surrounding font
+//     mtextInheritFont: false,       // true to make mtext elements use surrounding font
+//     merrorInheritFont: true,       // true to make merror text use surrounding font
+//     mathmlSpacing: false,          // true for MathML spacing rules, false for TeX rules
+//     skipAttributes: {},            // RFDa and other attributes NOT to copy to the output
+//     exFactor: .5,                  // default size of ex in em units
+//     displayAlign: 'center',        // default for indentalign when set to 'auto'
+//     displayIndent: '0',            // default for indentshift when set to 'auto'
+//     fontCache: 'local',            // or 'global' or 'none'
+//     localID: null,                 // ID to use for local font cache (for single equation processing)
+//     internalSpeechTitles: true,    // insert <title> tags with speech content
+//     titleID: 0                     // initial id number to use for aria-labeledby titles
+//   },
+// };
 </script>
 <script id="MathJax-script" async src="js/tex-svg-full.js"></script>
+<script src="js/define.js"></script>
 <script src="js/matrix.js"></script>
 <script src="js/svg-parser.js"></script>
 <script src="js/curve.js"></script>
@@ -42,31 +43,24 @@ MathJax = {
 <script>
 /*
 [bug]
-・8が読み取れない
 ・"備"がエラーが出てしまう 
    -> プロパティ内に半角スペースがあるのが原因かな？
    -> 半角スペースを削除したがダメ
    -> m(小文字)の処理がうまくできていない感じがする
-[memo]
-・16進数コードから漢字に変換するプログラムを作成する
-  --> 参考: http://d.hatena.ne.jp/yasuhallabo/20140211/1392131668
 */
 // 参考URL
 // https://stackoverflow.com/questions/71031646/write-svg-latex-into-a-canvas-html
 // 課題
 // インラインの表示がうまくいかない
-// 改行ができない
 // もうね \begin{eqnarray}日本語x^2\\x^3\end{eqnarray}でいいと思うんだ
 // textareaに色付けたいかな -> ace.jsでいけそう
 
 // TODO 
-// ・線分, ベジェ曲線の線分の矩形を求める関数 => これ、実際描画するのが一番良いと思う
 // ・日本語入力したときはpathが取れない？
 // ・なので日本語入力には対応しないでいいんじゃないかな？
-// ・分数などpathの存在しないものもあるので調べる。分数の区切り線は<rect>
 
 // TODO 図形のtexはいけるはず
-// 以下がいけない。texclipではいける。うーん問題だね
+// 以下がいけない。texclipではいける。うーん問題だね -> 多分mathjaxは対応していない
 /*
 \begin{picture}(40,40)(-20,-20)
   \put(-20,-20){\framebox(40,40){}}% 外見の領域全体を囲む枠
@@ -74,31 +68,40 @@ MathJax = {
 \end{picture}
 */
 
+/*
+Mathjax demo
+https://mathjax.github.io/MathJax-demos-web/input-tex2svg.html.html
+display: boolean でインラインかどうかわ変えることができそう -> できた
+ところで、$～$ や $$～$$は意味なさそう
+*/
+
 /**
  * 開発用TODO
- * <rect> 対応する
+ * ・16進数コードから漢字に変換するプログラムを作成する(http://d.hatena.ne.jp/yasuhallabo/20140211/1392131668) -> うまくいっていない(保留)
+ *   https://gist.github.com/seekseep/e5c289791265dafee786640942ee2e4d -> これでもうまくいかない -> 16進数コードから日本語の復元がうまくいかない
+ *   -> Bufferが使えるのはNodeのみなので、おそらくArrayBufferを使う
+ * ・KanjiVGのsvgを表示する
+ * ・KanjiVGのsvgをMathJaxのSvgの位置に合わせる
+ * rect 対応する
  * []について調べる
+ * 行列の()は縦に長くなると複数のパスになる。これはうまく対応したところではある <- 長括弧対応
  * サイズを指定せずに svg の幅と高さを変えた方がよいかもしれない
  * そうすると、\bar{x} によるバーとのずれが無くなると思う
+ * 
+ * デモで動作させたい数式
+ * \int \frac {\bf x}
+ * アルファベット大文字、小文字, 
+ * ギリシャ文字の大文字、小文字は定義する
  */
 
 // <path> の id が - でいくつに区切られているか
 const PATH_ID_SEPARATE_COUNT = 5;
 
+document.addEventListener('DOMContentLoaded', async () => {
 
-document.addEventListener('DOMContentLoaded', () => {
-
-    init();	
     attachEvents();
 
-    function init() {
-        // 入力の初期化
-        const text = 
-`\\huge{\\begin{eqnarray}
-8\\\\
-\\end{eqnarray}}`;
-        document.querySelector('#textarea').value = text;        
-    }
+    await SvgParser.loadSvg('00030');
 
     function attachEvents() {
         // ボタン押下時の処理
@@ -113,13 +116,16 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function svg2canvas() {
+    async function svg2canvas() {
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
         // 数式(MathJax用)
         const equation = document.querySelector('#textarea').value;
+        const display = document.querySelector('#display-checkbox').checked;
+        //console.log();
         // svgに変換
-        const svgText = SvgParser.getMathJaxSvgText(equation);
+        const svgText = SvgParser.getMathJaxSvgText(equation, display);
+        //const svgText = await SvgParser.getMathJaxSvgTextAsync(equation, display);
         // パースする
         const svgData = SvgParser.parseMathJaxSvg(svgText);
         
@@ -174,18 +180,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 });
-/**
- * 記号メモ
- * MJX-29-TEX-N-32 のように MJX-の後ろの数値は増えるので TEX以下をメモとして残す。
- * TEX-N-30 ～ TEX-N-39: 0 ～ 9
- * TEX-I-1D44E ～ TEX-I-1D467: a ～ z
- * TEX-I-1D434 ～ TEX-I-1D44D: A ～ Z
- * TEX-N-2B: +
- * TEX-N-2212: -
- * TEX-N-2217: *
- * TEX-N-2F: /
- * TEX-LO-222B: \int
- **/	
 </script>
 <style>
 #textarea {
@@ -199,8 +193,13 @@ document.addEventListener('DOMContentLoaded', () => {
 </style>
 </head>
 <body>
-	<textarea id="textarea"></textarea><br>
-	<button id="button">tex2svg</button><br><br>
-	<canvas id="canvas" width="600" height="600"></canvas>
+	<textarea id="textarea">\huge{\begin{eqnarray}
+\int_0^1
+\end{eqnarray}}</textarea><br>
+	<input id="display-checkbox" type="checkbox" checked="true"/><label for="display-checkbox">display</label>    
+    <button id="button">tex2svg</button>
+    &nbsp;&nbsp;
+    <a href="input-tex2svg.html">sample page</a><br><br>
+	<canvas id="canvas" width="600" height="300"></canvas>
 </body>
 </html>

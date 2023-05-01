@@ -1,23 +1,49 @@
 class SvgParser {
     /**
-     * 
-     * @param {string} equation 
-     * @returns 
+     * 数式よりsvgテキストを取得する
+     * @param {string} equation 数式
+     * @returns {string} svgテキスト
      */
-    static getMathJaxSvgText(equation) {
+    static getMathJaxSvgText(equation, display) {
+        // const output = document.getElementById('output');
+        // output.innerHTML = '';
+        // var options = MathJax.getMetricsFor(output);
+        // options.display = display;
+        //MathJax.texReset();
         // Mathjaxよりsvgを取得する(同期処理)
-        const svg = MathJax.tex2svg(equation).firstElementChild;
+        const svg = MathJax.tex2svg(equation, {display}).firstElementChild;
         if(!svg) { return ''; }
+
+        //MathJax.startup.document.clear();
+        //MathJax.startup.document.updateDocument();
 
         // エスケープする
         const svgText = unescape(encodeURIComponent(svg.outerHTML));
         return svgText;
     }   
 
+    static async getMathJaxSvgTextAsync(equation, display) {
+        // const output = document.getElementById('output');
+        // output.innerHTML = '';
+        // var options = MathJax.getMetricsFor(output);
+        // options.display = display;
+        //MathJax.texReset();
+        const svg = await MathJax.tex2svgPromise(equation, {display});
+        if(!svg) { return ''; }
+
+        //MathJax.startup.document.clear();
+        //MathJax.startup.document.updateDocument();
+
+        // エスケープする
+        //const svgText = unescape(encodeURIComponent(svg.outerHTML));
+        const svgText = unescape(encodeURIComponent(svg.firstElementChild.outerHTML));
+        return svgText;
+    }
+
     /**
      * <path d=""> の dを解析する
-     * @param {string} d 
-     * @return {Array<T>} 
+     * @param {string} d dの文字列
+     * @return {Array<T>} 曲線群
      */
     static parsePathD(d) {
         // https://developer.mozilla.org/ja/docs/Web/SVG/Tutorial/Paths
@@ -133,10 +159,36 @@ class SvgParser {
 
         function getValues(str) {
             const splits = str.substring(1).split(/,| /).filter(elm => elm.length !== 0);
-            return splits.map(elm => Number(elm));
+            return splits.map(elm => Function('return ('+elm+');')());
         }
 
+        function separate(d) {
+            const sep = 'MmLlHhVvCcSsQqTtZ';
+            // 文字列を1文字ずつ送っていって、sepに該当するならその前のものを配列に格納する
+            const ret = [];
+            let curStr = '';
+            let curPos = 0;
+        
+            let loopCnt = 0; // for Debug
+            while(true) {
+                if(loopCnt++ > 10000) { throw 'loop error.'; }
+        
+                if(curStr && sep.indexOf(d[curPos]) >= 0) {// 区切り文字
+                    ret.push(curStr);
+                    curStr = '';
+                } 
+                curStr += d[curPos];
+                if(curPos + 1 >= d.length) { break; }
+                curPos++;
+            }
+            if(curStr && sep.indexOf(d[curPos]) >= 0) {// 区切り文字
+                ret.push(curStr);
+            }
+        
+            return ret;
+        }
 
+        /*
         function separate(d) {
             const separated = [];
             let startIndex = 0;
@@ -166,7 +218,14 @@ class SvgParser {
             }
             return separated;
         }
+        */
     } 
+
+    /**
+     * 曲線群の矩形を取得
+     * @param {Array<Array<Curve>>} ca 曲線群
+     * @returns {{x: number, y: number, }} 
+     */
     static getCurvesArrayRect(ca) {
         // ca : [ [curve, curve, ...], [curve, curve, ...], ... ]
         let minX = Number.MAX_VALUE, minY = Number.MAX_VALUE,
@@ -257,6 +316,22 @@ class SvgParser {
 
         // ツリー構造をたどる
         traceGElm(gElm);
+
+        // ここでコードを取得する
+        paths.forEach(path => {
+            SvgParser.toKanjiVGCodeById(path.id);
+        });
+        
+        return {
+            parsedSvg,
+            vv,
+            svgWidth,
+            svgHeight,
+            svgRect,
+            vpMat,
+            paths,
+            geoms,
+        };
 
         /**
          * transformの値を取得する
@@ -367,17 +442,93 @@ class SvgParser {
             }
             matStacks.pop();
         }
+    }
+
+    static async loadSvg(code) {
+        return fetch(Define.KANJI_SVG_FOLDER + code + '.svg')
+        .then(e => { 
+            if(e.ok) { return e.text(); }
+            throw 'no get svg file.';			
+        })
+        .then(xml => {
+            //console.log(xml);
+            SvgParser.parseKanjiVG(xml);
+        });
+    }
+/**
+ * 記号メモ
+ * MJX-29-TEX-N-32 のように MJX-の後ろの数値は増えるので TEX以下をメモとして残す。
+ * TEX-N-2B: +, TEX-N-2212: -, TEX-N-2217: *, TEX-N-2F: /, TEX-LO-222B: \int
+ **/	
+
+    /**
+     * MathJaxのsvgに定義されている path の id から code を取得する 
+     * @param {string} id path の id
+     * @return {void} コード
+     */
+    static toKanjiVGCodeById(id) {
+        // - で区切られている
+        const splits = id.split('-');
+        if(splits.length !== 5) {
+            throw 'id is not 5 separated by hyphens.'
+        }
+
+        // - で分ける ex. MJX-1-TEX-N-39
+        const mjx = splits[0];  // MJX
+        const num = splits[1];  // 1
+        const tex = splits[2];  // TEX
+        const type = splits[3]; // N
+        const code = splits[4]; // 39
+
+        if(mjx !== 'MJX' || isNaN(Number(num)) || tex !== 'TEX') {
+            // idが不正
+            throw 'id is invalid.';
+        }
+
+        if(type === 'N' && code.length === 2 && '30' <= code && code <= '39') {// N-30 ～ N-39: 0 ～ 9
+            console.log('normal number.');
+        } else if(type === 'I' && code.length === 5 && '1D44E' <= code && code <= '1D467') {// I-1D44E ～ I-1D467: a ～ z
+            console.log('lowercase alphabet.');
+        } else if(type === 'I' && code.length === 5 && '1D434' <= code && code <= '1D44D') {// I-1D434 ～ I-1D44D: A ～ Z
+            console.log('uppercase alphabet.');
+        } else if(type === 'B' && code.length === 5 && '1D41A' <= code && code <= '1D433') {// B-1D41A ～ B-1D433: {\bf a} ～ {\bf z}
+            console.log('bold lowercase alphabet.');
+        } else if(type === 'B' && code.length === 5 && '1D400' <= code && code <= '1D419') {// B-1D400 ～ B-1D419: {\bf A} ～ {\bf Z}
+            console.log('bold uppercase alphabet.');
+        }
+
+        console.log(id);
         
-        return {
-            parsedSvg,
-            vv,
-            svgWidth,
-            svgHeight,
-            svgRect,
-            vpMat,
-            paths,
-            geoms,
-        };
+        return code;        
+    }
+
+    /**
+     * KanjiVGのSVGファイルを解析する
+     * @param {string} svg svgファイルのテキスト
+     * @returns {Array<Array<Curve>T>} 曲線群 
+     */
+    static parseKanjiVG(svg) {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(svg, "text/xml");
+            
+        // array like object を array に変換
+        const pathArray = Array.from(doc.children[0].getElementsByTagName('path'));
+        // <path>でループ
+
+        // pathArray を列挙する
+        const paths = [];
+        for(let i = 0; i < pathArray.length; i += 1) {
+            const path = pathArray[i];
+            if(path.tagName === 'path') {
+                const id = path.getAttribute('id');
+                const d = path.getAttribute('d');
+                const curvesArray = SvgParser.parsePathD(d);
+                const rect = SvgParser.getCurvesArrayRect(curvesArray);
+                paths.push({ id, d, curvesArray, rect, });
+            }
+        }
+
+        return paths;	
     }
 
 }

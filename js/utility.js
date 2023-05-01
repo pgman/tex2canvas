@@ -98,9 +98,15 @@ class Utility {
 		);
 	}
 
-    static isPosInMinMax = (pos, min, max) => {
-		if(min.x <= pos.x && pos.x <= max.x
-		&& min.y <= pos.y && pos.y <= max.y) {
+    /**
+     * 点が矩形内に存在するか
+     * @param {{ x: number, y: number, }} pos 点 
+     * @param {{ x: number, y: number, width: number, height: number}} rect 矩形 
+     * @returns {boolean} 点が矩形内に存在するか
+     */
+    static isPosInRect = (pos, rect) => {
+		if(rect.x <= pos.x && pos.x <= rect.x + rect.width
+		&& rect.y <= pos.y && pos.y <= rect.y + rect.height) {
 			return true;
 		} else {
 			return false;
@@ -122,8 +128,13 @@ class Utility {
 	    };
 	}
 
-	// 文字の UTF-16 コードを16進数で取得
-	static getCharCode(str) {
+	/**
+     * 文字の UTF-16 コードを16進数で取得
+     * ex. '山' -> '05c71'
+     * @param {string} str 文字列(長さは1であること) 
+     * @returns {string} 16進数の文字列(長さは5) 
+     */
+	static getCodeByChar(str) {
 		let ret;
 		if(str.length !== 1) { return ''; }
 		ret = str.charCodeAt(0).toString(16);	// 16進数で取得
@@ -131,16 +142,17 @@ class Utility {
 		return ret;
 	}
 
-	// 0 paddingする
-	static zeroPadding(num, length) {
-    	return ('0000000000' + num).slice(-length);
-	}
+    // debug 中
+    static getCharByCode(code) {    }
 
 	/**
-	 * 
-	 */
-	static getPathRect() {
-
+     * 0 paddingする
+     * @param {number} num 数値 
+     * @param {number} length 長さ
+     * @returns 0 padding された文字列
+     */
+	static zeroPadding(num, length) {
+    	return ('0000000000' + num).slice(-length);
 	}
 }
 	
