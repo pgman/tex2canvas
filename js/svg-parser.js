@@ -518,23 +518,43 @@ class SvgParser {
             
         // array like object を array に変換
         const pathArray = Array.from(doc.children[0].getElementsByTagName('path'));
-        // <path>でループ
+        if(pathArray.length === 0) {
+            throw 'path is not found.'
+        }
 
+        const id = pathArray[0].parentElement.getAttribute('id');
+        const splits = id.split(':');
+        if(splits.length !== 2) {
+            throw 'id is invalid.';
+        }
+        const c = splits[1];
+
+        // <path>でループ
         // pathArray を列挙する
         const paths = [];
         for(let i = 0; i < pathArray.length; i += 1) {
             const path = pathArray[i];
-            if(path.tagName === 'path') {
-                const id = path.getAttribute('id');
-                const d = path.getAttribute('d');
-                console.log(d);
-                const curvesArray = SvgParser.parsePathD(d);
-                const rect = SvgParser.getCurvesArrayRect(curvesArray);
-                paths.push({ id, d, curvesArray, rect, });
-            }
-        }
+            const id = path.getAttribute('id');
+            const d = path.getAttribute('d');
+            const curvesArray = SvgParser.parsePathD(d);
+            const rect = SvgParser.getCurvesArrayRect(curvesArray);
+            paths.push({ id, d, curvesArray, rect, });
+        }        
 
-        return paths;	
+        // 矩形を求める
+        let minX = Number.MAX_VALUE, minY = Number.MAX_VALUE,
+            maxX = Number.MIN_VALUE, maxY = Number.MIN_VALUE;
+        for(let i = 0; i < paths.length; i += 1) {
+            const path = paths[i];
+            const r = path.rect;
+            if(r.x < minX) { minX = r.x; }
+            if(r.y < minY) { minY = r.y; }
+            if(r.x + r.width > maxX) { maxX = r.x + r.width; }
+            if(r.y + r.height > maxY) { maxY = r.y + r.height; }
+        }
+        const rect = { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+
+        return { id, c, paths, rect, };
     }
 
 }

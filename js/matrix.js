@@ -34,6 +34,22 @@ class Matrix {
     }
 
     /**
+     * 矩形に行列を掛ける(※ただし回転行列がかかっていないことが前提。180度の回転ならOK)
+     * @param {Array<number>} m 行列
+     * @param {{ x: number, y: number, width: number, height: number, }} r 矩形 
+     */
+    static multiplyRect(m, r) {
+        const p0 = Matrix.multiplyVec(m, { x: r.x, y: r.y });
+        const p1 = Matrix.multiplyVec(m, { x: r.x + r.width, y: r.y + r.height });
+        return {
+            x: Math.min(p0.x, p1.x),
+            y: Math.min(p0.y, p1.y),
+            width: Math.abs(p0.x - p1.x),
+            height: Math.abs(p0.y - p1.y),
+        };          
+    }
+
+    /**
      * 単位行列作成
      * @returns {Array<number>} 行列
      */

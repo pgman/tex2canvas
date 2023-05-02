@@ -28,24 +28,25 @@ class Curve {
      * @param {boolean} move moveToメソッドを呼ぶか 
      */
     path(ctx, move = false) {
+        const points = this.points;
         if(move) {
-            ctx.moveTo(this.points[0].x, this.points[0].y);
+            ctx.moveTo(points[0].x, points[0].y);
         }
         if(this.type === 'ls') {// line segment
-            ctx.lineTo(this.points[1].x, this.points[1].y);
+            ctx.lineTo(points[1].x, points[1].y);
         } else if(this.type === 'qb') {// quadratic bezier curve
-            ctx.quadraticCurveTo(this.points[1].x, this.points[1].y, this.points[2].x, this.points[2].y);
+            ctx.quadraticCurveTo(points[1].x, points[1].y, points[2].x, points[2].y);
         } else if(this.type === 'cb') {// cubic bezier curve
-            ctx.bezierCurveTo(this.points[1].x, this.points[1].y, this.points[2].x, this.points[2].y, this.points[3].x, this.points[3].y);
+            ctx.bezierCurveTo(points[1].x, points[1].y, points[2].x, points[2].y, points[3].x, points[3].y);
         }        
     }
 
     /**
-     * 矩矩形を取得する
+     * 矩形を取得する
      * @param {number} divLength パラメータの分割数
      * @returns {{ x: number, y: number, width: number, height: number, }} 
      */
-    rect(divLength = 1000) {
+    rect(divLength = 10000) {
         const points = this.points;
         if(this.type === 'ls') {// line segment
             return {

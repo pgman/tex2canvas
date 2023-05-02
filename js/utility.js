@@ -69,6 +69,19 @@ class Utility {
 	}
 
     /**
+     * 円を塗りつぶす
+     * @param {CanvasRenderingContext2D} ctx Canvasのコンテキスト
+     * @param {{ x: number, y: number, }} pos 円の中心座標 
+     * @param {number} radius 円の半径
+     * @returns {void} なし 
+     */
+    static fillCircle(ctx, pos, radius) {
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, radius, 0, Math.PI*2, false);
+        ctx.fill();
+    }
+
+    /**
 	 * 線分を描画する
 	 * @param {CanvasRenderingContext2D} ctx Canvasのコンテキスト
 	 * @param {{ x:number, y: number }} pos0 線分の始点座標
@@ -154,6 +167,26 @@ class Utility {
 	static zeroPadding(num, length) {
     	return ('0000000000' + num).slice(-length);
 	}
+
+    /**
+     * src の矩形のアスペクト比に合わせて縦を基準にdstの矩形を調整する
+     * @param {{ x: number, y: number, width: number, height: number, }} src 基準となる矩形
+     * @param {{ x: number, y: number, width: number, height: number, }} dst srcにフィットさせる矩形
+     * @returns {{ x: number, y: number, width: number, height: number, }} フィットした矩形
+     */
+    static fitVerticalRect(src, dst) {
+        // src の矩形のアスペクト比に合わせて縦を基準にdstの矩形を調整する
+        // なので、dst.yとdst.heightは変わらない
+        const dstCenterX = dst.x + dst.width / 2;
+        const srcAspect = src.width / src.height;
+        const dstWidth = dst.height * srcAspect;
+        return {
+            x: dstCenterX - dstWidth / 2,
+            y: dst.y,
+            width: dstWidth,
+            height: dst.height,
+        };
+    }
 }
 	
 

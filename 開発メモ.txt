@@ -1,0 +1,4 @@
+https://otomizu.work/2020/10/30/vscode-tab-size/ でインデントの設定を行う
+
+Promiseでエラー処理をしていない？ \int_0^1なんかで出るエラー
+
