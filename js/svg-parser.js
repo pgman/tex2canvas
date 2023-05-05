@@ -11,7 +11,7 @@ class SvgParser {
         // options.display = display;
         //MathJax.texReset();
         // Mathjaxよりsvgを取得する(同期処理)
-        const svg = MathJax.tex2svg(equation, {display}).firstElementChild;
+        const svg = MathJax.tex2svg(equation, {scale: 5, display}).firstElementChild;
         if(!svg) { return ''; }
 
         //MathJax.startup.document.clear();
@@ -290,7 +290,7 @@ class SvgParser {
             if(child.tagName === 'path') {
                 const id = child.getAttribute('id');
                 const splits = id.split('-');
-                if(splits.length !== PATH_ID_SEPARATE_COUNT) {
+                if(splits.length !== Define.PATH_ID_SEPARATE_COUNT) {
                     throw 'path id is invalid.'
                 }
                 // 実際のidにする('MJX-2-TEX-LO-222B' -> '222B') 
@@ -310,7 +310,7 @@ class SvgParser {
         } else {
             throw 'parse error: g is not found.';
         }
-        const geoms = [];
+        const shapes = [];
         let loopCnt = 0;
         const matStacks = [];
 
@@ -330,7 +330,7 @@ class SvgParser {
             svgRect,
             vpMat,
             paths,
-            geoms,
+            shapes,
         };
 
         /**
@@ -426,14 +426,16 @@ class SvgParser {
                 if(g.nodeName === 'use') {
                     // cを取得する
                     const c = g.getAttribute('data-c');
+                    // xlink:hrefを取得する
+                    const xlinkHref = g.getAttribute('xlink:href');
                     // 現在の行列を求める
                     let curMat = Matrix.identify();
                     for(let i = 0; i < matStacks.length; i += 1) {
                         curMat = Matrix.multiply(curMat, matStacks[i]);
                     }
-                    geoms.push({ c, mat: curMat });
+                    shapes.push({ tagName: 'use', c, xlinkHref, mat: curMat });
                 } else if(g.nodeName === 'rect') {
-
+                    console.log('rectは現在未取得');
                 }
             } else {
                 for(let i = 0; i < g.childNodes.length; i += 1) {
@@ -447,24 +449,14 @@ class SvgParser {
     static async loadSvg(code) {
         return fetch(Define.KANJI_SVG_FOLDER + code + '.svg')
         .then(e => { 
-            console.log(e);
             if(e.ok) { return e.text(); }
             throw 'no get svg file.';			
         })
         .then(xml => {
-            //console.log(xml);
-            const curves = SvgParser.parseKanjiVG(xml);
+            const curves = SvgParser.parseKvg(xml);
             return new Promise(resolve => { resolve(curves); })
-        })
-        // .catch((error) => {
-        //     console.error('Error:', error);
-        // });
+        });
     }
-/**
- * 記号メモ
- * MJX-29-TEX-N-32 のように MJX-の後ろの数値は増えるので TEX以下をメモとして残す。
- * TEX-N-2B: +, TEX-N-2212: -, TEX-N-2217: *, TEX-N-2F: /, TEX-LO-222B: \int
- **/	
 
     /**
      * MathJaxのsvgに定義されている path の id から code を取得する 
@@ -483,27 +475,36 @@ class SvgParser {
         const num = splits[1];  // 1
         const tex = splits[2];  // TEX
         const type = splits[3]; // N
-        const code = splits[4]; // 39
+        let code = splits[4]; // 39
 
         if(mjx !== 'MJX' || isNaN(Number(num)) || tex !== 'TEX') {
             // idが不正
             throw 'id is invalid.';
         }
+        
+        /**
+         * 記号メモ
+         * MJX-29-TEX-N-32 のように MJX-の後ろの数値は増えるので TEX以下をメモとして残す。
+         * TEX-N-2B: +, TEX-N-2212: -, TEX-N-2217: *, TEX-N-2F: /, TEX-LO-222B: \int
+         **/	
 
         if(type === 'N' && code.length === 2 && '30' <= code && code <= '39') {// N-30 ～ N-39: 0 ～ 9
             //console.log('normal number.');
         } else if(type === 'I' && code.length === 5 && '1D44E' <= code && code <= '1D467') {// I-1D44E ～ I-1D467: a ～ z
-            //console.log('lowercase alphabet.');
+            // a: 1D44E => 00061, z: 1D467 => 0007a
+            const diff = Number(`0x${code}`) - Number('0x1D44E');
+            code = (Number('0x00061')+ diff).toString(16);
+            //code = Utility.zeroPadding(code, Define.SVG_FILE_NAME_LENGTH);
         } else if(type === 'I' && code.length === 5 && '1D434' <= code && code <= '1D44D') {// I-1D434 ～ I-1D44D: A ～ Z
-            //console.log('uppercase alphabet.');
+            // A: 1D434 => 00041, Z: 1D44D => 0005a
+            const diff = Number(`0x${code}`) - Number('0x1D434');
+            code = (Number('0x00041')+ diff).toString(16);
+            //code = Utility.zeroPadding(code, Define.SVG_FILE_NAME_LENGTH);
         } else if(type === 'B' && code.length === 5 && '1D41A' <= code && code <= '1D433') {// B-1D41A ～ B-1D433: {\bf a} ～ {\bf z}
             //console.log('bold lowercase alphabet.');
         } else if(type === 'B' && code.length === 5 && '1D400' <= code && code <= '1D419') {// B-1D400 ～ B-1D419: {\bf A} ～ {\bf Z}
             //console.log('bold uppercase alphabet.');
-        }
-
-        //console.log(id);
-        
+        }        
         return code;        
     }
 
@@ -512,7 +513,7 @@ class SvgParser {
      * @param {string} svg svgファイルのテキスト
      * @returns {Array<Array<Curve>T>} 曲線群 
      */
-    static parseKanjiVG(svg) {
+    static parseKvg(svg) {
         const parser = new DOMParser();
         const doc = parser.parseFromString(svg, "text/xml");
             
@@ -533,9 +534,8 @@ class SvgParser {
         // pathArray を列挙する
         const paths = [];
         for(let i = 0; i < pathArray.length; i += 1) {
-            const path = pathArray[i];
-            const id = path.getAttribute('id');
-            const d = path.getAttribute('d');
+            const id = pathArray[i].getAttribute('id');
+            const d = pathArray[i].getAttribute('d');
             const curvesArray = SvgParser.parsePathD(d);
             const rect = SvgParser.getCurvesArrayRect(curvesArray);
             paths.push({ id, d, curvesArray, rect, });

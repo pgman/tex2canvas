@@ -46,7 +46,7 @@ class Curve {
      * @param {number} divLength パラメータの分割数
      * @returns {{ x: number, y: number, width: number, height: number, }} 
      */
-    rect(divLength = 10000) {
+    rect(divLength = 100) {
         const points = this.points;
         if(this.type === 'ls') {// line segment
             return {

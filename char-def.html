@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Char Def</title>
+<script id="MathJax-script" async src="js/tex-svg-full.js"></script>
+<script src="js/define.js"></script>
+<script src="js/vector.js"></script>
+<script src="js/matrix.js"></script>
+<script src="js/svg-parser.js"></script>
+<script src="js/curve.js"></script>
+<script src="js/utility.js"></script>
+<script>
+
+const VIEWBOX_SIZE = 119;
+const CANVAS_SIZE = 400;
+const MVG_PADDING = 20;
+
+let selectedId = -1;
+let curves = [];
+let mode = '';
+let tempCurves = [];
+let svgData = null;
+let currentCode = '';
+
+let appFont = {};
+
+document.addEventListener('DOMContentLoaded', async () => {
+
+    const jsonStr = localStorage.getItem('tex2canvas');
+    if(jsonStr) {
+        appFont = JSON.parse(jsonStr);
+    }
+
+    const charCanvas = document.querySelector('#char-canvas');
+    charCanvas.width = CANVAS_SIZE;
+    charCanvas.height = CANVAS_SIZE;
+    charCanvas.style.display = 'inline';
+
+    charCanvas.addEventListener('contextmenu', e => { e.preventDefault(); });
+
+    charCanvas.addEventListener('mousedown', e => {
+        if(mode === '') { return; }
+        const worldPos = getWorldPosByEvent(e);
+
+        if(mode === 'interpolation') {
+            if(e.button === 2) {// right button
+                mode = '';
+                curves = tempCurves;
+                tempCurves = [];
+                onDraw();
+                return;
+            }
+            tempCurves.push(new Curve([ worldPos, worldPos, worldPos, worldPos, ]));
+        }
+        onDraw();
+
+    });
+
+    charCanvas.addEventListener('mousemove', e => {
+        if(mode === '') { return; }
+        const worldPos = getWorldPosByEvent(e);
+
+        if(mode === 'interpolation') {
+            if(tempCurves.length === 0) {
+                return;
+            } 
+            const p = tempCurves[tempCurves.length - 1].points;
+            p[3] = worldPos;
+
+            if(tempCurves.length === 1) {
+                const p = tempCurves[tempCurves.length - 1].points;
+                const v = Vector.subtract(p[2], p[1]);
+                p[1] = Vector.add(p[0], Vector.scale(v, 1 / 3));
+                p[2] = Vector.add(p[0], Vector.scale(v, 2 / 3));
+            } else if(tempCurves.length >= 2) {
+                const p = tempCurves[tempCurves.length - 2].points;
+                const q = tempCurves[tempCurves.length - 1].points;
+                const p0q3 = Vector.subtract(q[3], p[0]);
+                p[2] = Vector.add(p[3], Vector.scale(p0q3, -1 / 6));
+                q[1] = Vector.add(p[3], Vector.scale(p0q3, 1 / 6));
+                if(tempCurves.length === 2) {
+                    p[1] = Vector.center(p[0], p[2]);
+                }
+                q[2] = Vector.center(q[1], q[3]);
+            } 
+
+            onDraw();
+        }
+    });
+
+    charCanvas.addEventListener('mouseup', e => {
+        if(mode === '') { return; }
+        onDraw();
+    });
+
+    charCanvas.addEventListener('click', e => {
+        if(mode === '') { return; }        
+        onDraw();
+    });
+
+    document.querySelector('#interpolation-button').addEventListener('click', e => {
+        mode = 'interpolation';
+        tempCurves = [];
+        onDraw();
+    });
+
+    document.querySelector('#cancel-button').addEventListener('click', e => {
+        mode = '';
+        tempCurves = [];
+        onDraw();
+    });   
+    
+    document.querySelector('#save-button').addEventListener('click', e => {
+        if(!currentCode) { return; }
+        appFont[currentCode] = JSON.parse(JSON.stringify(curves));
+        localStorage.setItem('tex2canvas', JSON.stringify(appFont));
+    });  
+    
+    document.querySelector('#clear-button').addEventListener('click', e => {
+        mode = '';
+        curves = [];
+        tempCurves = [];
+        onDraw();
+    });  
+
+    document.querySelector('#mathjax-text').addEventListener('keypress', e => {
+        if(e.keyCode === 13) {
+            onSearch();
+        }
+    });
+
+    // テキストでCtrl + Sした時の処理
+    document.querySelector('#mathjax-text').addEventListener('keydown', e => {
+        if(e.ctrlKey && e.key === 's') {
+            e.preventDefault(); // Prevent the Save dialog to open
+            onSearch();
+        }
+    });
+
+    document.querySelector('#mathjax-search-button').addEventListener('click', onSearch);    
+
+    function onDraw() {
+        const canvas = document.querySelector('#char-canvas');
+        const ctx = canvas.getContext('2d');
+
+        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        //ctx.drawImage(e.target, 0, 0, e.target.naturalWidth, e.target.naturalHeight);
+        drawSvg(ctx, svgData, { fillChar: true, fillStyle: 'rgba(0, 255, 0, 0.2)', 
+            strokeRect: true, strokeStyle: 'rgba(255, 0, 0, 0.2)', }); 
+
+        const scaleMat = Matrix.scale(CANVAS_SIZE / VIEWBOX_SIZE, CANVAS_SIZE / VIEWBOX_SIZE);
+        ctx.save();
+        Matrix.setTransform(ctx, scaleMat);
+
+        ctx.beginPath();        
+        curves.forEach((curve, i) => { 
+            curve.path(ctx, i === 0); 
+        });
+        ctx.stroke();
+
+        ctx.beginPath();        
+        tempCurves.forEach((curve, i) => { 
+            curve.path(ctx, i === 0); 
+        });
+        ctx.stroke();
+
+        tempCurves.forEach((curve, i) => { 
+            curve.points.forEach((point, j) => {
+                if(j === 0 || j === 3) { ctx.fillStyle = 'blue'; }
+                else { ctx.fillStyle = 'green'; }
+                Utility.fillCircle(ctx, point, 1);
+            }); 
+        });
+
+        ctx.restore();
+    }
+
+    function onSearch() {
+        const canvas = document.querySelector('#char-canvas');
+        const ctx = canvas.getContext('2d');
+
+        // 数式(MathJax用)
+        const equation = document.querySelector('#mathjax-text').value;
+        // svgに変換
+        const svgText = SvgParser.getMathJaxSvgText(equation, true);
+        // パースする
+        svgData = SvgParser.parseMathJaxSvg(svgText);
+
+        if(!svgData || !svgData.shapes || svgData.shapes.length !== 1) {
+            currentCode = '';
+            console.error('error');
+            return;
+        }
+        currentCode = svgData.shapes[0].c;
+        mode = '';
+        curves = [];
+        tempCurves = [];
+        if(appFont[currentCode]) {
+            curves = appFont[currentCode].map(elm => new Curve(elm.points));
+        } 
+
+        const img = document.createElement('img');
+        img.onload = e => { onDraw(); };
+        img.src = 'data:image/svg+xml;base64,' + btoa('<?xml version="1.0" encoding="UTF-8" standalone="no" ?>\n' + svgText); 
+    }
+
+    function getWorldPosByEvent(e) {
+        // screen to world
+        const scaleMat = Matrix.scale(CANVAS_SIZE / VIEWBOX_SIZE, CANVAS_SIZE / VIEWBOX_SIZE);
+        const invScaleMat = Matrix.inverse(scaleMat);
+        const screenPos = { x: e.offsetX, y: e.offsetY };
+        const worldPos = Matrix.multiplyVec(invScaleMat, screenPos);
+        return worldPos;
+    }
+
+    function drawCurve(ctx, points, selected) {
+        const scaleMat = Matrix.scale(CANVAS_SIZE / VIEWBOX_SIZE, CANVAS_SIZE / VIEWBOX_SIZE);
+        ctx.save();
+        Matrix.setTransform(ctx, scaleMat);
+        ctx.beginPath();
+        ctx.moveTo(points[0].x, points[0].y);
+        ctx.bezierCurveTo(points[1].x, points[1].y, points[2].x, points[2].y, points[3].x, points[3].y);
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    function drawSvg(ctx, svgData, options) {
+        if(!svgData || !svgData.shapes || svgData.shapes.length !== 1) {
+            return;
+        }
+        const shape = svgData.shapes[0];
+
+        // 描画するpathを取得する
+        const path = svgData.paths.find(p => p.c === shape.c);
+        if(!path) { return; } // continue;
+
+        let mat = Matrix.multiply(svgData.vpMat, shape.mat);
+
+        let screenRect = Matrix.multiplyRect(mat, path.rect);
+
+        const transMat = Matrix.translate(-screenRect.x, -screenRect.y);
+
+        let scale, revTransX, revTransY;
+        const size = CANVAS_SIZE - 2 * MVG_PADDING;
+        
+        if(screenRect.width > screenRect.height) {
+            scale = size / screenRect.width;
+        } else {            
+            scale = size / screenRect.height;
+        }
+
+        revTransX = (CANVAS_SIZE - screenRect.width * scale) / 2;
+        revTransY = (CANVAS_SIZE - screenRect.height * scale) / 2;
+
+        const scaleMat = Matrix.scale(scale, scale);
+        const revTransMat = Matrix.translate(revTransX, revTransY);
+        mat = Matrix.multiply(transMat, mat);
+        mat = Matrix.multiply(scaleMat, mat);
+        mat = Matrix.multiply(revTransMat, mat);
+
+        ctx.save();
+
+        Matrix.setTransform(ctx, mat);
+
+        if(options.fillChar) {// 文字を塗る
+            ctx.fillStyle = options.fillStyle ? options.fillStyle : 'green';
+            ctx.lineWidth = 10;
+            ctx.beginPath();
+            path.curvesArray.forEach(curves => {
+                curves.forEach((curve, i) => { 
+                    curve.path(ctx, i === 0); 
+                });
+            });
+            ctx.closePath();
+            ctx.fill();
+        }       
+            
+        if(options.strokeRect) {
+            const rect = path.rect;
+            ctx.strokeStyle = options.strokeStyle ? options.strokeStyle : 'red';
+            ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
+        }         
+
+        ctx.restore();
+    }
+});
+</script>
+<style>
+* {
+    font-size: 18px;
+}
+#mathjax-text {
+    width: 100px;
+}
+#char-canvas {
+    border: 2px solid black;
+    display: none;
+}
+.mt-8 {
+    margin-top: 8px;
+}
+.mb-8 {
+    margin-bottom: 8px;
+}
+</style>
+</head>
+<body>
+    <div class="mb-8">
+        <input id="mathjax-text" type="text">
+        <button id="mathjax-search-button">search</button>
+    </div>
+    <div class="mb-8">
+        <button id="interpolation-button">interpolation</button>
+        <button id="cancel-button">cancel curve</button>
+    </div>
+    <div class="mb-8">
+        <button id="save-button">save</button>
+        <button id="clear-button">clear</button>
+    </div>
+    <div>
+        <canvas id="char-canvas"></canvas>
+    </div>
+</body>
+</html>

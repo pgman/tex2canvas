@@ -28,14 +28,7 @@
 // ・日本語入力したときはpathが取れない？
 // ・なので日本語入力には対応しないでいいんじゃないかな？
 
-// TODO 図形のtexはいけるはず
-// 以下がいけない。texclipではいける。うーん問題だね -> 多分mathjaxは対応していない
-/*
-\begin{picture}(40,40)(-20,-20)
-  \put(-20,-20){\framebox(40,40){}}% 外見の領域全体を囲む枠
-  \put(0,0){\circle*{4}}% 原点の位置
-\end{picture}
-*/
+// TODO 
 
 /*
 Mathjax demo
@@ -49,9 +42,10 @@ display: boolean でインラインかどうかわ変えることができそう
  * ・16進数コードから漢字に変換するプログラムを作成する(http://d.hatena.ne.jp/yasuhallabo/20140211/1392131668) -> うまくいっていない(保留)
  *   https://gist.github.com/seekseep/e5c289791265dafee786640942ee2e4d -> これでもうまくいかない -> 16進数コードから日本語の復元がうまくいかない
  *   -> Bufferが使えるのはNodeのみなので、おそらくArrayBufferを使う
- * ・kvgを表示する
  * ・kvgをMathJaxのSvgの位置に合わせる
- * rect 対応する
+ * 
+ * ・
+ * ・rect 対応する
  * []について調べる
  * 行列の()は縦に長くなると複数のパスになる。これはうまく対応したところではある <- 長括弧対応
  * サイズを指定せずに svg の幅と高さを変えた方がよいかもしれない
@@ -59,16 +53,40 @@ display: boolean でインラインかどうかわ変えることができそう
  * 
  * デモで動作させたい数式
  * \int \frac {\bf x}
- * アルファベット大文字、小文字, 
+ * アルファベット細字の大文字、小文字
+ * アルファベット太字の大文字、小文字 
  * ギリシャ文字の大文字、小文字は定義する
  */
 
-// <path> の id が - でいくつに区切られているか
-const PATH_ID_SEPARATE_COUNT = 5;
+// うーん、mathjaxのsvgを解析した結果
+// kanjivgのsvgを解析した結果の変数名を考えないといけない!!!
+
+// <path d=""> なのであり、dを解析すると、曲線の配列の配列が出来上がる
+// 曲線は curve であり、曲線の配列は curves、曲線の配列の配列は curvesArrayである
+
+// <rect>
+
+// 文字定義画面を作成する
+
+// kanjivgのsvgはkvgと呼ぶ
+// mathjaxのsvgはmvgと呼ぶ
+
+// 初期の拡大率調査 => 現状hugeをつけないと文字サイズが小さい件を調査する
+
+// KanjiVGのファイル名から.svgを除いたコードの配列
+let kvgCodes = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
 
     attachEvents();
+
+    try {
+        const res = await fetch(Define.KVG_FILE);
+        const data = await res.text();
+        kvgCodes = data.split('\r\n').filter(d => d).map(d => d.replaceAll('.svg', ''));
+    } catch(e) {
+
+    }    
 
     function attachEvents() {
         // ボタン押下時の処理
@@ -107,110 +125,103 @@ document.addEventListener('DOMContentLoaded', async () => {
                 console.log(`${code} is error.`);
             }          
         }
+
+        const datas = getDatas(svgData, kvgData);
         
         const img = document.createElement('img');
         img.onload = (e) => {
             ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
             //ctx.drawImage(e.target, 0, 0, e.target.naturalWidth, e.target.naturalHeight);
-            drawSvg(svgData, kvgData);  
-            drawKvg(kvgData, svgData);
+            //drawSvg(ctx, svgData, { fillChar: true, strokeRect: true }); 
+            for(let i = 0; i < datas.length; i += 1) {
+                drawData(ctx, datas[i]);
+            }
         }
         img.src = 'data:image/svg+xml;base64,' + btoa('<?xml version="1.0" encoding="UTF-8" standalone="no" ?>\n' + svgText);        
 
-        // 
-        function drawKvg(kvgData, svgData) {
-            ctx.save();
-            kvgData.forEach((data, i) => {
-                //if(i === 0) {return;}
-                ctx.strokeStyle = 'blue';
-                ctx.fillStyle = 'blue';
-                ctx.lineWidth = 2;
-                data.paths.forEach(path => {
-                    ctx.beginPath();
-
-                    path.curvesArray.forEach(curves => {
-                        curves.forEach((curve, j) => { 
-                        //    curve.path(ctx, j === 0); 
-                        });
-                    });
-
-                    ctx.stroke();
-                });
-
-                ctx.strokeStyle = 'pink';
-                const r = data.rect;
-                //ctx.strokeRect(r.x, r.y, r.width, r.height);
-
-            });
-            ctx.restore();
-        }
-        // svgDataに基づいて描画
-        function drawSvg(svgData, kvgData) {
-            
+        function drawSvg(ctx, svgData, options) {
             ctx.save();
 
             // ビューポート変換行列
             Matrix.setTransform(ctx, svgData.vpMat);
 
-            svgData.geoms.forEach((geom, gi) => {
+            svgData.shapes.forEach(shape => {
                 ctx.save();
                 // オブジェクト変換行列をかける
-                Matrix.transform(ctx, geom.mat);
+                Matrix.transform(ctx, shape.mat);
 
                 // 描画するpathを取得する
-                const path = svgData.paths.find(p => p.c === geom.c);
-                if(!path) { return; } // continue;                
-
-                // 描画する
-                ctx.strokeStyle = 'green';
-                ctx.fillStyle = 'green';
-                ctx.lineWidth = 10;
-                ctx.beginPath();
-
-                path.curvesArray.forEach(curves => {
-                    curves.forEach((curve, i) => { 
-                //        curve.path(ctx, i === 0); 
+                const path = svgData.paths.find(p => p.c === shape.c);
+                if(!path) { return; } // continue;
+                
+                if(options.fillChar) {// 文字を塗る
+                    ctx.fillStyle = options.fillStyle ? options.fillStyle : 'green';
+                    ctx.lineWidth = 10;
+                    ctx.beginPath();
+                    path.curvesArray.forEach(curves => {
+                        curves.forEach((curve, i) => { 
+                            curve.path(ctx, i === 0); 
+                        });
                     });
-                });
-
-                ctx.closePath();
-                ctx.fill();
-
-                const rect = path.rect;
-                //ctx.strokeStyle = 'red';
-                //ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
-
-                //ctx.fillStyle = 'pink';
-                //Utility.fillCircle(ctx, { x: rect.x, y: rect.y }, 100);
-                //Utility.fillCircle(ctx, { x: rect.x + rect.width, y: rect.y + rect.height }, 100);
+                    ctx.closePath();
+                    ctx.fill();
+                }       
+                
+                if(options.strokeRect) {
+                    const rect = path.rect;
+                    ctx.strokeStyle = 'red';
+                    ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
+                }               
 
                 ctx.restore();                 
             });
 
             ctx.restore();
-
+        }
+        
+        function drawData(ctx, data) {
             ctx.save();
 
-            svgData.geoms.forEach((geom, gi) => {
+            Matrix.setTransform(ctx, data.mat);
+
+            ctx.strokeStyle = 'blue';
+            ctx.lineWidth = 6;
+            data.kvg.paths.forEach(path => {
+                
+                ctx.beginPath();
+
+                path.curvesArray.forEach((curves, i) => {
+                    curves.forEach((curve, j) => { 
+                        curve.path(ctx, j === 0); 
+                    });
+                });            
+
+                ctx.stroke();
+            });
+
+            ctx.restore();
+        }
+        function getDatas(svgData, kvgData) {
+            const ret = [];
+
+            // ret に kvgDataのインデックスと変換行列を格納していく
+            svgData.shapes.forEach(shape => {
 
                 // 描画するpathを取得する
-                const path = svgData.paths.find(p => p.c === geom.c);
+                const path = svgData.paths.find(p => p.c === shape.c);
                 if(!path) { return; } // continue;       
 
-                const mat = Matrix.multiply(svgData.vpMat, geom.mat);
+                // MathJax のshape.rectをスクリーン座標系へ変換する
+                const mat = Matrix.multiply(svgData.vpMat, shape.mat);                
+                const screenRect = Matrix.multiplyRect(mat, path.rect); // スクリーン座標系の矩形
 
-                // MathJax のgeom.rectをスクリーン座標系へ変換する
-                const screenRect = Matrix.multiplyRect(mat, path.rect);
-                ctx.fillStyle = 'pink';
-                let p0 = { x: screenRect.x, y: screenRect.y }; 
-                //Utility.fillCircle(ctx, p0, 5);
-
-                let p1 = { x: screenRect.x + screenRect.width, y: screenRect.y + screenRect.height };
-                //Utility.fillCircle(ctx, p1, 5);
-
-                // geom に対応する kvg 用のコードを取得する
-                const kvgCode = Utility.zeroPadding(geom.c, Define.SVG_FILE_NAME_LENGTH);
-                console.log(kvgCode);
+                // shape に対応する kvg 用のコードを取得する
+                if(shape.tagName !== 'use') {
+                    return;
+                }
+                const id = shape.xlinkHref.substring(1);
+                let kvgCode = SvgParser.toKanjiVGCodeById(id);
+                kvgCode = Utility.zeroPadding(kvgCode, Define.SVG_FILE_NAME_LENGTH);
 
                 // get kvg paths
                 const data = kvgData.find(data => data.c === kvgCode); 
@@ -218,16 +229,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                     console.log('kvg paths are not found.');
                     return;
                 }
-                const kvgPaths = data.paths;
-                console.log(kvgPaths);
 
                 // path の矩形を事前に計算しておく
                 const kvgRect = data.rect;
                 const newKvgRect = Utility.fitVerticalRect(screenRect, kvgRect);
 
-                console.log('screenRect', screenRect);
-                console.log('kvgRect', kvgRect);
-                console.log('newKvgRect', newKvgRect);
                 // 変換行列を求める
                 const trans = Matrix.translate(-newKvgRect.x, -newKvgRect.y);
                 const scale = Matrix.scale(screenRect.width / newKvgRect.width, screenRect.height / newKvgRect.height);
@@ -236,33 +242,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 let newMat = Matrix.multiply(scale, trans);
                 newMat = Matrix.multiply(revTrans, newMat);
 
-                const tempRect = Matrix.multiplyRect(newMat, newKvgRect);
-                console.log('tempRect', tempRect);
-
-                ctx.save();
-
-                Matrix.setTransform(ctx, newMat);
-
-                ctx.strokeStyle = 'blue';
-                ctx.fillStyle = 'blue';
-                ctx.lineWidth = 2;
-                data.paths.forEach(path => {
-                    ctx.beginPath();
-
-                    path.curvesArray.forEach(curves => {
-                        curves.forEach((curve, j) => { 
-                            curve.path(ctx, j === 0); 
-                        });
-                    });
-
-                    ctx.stroke();
-                });
-
-                ctx.restore();
-                
+                ret.push({ kvg: data, mat: newMat, });
             });
 
-            ctx.restore();
+            return ret;
         }
     }
 });
@@ -280,12 +263,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 </head>
 <body>
 	<textarea id="textarea">\huge{\begin{eqnarray}
-2
+1234
 \end{eqnarray}}</textarea><br>
 	<input id="display-checkbox" type="checkbox" checked="true"/><label for="display-checkbox">display</label>    
     <button id="button">tex2svg</button>
     &nbsp;&nbsp;
     <a href="input-tex2svg.html">sample page</a><br><br>
+    <a href="char-def.html">char def</a><br><br>
 	<canvas id="canvas" width="600" height="300"></canvas>
 </body>
 </html>
