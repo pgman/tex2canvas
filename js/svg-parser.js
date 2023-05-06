@@ -5,17 +5,9 @@ class SvgParser {
      * @returns {string} svgテキスト
      */
     static getMathJaxSvgText(equation, display) {
-        // const output = document.getElementById('output');
-        // output.innerHTML = '';
-        // var options = MathJax.getMetricsFor(output);
-        // options.display = display;
-        //MathJax.texReset();
         // Mathjaxよりsvgを取得する(同期処理)
-        const svg = MathJax.tex2svg(equation, {scale: 5, display}).firstElementChild;
+        const svg = MathJax.tex2svg(equation, {display}).firstElementChild;
         if(!svg) { return ''; }
-
-        //MathJax.startup.document.clear();
-        //MathJax.startup.document.updateDocument();
 
         // エスケープする
         const svgText = unescape(encodeURIComponent(svg.outerHTML));
@@ -23,19 +15,10 @@ class SvgParser {
     }   
 
     static async getMathJaxSvgTextAsync(equation, display) {
-        // const output = document.getElementById('output');
-        // output.innerHTML = '';
-        // var options = MathJax.getMetricsFor(output);
-        // options.display = display;
-        //MathJax.texReset();
         const svg = await MathJax.tex2svgPromise(equation, {display});
         if(!svg) { return ''; }
 
-        //MathJax.startup.document.clear();
-        //MathJax.startup.document.updateDocument();
-
         // エスケープする
-        //const svgText = unescape(encodeURIComponent(svg.outerHTML));
         const svgText = unescape(encodeURIComponent(svg.firstElementChild.outerHTML));
         return svgText;
     }
@@ -398,7 +381,16 @@ class SvgParser {
                     }
                     shapes.push({ tagName: 'use', c, xlinkHref, mat: curMat });
                 } else if(g.nodeName === 'rect') {
-                    console.log('rectは現在未取得');
+                    const x = Number(g.getAttribute('x'));
+                    const y = Number(g.getAttribute('y'));
+                    const width = Number(g.getAttribute('width'));
+                    const height = Number(g.getAttribute('height'));
+                    // 現在の行列を求める
+                    let curMat = Matrix.identify();
+                    for(let i = 0; i < matStacks.length; i += 1) {
+                        curMat = Matrix.multiply(curMat, matStacks[i]);
+                    }
+                    shapes.push({ tagName: 'rect', rect: {x, y, width, height }, mat: curMat });
                 }
             } else {
                 for(let i = 0; i < g.childNodes.length; i += 1) {

@@ -187,6 +187,39 @@ class Utility {
             height: dst.height,
         };
     }
+
+    /**
+     * src の矩形のアスペクト比に合わせて横を基準にdstの矩形を調整する
+     * @param {{ x: number, y: number, width: number, height: number, }} src 基準となる矩形
+     * @param {{ x: number, y: number, width: number, height: number, }} dst srcにフィットさせる矩形
+     * @returns {{ x: number, y: number, width: number, height: number, }} フィットした矩形
+     */
+    static fitHorizontalRect(src, dst) {
+        // src の矩形のアスペクト比に合わせて横を基準にdstの矩形を調整する
+        // なので、dst.xとdst.widthは変わらない
+        const dstCenterY = dst.y + dst.height / 2;
+        const srcAspect = src.width / src.height;
+        const dstHeight = dst.width / srcAspect;
+        return {
+            x: dst.x,
+            y: dstCenterY - dstHeight / 2,
+            width: dst.width,
+            height: dstHeight,
+        };
+    }
+
+    /**
+     * load image
+     * @param {String} dataUrl url
+     * @returns {Promise<Image>} 画像
+     */
+    static loadImage(dataUrl) {
+	    return new Promise(function(resolve, reject) {
+			const image = new Image();
+			image.onload = () => { resolve(image); };
+			image.src = dataUrl;
+	    });
+	}
 }
 	
 

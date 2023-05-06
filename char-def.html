@@ -192,12 +192,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         // パースする
         svgData = SvgParser.parseMathJaxSvg(svgText);
 
-        if(!svgData || !svgData.shapes || svgData.shapes.length !== 1) {
+        if(!svgData || !svgData.shapes || svgData.shapes.length === 0) {
             currentCode = '';
             console.error('error');
             return;
         }
-        currentCode = svgData.shapes[0].c;
+        if(svgData.shapes.length === 1) {
+            currentCode = svgData.shapes[0].c;
+        } else {
+            currentCode = svgData.shapes[1].c;
+        }
         mode = '';
         curvesArray = [];
         tempCurves = [];
@@ -233,10 +237,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function drawSvg(ctx, svgData, options) {
-        if(!svgData || !svgData.shapes || svgData.shapes.length !== 1) {
+        if(!svgData || !svgData.shapes || svgData.shapes.length === 0) {
             return;
         }
-        const shape = svgData.shapes[0];
+
+        let shape;
+        if(svgData.shapes.length === 1) {
+            shape = svgData.shapes[0];
+        } else {
+            shape = svgData.shapes[1];
+        }
+        
 
         // 描画するpathを取得する
         const path = svgData.paths.find(p => p.c === shape.c);

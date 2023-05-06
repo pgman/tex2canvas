@@ -34,7 +34,8 @@
       MathJax.texReset();
       var options = MathJax.getMetricsFor(output);
       options.display = display.checked;
-      MathJax.tex2svgPromise(input, options).then(function (node) {
+      //options.scale = 3;
+      MathJax.tex2svgPromise(input, {display}).then(function (node) {
         //
         //  The promise returns the typeset node, which we add to the output
         //  Then update the document to include the adjusted CSS for the
