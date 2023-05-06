@@ -17,7 +17,7 @@ const CANVAS_SIZE = 400;
 const MVG_PADDING = 20;
 
 let selectedId = -1;
-let curves = [];
+let curvesArray = [];
 let mode = '';
 let tempCurves = [];
 let svgData = null;
@@ -27,6 +27,9 @@ let appFont = {};
 
 document.addEventListener('DOMContentLoaded', async () => {
 
+    // TODO
+    // 2画対応
+    // 直線対応
     const jsonStr = localStorage.getItem('tex2canvas');
     if(jsonStr) {
         appFont = JSON.parse(jsonStr);
@@ -46,7 +49,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if(mode === 'interpolation') {
             if(e.button === 2) {// right button
                 mode = '';
-                curves = tempCurves;
+                curvesArray.push(tempCurves);
                 tempCurves = [];
                 onDraw();
                 return;
@@ -113,13 +116,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     document.querySelector('#save-button').addEventListener('click', e => {
         if(!currentCode) { return; }
-        appFont[currentCode] = JSON.parse(JSON.stringify(curves));
+        appFont[currentCode] = JSON.parse(JSON.stringify(curvesArray));
         localStorage.setItem('tex2canvas', JSON.stringify(appFont));
     });  
     
     document.querySelector('#clear-button').addEventListener('click', e => {
         mode = '';
-        curves = [];
+        curvesArray = [];
         tempCurves = [];
         onDraw();
     });  
@@ -153,10 +156,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         ctx.save();
         Matrix.setTransform(ctx, scaleMat);
 
-        ctx.beginPath();        
-        curves.forEach((curve, i) => { 
-            curve.path(ctx, i === 0); 
-        });
+        ctx.beginPath();      
+        curvesArray.forEach(curves => {
+            curves.forEach((curve, i) => { 
+                curve.path(ctx, i === 0); 
+            });
+        });        
         ctx.stroke();
 
         ctx.beginPath();        
@@ -194,10 +199,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         currentCode = svgData.shapes[0].c;
         mode = '';
-        curves = [];
+        curvesArray = [];
         tempCurves = [];
         if(appFont[currentCode]) {
-            curves = appFont[currentCode].map(elm => new Curve(elm.points));
+            curvesArray = appFont[currentCode].map(curves => {
+                return curves.map(elm => new Curve(elm.points));
+            });
         } 
 
         const img = document.createElement('img');
@@ -317,6 +324,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     <div class="mb-8">
         <button id="save-button">save</button>
         <button id="clear-button">clear</button>
+    </div>
+    <div class="mb-8">
+        <a href="index.html">index.html</a>&nbsp;&nbsp;<a href="input-tex2svg.html">sample page</a>
     </div>
     <div>
         <canvas id="char-canvas"></canvas>

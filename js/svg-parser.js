@@ -187,38 +187,6 @@ class SvgParser {
         
             return ret;
         }
-
-        /*
-        function separate(d) {
-            const separated = [];
-            let startIndex = 0;
-            let count = 0;
-            let curString = '';
-            let loopCnt = 0;// for debug
-    
-            function isNumeric(s) {
-                return '0123456789-.'.indexOf(s) >= 0;
-            }
-    
-            // アルファベットで区切る
-            while(true) {
-                if(loopCnt++ > 10000) { console.log('bug'); return; }
-                curString += d[startIndex + count];
-                count++;
-                if(startIndex + count >= d.length) {
-                    separated.push(curString);
-                    break;
-                }
-                if(d[startIndex + count] !== ' ' && !isNumeric(d[startIndex + count])) {
-                    separated.push(curString);
-                    startIndex = startIndex + count;
-                    count = 0;
-                    curString = '';
-                }                
-            }
-            return separated;
-        }
-        */
     } 
 
     /**
@@ -316,11 +284,6 @@ class SvgParser {
 
         // ツリー構造をたどる
         traceGElm(gElm);
-
-        // ここでコードを取得する
-        paths.forEach(path => {
-            SvgParser.toKanjiVGCodeById(path.id);
-        });
         
         return {
             parsedSvg,

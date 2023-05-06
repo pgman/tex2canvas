@@ -76,6 +76,9 @@ display: boolean でインラインかどうかわ変えることができそう
 // KanjiVGのファイル名から.svgを除いたコードの配列
 let kvgCodes = null;
 
+// アプリで定義した曲線群
+let appFont = {};
+
 document.addEventListener('DOMContentLoaded', async () => {
 
     attachEvents();
@@ -87,6 +90,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch(e) {
 
     }    
+
+    const jsonStr = localStorage.getItem('tex2canvas');
+    if(jsonStr) {
+        appFont = JSON.parse(jsonStr);
+    }
+
 
     function attachEvents() {
         // ボタン押下時の処理
@@ -185,21 +194,44 @@ document.addEventListener('DOMContentLoaded', async () => {
             Matrix.setTransform(ctx, data.mat);
 
             ctx.strokeStyle = 'blue';
-            ctx.lineWidth = 6;
-            data.kvg.paths.forEach(path => {
-                
+            ctx.lineWidth = 3 / data.mat[0];
+            if(data.type === 'app') {
                 ctx.beginPath();
-
-                path.curvesArray.forEach((curves, i) => {
+                data.curvesArray.forEach((curves, i) => {
                     curves.forEach((curve, j) => { 
                         curve.path(ctx, j === 0); 
                     });
-                });            
-
+                });
                 ctx.stroke();
-            });
+            } else {
+                data.kvg.paths.forEach(path => {                
+                    ctx.beginPath();
+                    path.curvesArray.forEach((curves, i) => {
+                        curves.forEach((curve, j) => { 
+                            curve.path(ctx, j === 0); 
+                        });
+                    });
+                    ctx.stroke();
+                });
+            }
+            
 
             ctx.restore();
+        }
+        function getCurvesArrayRect(curvesArray) {        
+            let minX = Number.MAX_VALUE, minY = Number.MAX_VALUE,
+                maxX = Number.MIN_VALUE, maxY = Number.MIN_VALUE;
+
+            curvesArray.forEach(curves => {
+                curves.forEach(curve => {
+                    const rect = curve.rect();
+                    if(rect.x < minX) { minX = rect.x; }
+                    if(rect.y < minY) { minY = rect.y; }
+                    if(rect.x + rect.width > maxX) { maxX = rect.x + rect.width; }
+                    if(rect.y + rect.height > maxY) { maxY = rect.y + rect.height; }
+                });
+            });            
+            return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
         }
         function getDatas(svgData, kvgData) {
             const ret = [];
@@ -222,27 +254,48 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const id = shape.xlinkHref.substring(1);
                 let kvgCode = SvgParser.toKanjiVGCodeById(id);
                 kvgCode = Utility.zeroPadding(kvgCode, Define.SVG_FILE_NAME_LENGTH);
+                let splits = id.split('-');
+                const apfCode = splits[4]; 
 
-                // get kvg paths
-                const data = kvgData.find(data => data.c === kvgCode); 
-                if(!data) { 
-                    console.log('kvg paths are not found.');
-                    return;
+                if(appFont[apfCode]) {
+                    const curvesArray = appFont[apfCode].map(curves => {
+                        return curves.map(elm => new Curve(elm.points));
+                    });
+                    const rect = getCurvesArrayRect(curvesArray);
+                    const newRect = Utility.fitVerticalRect(screenRect, rect);
+
+                    // 変換行列を求める
+                    const trans = Matrix.translate(-newRect.x, -newRect.y);
+                    const scale = Matrix.scale(screenRect.width / newRect.width, screenRect.height / newRect.height);
+                    const revTrans = Matrix.translate(screenRect.x, screenRect.y);
+
+                    let newMat = Matrix.multiply(scale, trans);
+                    newMat = Matrix.multiply(revTrans, newMat);
+
+                    ret.push({ type: 'app', curvesArray, mat: newMat, });
+                } else {
+                    // get kvg paths
+                    const data = kvgData.find(data => data.c === kvgCode); 
+                    if(!data) { 
+                        console.log('kvg paths are not found.');
+                        return;
+                    }
+
+                    // path の矩形を事前に計算しておく
+                    const kvgRect = data.rect;
+                    const newKvgRect = Utility.fitVerticalRect(screenRect, kvgRect);
+
+                    // 変換行列を求める
+                    const trans = Matrix.translate(-newKvgRect.x, -newKvgRect.y);
+                    const scale = Matrix.scale(screenRect.width / newKvgRect.width, screenRect.height / newKvgRect.height);
+                    const revTrans = Matrix.translate(screenRect.x, screenRect.y);
+
+                    let newMat = Matrix.multiply(scale, trans);
+                    newMat = Matrix.multiply(revTrans, newMat);
+
+                    ret.push({ type: 'kvg', kvg: data, mat: newMat, });
                 }
-
-                // path の矩形を事前に計算しておく
-                const kvgRect = data.rect;
-                const newKvgRect = Utility.fitVerticalRect(screenRect, kvgRect);
-
-                // 変換行列を求める
-                const trans = Matrix.translate(-newKvgRect.x, -newKvgRect.y);
-                const scale = Matrix.scale(screenRect.width / newKvgRect.width, screenRect.height / newKvgRect.height);
-                const revTrans = Matrix.translate(screenRect.x, screenRect.y);
-
-                let newMat = Matrix.multiply(scale, trans);
-                newMat = Matrix.multiply(revTrans, newMat);
-
-                ret.push({ kvg: data, mat: newMat, });
+                
             });
 
             return ret;
@@ -263,13 +316,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 </head>
 <body>
 	<textarea id="textarea">\huge{\begin{eqnarray}
-1234
+\int_a^b
 \end{eqnarray}}</textarea><br>
 	<input id="display-checkbox" type="checkbox" checked="true"/><label for="display-checkbox">display</label>    
     <button id="button">tex2svg</button>
     &nbsp;&nbsp;
-    <a href="input-tex2svg.html">sample page</a><br><br>
-    <a href="char-def.html">char def</a><br><br>
+    <a href="char-def.html">char def</a>&nbsp;&nbsp;<a href="input-tex2svg.html">sample page</a><br><br>
 	<canvas id="canvas" width="600" height="300"></canvas>
 </body>
 </html>
