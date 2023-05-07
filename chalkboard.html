@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>chalkboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+<script>
+$(document).ready(chalkboard);
+function chalkboard(){
+	$('#chalkboard').remove();
+	$('.chalk').remove();
+	$('body').prepend('<canvas id="chalkboard"></canvas>');
+	$('body').prepend('<div class="chalk"></div>');
+
+	var canvas = document.getElementById("chalkboard");
+	$('#chalkboard').css('width',$(window).width());
+	$('#chalkboard').css('height',$(window).height());
+	canvas.width = $(window).width();
+	canvas.height = $(window).height();
+
+	var ctx = canvas.getContext("2d");
+
+	var width = canvas.width;
+	var height = canvas.height;
+	var mouseX = 0;
+	var mouseY = 0;
+	var mouseD = false;
+	var xLast = 0;
+	var yLast = 0;
+	var brushDiameter = 15;//7;
+
+	$('#chalkboard').css('cursor','none');
+	document.onselectstart = function(){ return false; };
+	ctx.fillStyle = 'rgba(255,255,255,0.5)';	
+	ctx.strokeStyle = 'rgba(255,255,255,0.5)';	
+    ctx.lineWidth = brushDiameter;
+	ctx.lineCap = 'round';
+
+    $('#chalkboard').css('cursor','none');
+	ctx.fillStyle = 'rgba(255,255,255,0.5)';	
+	ctx.strokeStyle = 'rgba(255,255,255,0.5)';	
+    ctx.lineWidth = brushDiameter;
+	ctx.lineCap = 'round';
+
+	$(document).mousemove(function(evt){
+		mouseX = evt.pageX;
+		mouseY = evt.pageY;
+		if(mouseY<height && mouseX<width){
+			$('.chalk').css('left',(mouseX-0.5*brushDiameter)+'px');
+			$('.chalk').css('top',(mouseY-0.5*brushDiameter)+'px');
+			if(mouseD){
+				draw(mouseX,mouseY);
+			}
+		}else{
+			$('.chalk').css('top',height-10);
+		}
+	});
+	$(document).mousedown(function(evt){ 
+		mouseD = true;
+		xLast = mouseX;
+		yLast = mouseY;
+		draw(mouseX+1,mouseY+1);
+	});
+	$(document).mouseup(function(evt){ 
+		mouseD = false;
+		});
+         
+	function draw(x,y){
+		ctx.strokeStyle = 'rgba(255,255,255,'+(0.4+Math.random()*0.2)+')';
+		ctx.beginPath();
+  		ctx.moveTo(xLast, yLast);		
+  		ctx.lineTo(x, y);
+  		ctx.stroke();
+          
+  		// Chalk Effect
+		var length = Math.round(Math.sqrt(Math.pow(x-xLast,2)+Math.pow(y-yLast,2))/(5/brushDiameter));
+		var xUnit = (x-xLast)/length;
+		var yUnit = (y-yLast)/length;
+		for(var i=0; i<length; i++ ){
+			var xCurrent = xLast+(i*xUnit);	
+			var yCurrent = yLast+(i*yUnit);
+			var xRandom = xCurrent+(Math.random()-0.5)*brushDiameter*1.2;			
+			var yRandom = yCurrent+(Math.random()-0.5)*brushDiameter*1.2;
+    		ctx.clearRect( xRandom, yRandom, Math.random()*2+2, Math.random()+1);
+		}            
+
+		xLast = x;
+		yLast = y;	
+	}
+
+	$(window).resize(function(){
+        chalkboard();
+    });
+
+} 
+</script>
+<style>
+html,body{
+	margin:0;
+	padding:0;
+	height:100%;
+	overflow:hidden;
+	cursor:none;
+}
+#chalkboard{
+	position:absolute;
+	top:0;
+	left:0;
+	width:100%;
+	height:100%;
+	z-index:1;
+	cursor:none;
+	background:url(https://raw.github.com/mmoustafa/Chalkboard/master/img/bg.png);
+}
+.chalk{
+	width:40px;
+	height:50px;
+	background:url(https://raw.github.com/mmoustafa/Chalkboard/master/img/chalk.png);
+	position:absolute;
+	padding:0;
+	margin:0;
+	bottom:0;
+	left:0;
+	cursor:none;
+	z-index:2;
+}
+</style>
+</head>
+<body>
+</body>
+</html>

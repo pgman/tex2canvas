@@ -74,6 +74,9 @@ const BLACK_BOARD_IMAGE_PATH = 'images/black_board.jpg';
 let blackBoardImg = null;
 let datas = [];
 
+// チョーク風サンプル
+// https://codepen.io/mmoustafa/pen/AXprLM
+
 document.addEventListener('DOMContentLoaded', async () => {
 
     attachEvents();
@@ -152,22 +155,24 @@ function drawData(ctx, data) {
     ctx.lineCap = 'round';
     ctx.lineWidth = dispLineWidth / mat[0];
     if(data.type === 'app') {
-        ctx.beginPath();
+        //ctx.beginPath();
         data.curvesArray.forEach((curves, i) => {
             curves.forEach((curve, j) => { 
-                curve.path(ctx, j === 0); 
+            //    curve.path(ctx, j === 0); 
+                curve.pathDivided(ctx, true, dispLineWidth);
             });
         });
-        ctx.stroke();
+        //ctx.stroke();
     } else {
         data.kvg.paths.forEach(path => {                
-            ctx.beginPath();
+            //ctx.beginPath();
             path.curvesArray.forEach((curves, i) => {
                 curves.forEach((curve, j) => { 
-                    curve.path(ctx, j === 0); 
+                //    curve.path(ctx, j === 0); 
+                    curve.pathDivided(ctx, true, dispLineWidth);
                 });
             });
-            ctx.stroke();
+            //ctx.stroke();
         });
     }
 
