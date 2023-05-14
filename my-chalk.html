@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>chalkboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+<script>
+$(document).ready(main);
+function main() {
+    const zoomRate = 6;
+    const canvas = $('#my-canvas')[0];
+    canvas.width = 200;
+    canvas.height = 40;
+    $('#my-canvas').css({ 
+        width: `${ canvas.width * zoomRate }px`, 
+        height: `${ canvas.height * zoomRate }px`, 
+        imageRendering: 'pixelated' 
+    });
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = 'black';
+    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    ctx.strokeStyle = 'white';
+    ctx.lineCap = 'round';
+    ctx.lineWidth = 20;
+    ctx.beginPath();
+    ctx.moveTo(20, 20);
+    ctx.lineTo(180, 20);
+    ctx.stroke();
+    const imageData = pixelData(ctx);
+    ctx.putImageData(imageData, 0, 0);
+}
+function pixelData(ctx) {
+    const imageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
+    const data = imageData.data;
+    const boundaryArray = [];
+    const innerArray = [];
+    for(let i = 0; i < data.length / 4; i += 1) {
+        let x = i % ctx.canvas.width;
+        let y = Math.floor(i / ctx.canvas.width);
+        if(isPointBackground(imageData, x, y)) {
+            continue;
+        }
+
+        // 外周を得る
+
+        // 上下左右いづれかが(0,0,0,255)ならその点は外周
+        const rand = Math.random();
+        const boundary = isPointBoundary(imageData, x, y);
+        if(boundary) {
+            boundaryArray.push({ x, y, });
+        } else {
+            innerArray.push({ x, y, });
+        }
+    }
+
+    // 外周を塗る
+    fillArray(boundaryArray, 0.1, { r: 255, g: 0, b: 0, a: 255, });
+
+    // 内側を塗る
+    fillArray(innerArray, 0.015, { r: 0, g: 0, b: 0, a: 255, });
+
+    return imageData;
+
+    function fillArray(array, value, color) {
+        array.forEach(elm => {
+            const rand = Math.random();
+            if(rand >= value) { return; }
+            const i = elm.y * imageData.width + elm.x;
+            data[i * 4 + 0] = color.r;
+            data[i * 4 + 1] = color.g;
+            data[i * 4 + 2] = color.b;
+            data[i * 4 + 3] = color.a;
+        });
+    }
+
+    function isPointBackground(imageData, x, y) {
+        if(x < 0 || x >= imageData.width) { return false; }
+        if(y < 0 || y >= imageData.height) { return false; }
+        const data = imageData.data;
+        const i = y * imageData.width + x;
+        const r = data[i * 4 + 0];
+        const g = data[i * 4 + 1];
+        const b = data[i * 4 + 2];
+        const a = data[i * 4 + 3];
+        if(r === 0 && g === 0 && b === 0 && a === 255) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    function isPointBoundary(imageData, x, y) {
+        if(x < 0 || x >= imageData.width) { return false; }
+        if(y < 0 || y >= imageData.height) { return false; }
+        if(isPointBackground(imageData, x + 1, y)
+        || isPointBackground(imageData, x, y + 1)
+        || isPointBackground(imageData, x - 1, y)
+        || isPointBackground(imageData, x, y - 1)) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+}
+</script>
+</head>
+<body>
+    <canvas id="my-canvas"></canvas>
+</body>
+</html>
