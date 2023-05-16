@@ -27,7 +27,7 @@ function main() {
     ctx.moveTo(20, 20);
     ctx.lineTo(180, 20);
     ctx.stroke();
-    const imageData = pixelData(ctx);
+    let imageData = pixelData(ctx);
     ctx.putImageData(imageData, 0, 0);
     
     const debugCanvas = $('#debug-canvas')[0];
@@ -38,7 +38,42 @@ function main() {
         height: `${ debugCanvas.height * zoomRate }px`, 
         imageRendering: 'pixelated' 
     });
-    getArray({ x: 10, y: 10, }, Math.PI * 3 / 6, { x: 20, y: 20, });
+
+    const sigmaX = 1;
+    const sigmaY = 1;
+    const sigmaXY = 0;
+    const sigmaX2 = sigmaX * sigmaX;
+    const sigmaY2 = sigmaY * sigmaY;
+    const mu = { x: 20, y: 20 };
+    const sigma = [ sigmaX2, sigmaXY,   0, 
+                    sigmaXY, sigmaY2,   0, 
+                          0,       0,   1];
+    const posArray = getPosArray(sigmaX, sigmaY, sigmaXY, mu);
+
+    const debugCtx = debugCanvas.getContext('2d');
+    debugCtx.fillStyle = 'gray';
+    debugCtx.fillRect(0, 0, debugCtx.canvas.width, debugCtx.canvas.height);
+
+    imageData = debugCtx.getImageData(0, 0, debugCtx.canvas.width, debugCtx.canvas.height);
+    const data = imageData.data;
+    posArray.forEach(p => {
+        const x = p.x;
+        const y = p.y;
+        const i = y * debugCtx.canvas.width + x;
+        const pdf = getPdf({x, y}, sigma, mu);
+        const rand = Math.random();
+        if(rand <= pdf) {
+            data[i * 4 + 0] = 255;
+            data[i * 4 + 1] = 0;
+            data[i * 4 + 2] = 0;
+            data[i * 4 + 3] = 255;
+        }  
+    });
+    debugCtx.putImageData(imageData, 0, 0);
+}
+// このメソッドが完成すれば
+function getPixelData(posArray, lineWidth, fillStyle) {
+    // posArrayのmin/maxを取得する
 }
 function pixelData(ctx) {
     const imageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
@@ -51,10 +86,6 @@ function pixelData(ctx) {
         if(isPointBackground(imageData, x, y)) {
             continue;
         }
-
-        // 外周を得る
-
-        // 上下左右いづれかが(0,0,0,255)ならその点は外周
         const rand = Math.random();
         const boundary = isPointBoundary(imageData, x, y);
 
@@ -115,93 +146,38 @@ function pixelData(ctx) {
     }
 }
 /**
- * @param {number} m 拡大率
  * https://qiita.com/c60evaporator/items/d53053358105b0117f2c
  * 
  **/
-function getArray(scale, theta, mu) {
-    const scaleMat = Matrix.scale(scale.x, scale.y);
-    const rotMat = Matrix.rotate(theta);
+function getPosArray(sigmaX, sigmaY, sigmaXY, mu) {
+    const sigmaX2 = sigmaX * sigmaX;
+    const sigmaY2 = sigmaY * sigmaY;
+    const sigma = [ sigmaX2, sigmaXY,   0, 
+                    sigmaXY, sigmaY2,   0, 
+                          0,       0,   1];
     const transMat = Matrix.translate(mu.x, mu.y);
-    const sigma = Matrix.multiply(rotMat, scaleMat);
     const mat = Matrix.multiply(transMat, sigma);
 
-    const debugCanvas = document.querySelector('#debug-canvas');
-    const debugCtx = debugCanvas.getContext('2d');
-    debugCtx.fillStyle = 'gray';
-    debugCtx.fillRect(0, 0, debugCtx.canvas.width, debugCtx.canvas.height);
-
-    // 点を発生させる
-    debugCtx.fillStyle = 'red';
-    debugCtx.strokeStyle = 'red';
-    debugCtx.beginPath();
-    for(let i = 0; i < 24; i += 1) {
-        const theta = Math.PI * 2 * i / 24;
-        const x = Math.cos(theta);
-        const y = Math.sin(theta);
-        const nPos = Matrix.multiplyVec(mat, { x, y, });
-        if(i === 0) {
-            debugCtx.moveTo(nPos.x, nPos.y);
-        } else {
-            debugCtx.lineTo(nPos.x, nPos.y);
-        }
-    }
-    debugCtx.closePath();
-    debugCtx.stroke();
-    //return;
-
-    const imageData = debugCtx.getImageData(0, 0, debugCtx.canvas.width, debugCtx.canvas.height);
-    const data = imageData.data;
-
-    // (0,0) を変換した点のpdfを計算する
-    let nPos = Matrix.multiplyVec(mat, { x: 0, y: 0 });
-    const pdf0Sigma = getPdf(nPos, sigma, mu);
-    console.log(nPos, pdf0Sigma);
-    // (1,0) を変換した点のpdfを計算する
-    nPos = Matrix.multiplyVec(mat, { x: 1, y: 0 });
-    const pdf1Sigma = getPdf(nPos, sigma, mu);
-    console.log(nPos, pdf1Sigma);
-    // (2,0) を変換した点のpdfを計算する
-    nPos = Matrix.multiplyVec(mat, { x: 2, y: 0 });
-    const pdf2Sigma = getPdf(nPos, sigma, mu);
-    console.log(nPos, pdf2Sigma);
-
-    return;
-
-    for(let i = 0; i < data.length / 4; i += 1) {
-        const x = i % debugCtx.canvas.width;
-        const y = Math.floor(i / debugCtx.canvas.width);
-        //const ret = isPosInRect(x, y, rect);
-        //if(ret) {                    
+    const posArray = [];
+    const roundSigmaX = Math.round(sigmaX);
+    const roundSigmaY = Math.round(sigmaY);
+    for(let x = mu.x - 2 * roundSigmaX; x <= mu.x + 2 * roundSigmaX; x += 1) {
+        for(let y = mu.y - 2 * roundSigmaY; y <= mu.y + 2 * roundSigmaY; y += 1) {
             const pdf = getPdf({x, y}, sigma, mu);
             const rand = Math.random();
-
-            if(rand <= pdf) {//pdf > pdf2Sigma * 0.99) {
-                data[i * 4 + 0] = 255;
-                data[i * 4 + 1] = 0;
-                data[i * 4 + 2] = 0;
-                data[i * 4 + 3] = 255;
-            }      
-        //}
+            if(rand <= pdf) {
+                posArray.push({x, y});
+            }
+        }
     }
-    debugCtx.putImageData(imageData, 0, 0);
-
-    function getPdf(p, sigma, mu) {
-        const v = { x: p.x - mu.x, y: p.y - mu.y, };
-        const invMat = Matrix.inverse(sigma);
-        const nv = Matrix.multiplyVec(invMat, v);
-        const pdf = Math.exp(-1 / 2 * (v.x * nv.x + v.y * nv.y));
-        return pdf;
-    }
+    return posArray;
 }
-
-function isPosInRect(x, y, rect) {
-    if(rect.x <= x && x <= rect.x + rect.width
-    && rect.y <= y && y <= rect.y + rect.height) {
-        return true;
-    } else {
-        return false;
-    }
+function getPdf(p, sigma, mu) {
+    const v = { x: p.x - mu.x, y: p.y - mu.y, };
+    const invMat = Matrix.inverse(sigma);
+    const nv = Matrix.multiplyVec(invMat, v);
+    const pdf = Math.exp(-1 / 2 * (v.x * nv.x + v.y * nv.y));
+    return pdf;
 }
 
 </script>
