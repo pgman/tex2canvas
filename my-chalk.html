@@ -7,11 +7,14 @@
 <script src="js/matrix.js"></script>
 <script src="js/min-max.js"></script>
 <script src="js/vector.js"></script>
+<script src="js/utility.js"></script>
 <script>
 /*
 TODO
 共分散 sigmaXYが効いていないような気がする
 点を消すときに乱数を複数回発生させて、それを透明度とするのはどうだろうか(10回中7回成功なら 255 * 7 / 10とする)
+線を細くするロジックを入れても面白いかもしれない
+結構メモリを食ってしまうので、描画するものだけ表示するロジックがよいかもしれない
 */
 $(main);
 let lineWidth = 8,
@@ -20,7 +23,7 @@ let lineWidth = 8,
     sigmaX = 2,
     sigmaY = 2,
     sigmaXY = 0, 
-    length = 10;
+    length = 5;
 function main() {
     updateView();
     updateCanvas();
@@ -37,6 +40,7 @@ function updateCanvas() {
             { x: 180, y: 20, },
             { x: 100, y: 100, },
             { x: 40, y: 60, },
+            { x: 80, y: 20, },
         ], 
         lineWidth, 
         { r: 255, g: 255, b: 255, a: 1 },   // a は 0.0 ～ 1.0を指定
@@ -44,15 +48,39 @@ function updateCanvas() {
         sigmaX, sigmaY, sigmaXY, length
     );
 
-    const zoomRate = 1;
-    const canvas = $('#canvas')[0];
-    canvas.width = pixelData.imageData.width;
-    canvas.height = pixelData.imageData.height;
-    $('#canvas').css({ 
-        width: `${ canvas.width * zoomRate }px`, 
-        height: `${ canvas.height * zoomRate }px`, 
-        imageRendering: 'pixelated' 
-    });
+    console.log(pixelData.memory + ' bytes');
+
+    let count = 0;
+    setInterval(() => {
+        const zoomRate = 1;
+        const canvas = $('#canvas')[0];
+        canvas.width = pixelData.imageData.width;
+        canvas.height = pixelData.imageData.height;
+        $('#canvas').css({ 
+            width: `${ canvas.width * zoomRate }px`, 
+            height: `${ canvas.height * zoomRate }px`, 
+            imageRendering: 'pixelated' 
+        });
+
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = 'black';
+        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        ctx.drawImage(pixelData.canvasArray[count], 0, 0);
+        count += 1;
+        if(count >= pixelData.canvasArray.length) {
+            count = 0;
+        }  
+    }, 1000 / 60);
+
+    // const zoomRate = 1;
+    // const canvas = $('#canvas')[0];
+    // canvas.width = pixelData.imageData.width;
+    // canvas.height = pixelData.imageData.height;
+    // $('#canvas').css({ 
+    //     width: `${ canvas.width * zoomRate }px`, 
+    //     height: `${ canvas.height * zoomRate }px`, 
+    //     imageRendering: 'pixelated' 
+    // });
 
     const ctx = canvas.getContext('2d');
     ctx.fillStyle = 'black';
@@ -112,9 +140,7 @@ function getPixelData(posArray, lineWidth, strokeStyle, boundaryThreshold, inter
     const width = mm.maxX - mm.minX;
     const height = mm.maxY - mm.minY;
 
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
+    const canvas = Utility.createCanvas(width, height);
     const ctx = canvas.getContext('2d');
 
     ctx.save();
@@ -218,12 +244,14 @@ function getPixelData(posArray, lineWidth, strokeStyle, boundaryThreshold, inter
             if(curLength <= tmpLength) {      
                 tmpIndex = i;
                 const diff = curLength - tmpLength + dist;
-                createCanvas(canvas, posArray, tmpIndex, diff / dist);
+                const frameCanvas = createCanvas(canvas, posArray, tmpIndex, diff / dist);
+                canvasArray.push(frameCanvas);
                 break;
             } else if(i + 1 >= posArray.length) {
                 // 最終
                 tmpIndex = posArray.length - 1;
-                createCanvas(canvas, posArray, tmpIndex, 1);
+                const frameCanvas = createCanvas(canvas, posArray, tmpIndex, 1);
+                canvasArray.push(frameCanvas);
             }
         }
         const epsilon = 0.00001;
@@ -242,12 +270,12 @@ function getPixelData(posArray, lineWidth, strokeStyle, boundaryThreshold, inter
         imageData,
         boundaryArray,
         internalArray,
+        canvasArray,
+        memory: canvasArray.length * canvas.width * canvas.height * 4,
     };
 
     function createCanvas(srcCanvas, posArray, index, rate) {
-        const tmpCanvas = document.createElement('canvas');
-        canvas.width = srcCanvas.width;
-        canvas.height = srcCanvas.height;
+        const tmpCanvas = Utility.createCanvas(srcCanvas.width, srcCanvas.height);
         const tmpCtx = tmpCanvas.getContext('2d');
         // 描画する(何色でもよいので、白色で塗る)
         tmpCtx.save();
@@ -275,8 +303,18 @@ function getPixelData(posArray, lineWidth, strokeStyle, boundaryThreshold, inter
 
         // 塗られている箇所のみを塗る
         const tmpImageData = tmpCtx.getImageData(0, 0, tmpCtx.canvas.width, tmpCtx.canvas.height);
-
         const tmpData = tmpImageData.data;
+
+        // 返すcanvas
+        const retCanvas = Utility.createCanvas(srcCanvas.width, srcCanvas.height);
+        const retCtx = retCanvas.getContext('2d');
+        const retImageData = retCtx.getImageData(0, 0, retCtx.canvas.width, retCtx.canvas.height);
+        const retData = retImageData.data;
+
+        const srcCtx = srcCanvas.getContext('2d');
+        const srcImageData = srcCtx.getImageData(0, 0, srcCtx.canvas.width, srcCtx.canvas.height);
+        const srcData = srcImageData.data;
+        
         let filledCount = 0;
         for(let i = 0; i < tmpData.length / 4; i += 1) {
             const x = i % tmpCtx.canvas.width;
@@ -287,8 +325,14 @@ function getPixelData(posArray, lineWidth, strokeStyle, boundaryThreshold, inter
             }
             // debug用に塗られている箇所の数をカウントしてみる
             filledCount++;
+            for(j = 0; j < 4; j += 1) {
+                retData[i * 4 + j] = srcData[i * 4 + j];
+            }            
         }
         console.log('filledCount: ' + filledCount);
+        retCtx.putImageData(retImageData, 0, 0);
+        
+        return retCanvas;
     }
 
     function oneTo255(value) {
