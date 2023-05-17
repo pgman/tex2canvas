@@ -16,6 +16,12 @@ TODO
 線を細くするロジックを入れても面白いかもしれない
 結構メモリを食ってしまうので、描画するものだけ表示するロジックがよいかもしれない
 */
+
+/*
+Canvas2D: Multiple readback operations using getImageData are faster 
+with the willReadFrequently attribute set to true. 
+See: https://html.spec.whatwg.org/multipage/canvas.html#concept-canvas-will-read-frequently
+*/
 $(main);
 let lineWidth = 8,
     boundaryThreshold = 0.1,
