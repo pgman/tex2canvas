@@ -89,8 +89,8 @@ class Curve {
                 height: Math.abs(points[0].y - points[1].y),
             };
         } else if(this.type === 'qb' || this.type === 'cb') {// quadratic bezier curve or cubic bezier curve
-            let minX = Number.MAX_VALUE, minY = Number.MAX_VALUE,
-                maxX = Number.MIN_VALUE, maxY = Number.MIN_VALUE;
+            let minX = minY = Number.MAX_VALUE,
+                maxX = maxY = -Number.MAX_VALUE;
             for(let i = 0; i <= divLength; i += 1) {
                 const t = i / divLength;
                 const p = this.interpolate(t);

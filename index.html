@@ -330,8 +330,8 @@ async function onChange() {
 }
 
 function getCurvesArrayRect(curvesArray) {        
-    let minX = Number.MAX_VALUE, minY = Number.MAX_VALUE,
-        maxX = Number.MIN_VALUE, maxY = Number.MIN_VALUE;
+    let minX = minY = Number.MAX_VALUE, 
+        maxX = maxY = -Number.MAX_VALUE;
 
     curvesArray.forEach(curves => {
         curves.forEach(curve => {

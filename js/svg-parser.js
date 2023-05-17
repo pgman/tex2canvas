@@ -179,8 +179,8 @@ class SvgParser {
      */
     static getCurvesArrayRect(ca) {
         // ca : [ [curve, curve, ...], [curve, curve, ...], ... ]
-        let minX = Number.MAX_VALUE, minY = Number.MAX_VALUE,
-            maxX = Number.MIN_VALUE, maxY = Number.MIN_VALUE;
+        let minX = minY = Number.MAX_VALUE,
+            maxX = maxY = -Number.MAX_VALUE;
 
         ca.forEach(curves => {
             curves.forEach(curve => {
@@ -497,8 +497,8 @@ class SvgParser {
         }        
 
         // 矩形を求める
-        let minX = Number.MAX_VALUE, minY = Number.MAX_VALUE,
-            maxX = Number.MIN_VALUE, maxY = Number.MIN_VALUE;
+        let minX = minY = Number.MAX_VALUE,
+            maxX = maxY = -Number.MAX_VALUE;
         for(let i = 0; i < paths.length; i += 1) {
             const path = paths[i];
             const r = path.rect;

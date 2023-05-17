@@ -43,4 +43,8 @@ class Vector {
             y: (v0.y + v1.y) / 2,
         };
     }
+    static dist(v0, v1) {
+        const v = Vector.subtract(v0, v1);
+        return Vector.length(v);
+    }
 }

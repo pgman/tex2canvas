@@ -5,118 +5,301 @@
 <title>chalkboard</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
 <script src="js/matrix.js"></script>
+<script src="js/min-max.js"></script>
+<script src="js/vector.js"></script>
 <script>
-$(document).ready(main);
+/*
+TODO
+共分散 sigmaXYが効いていないような気がする
+点を消すときに乱数を複数回発生させて、それを透明度とするのはどうだろうか(10回中7回成功なら 255 * 7 / 10とする)
+*/
+$(main);
+let lineWidth = 8,
+    boundaryThreshold = 0.1,
+    externalThreshold = 0.05,
+    sigmaX = 2,
+    sigmaY = 2,
+    sigmaXY = 0, 
+    length = 10;
 function main() {
-    const zoomRate = 6;
-    const canvas = $('#my-canvas')[0];
-    canvas.width = 200;
-    canvas.height = 40;
-    $('#my-canvas').css({ 
+    updateView();
+    updateCanvas();
+    document.querySelector('#update-button').addEventListener('click', e => {
+        updateModel();
+        updateCanvas();
+    }, false);
+}
+
+function updateCanvas() {
+    const pixelData = getPixelData(
+        [
+            { x: 20, y: 20, }, 
+            { x: 180, y: 20, },
+            { x: 100, y: 100, },
+            { x: 40, y: 60, },
+        ], 
+        lineWidth, 
+        { r: 255, g: 255, b: 255, a: 1 },   // a は 0.0 ～ 1.0を指定
+        boundaryThreshold, externalThreshold,
+        sigmaX, sigmaY, sigmaXY, length
+    );
+
+    const zoomRate = 1;
+    const canvas = $('#canvas')[0];
+    canvas.width = pixelData.imageData.width;
+    canvas.height = pixelData.imageData.height;
+    $('#canvas').css({ 
         width: `${ canvas.width * zoomRate }px`, 
         height: `${ canvas.height * zoomRate }px`, 
         imageRendering: 'pixelated' 
     });
+
     const ctx = canvas.getContext('2d');
     ctx.fillStyle = 'black';
     ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-    ctx.strokeStyle = 'white';
-    ctx.lineCap = 'round';
-    ctx.lineWidth = 20;
-    ctx.beginPath();
-    ctx.moveTo(20, 20);
-    ctx.lineTo(180, 20);
-    ctx.stroke();
-    let imageData = pixelData(ctx);
-    ctx.putImageData(imageData, 0, 0);
-    
-    const debugCanvas = $('#debug-canvas')[0];
-    debugCanvas.width = 40;
-    debugCanvas.height = 40;
-    $('#debug-canvas').css({ 
-        width: `${ debugCanvas.width * zoomRate }px`, 
-        height: `${ debugCanvas.height * zoomRate }px`, 
-        imageRendering: 'pixelated' 
-    });
-
-    const sigmaX = 1;
-    const sigmaY = 1;
-    const sigmaXY = 0;
-    const sigmaX2 = sigmaX * sigmaX;
-    const sigmaY2 = sigmaY * sigmaY;
-    const mu = { x: 20, y: 20 };
-    const sigma = [ sigmaX2, sigmaXY,   0, 
-                    sigmaXY, sigmaY2,   0, 
-                          0,       0,   1];
-    const posArray = getPosArray(sigmaX, sigmaY, sigmaXY, mu);
-
-    const debugCtx = debugCanvas.getContext('2d');
-    debugCtx.fillStyle = 'gray';
-    debugCtx.fillRect(0, 0, debugCtx.canvas.width, debugCtx.canvas.height);
-
-    imageData = debugCtx.getImageData(0, 0, debugCtx.canvas.width, debugCtx.canvas.height);
-    const data = imageData.data;
-    posArray.forEach(p => {
-        const x = p.x;
-        const y = p.y;
-        const i = y * debugCtx.canvas.width + x;
-        const pdf = getPdf({x, y}, sigma, mu);
-        const rand = Math.random();
-        if(rand <= pdf) {
-            data[i * 4 + 0] = 255;
-            data[i * 4 + 1] = 0;
-            data[i * 4 + 2] = 0;
-            data[i * 4 + 3] = 255;
-        }  
-    });
-    debugCtx.putImageData(imageData, 0, 0);
+    ctx.drawImage(pixelData.canvas, 0, 0);  
 }
-// このメソッドが完成すれば
-function getPixelData(posArray, lineWidth, fillStyle) {
+
+function updateView() {
+    document.querySelector('#line-width-text').value = lineWidth + '';
+    document.querySelector('#boundary-threshold-text').value = boundaryThreshold + '';
+    document.querySelector('#external-threshold-text').value = externalThreshold + '';
+    document.querySelector('#sigma-x-text').value = sigmaX + '';
+    document.querySelector('#sigma-y-text').value = sigmaY + '';
+    document.querySelector('#sigma-xy-text').value = sigmaXY + '';
+}
+
+function updateModel() {
+    const tempLineWidth = Number(document.querySelector('#line-width-text').value);
+    const tempBoundaryThreshold = Number(document.querySelector('#boundary-threshold-text').value);
+    const tempExternalThreshold = Number(document.querySelector('#external-threshold-text').value);
+    const tempSigmaX = Number(document.querySelector('#sigma-x-text').value);
+    const tempSigmaY = Number(document.querySelector('#sigma-y-text').value);
+    const tempSigmaXY = Number(document.querySelector('#sigma-xy-text').value);
+    if(isNaN(tempLineWidth) || isNaN(tempBoundaryThreshold) || isNaN(tempExternalThreshold)
+    || isNaN(tempSigmaX) || isNaN(tempSigmaY) || isNaN(tempSigmaXY)) {
+        alert('invalid input.')
+        return;
+    }
+    lineWidth = tempLineWidth;
+    boundaryThreshold = tempBoundaryThreshold;
+    externalThreshold = tempExternalThreshold;
+    sigmaX = tempSigmaX;
+    sigmaY = tempSigmaY;
+    sigmaXY = tempSigmaXY;
+}
+
+function getPixelData(posArray, lineWidth, strokeStyle, boundaryThreshold, internalThreshold, 
+                    sigmaX, sigmaY, sigmaXY, length) {
     // posArrayのmin/maxを取得する
-}
-function pixelData(ctx) {
+    MinMax.init();
+    posArray.forEach(pos => { MinMax.add(pos); });
+    const mm = MinMax.get();
+    // minを切り捨てる maxを切り上げる
+    mm.minX = Math.floor(mm.minX);
+    mm.minY = Math.floor(mm.minY);
+    mm.maxX = Math.floor(mm.maxX);
+    mm.maxY = Math.floor(mm.maxY);
+
+    const padding = 2;
+    const radius = Math.round(lineWidth / 2);
+    mm.minX -= radius + padding;
+    mm.minY -= radius + padding;
+    mm.maxX += radius + padding;
+    mm.maxY += radius + padding;
+
+    // canvasを作成し、そこに描画する
+    const width = mm.maxX - mm.minX;
+    const height = mm.maxY - mm.minY;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+
+    ctx.save();
+    ctx.lineCap = 'round';
+    ctx.lineWidth = lineWidth;
+    ctx.strokeStyle = `rgba(${strokeStyle.r},${strokeStyle.g},${strokeStyle.b},${strokeStyle.a})`; // a は 0.0～1.0
+    ctx.setTransform(1, 0, 0, 1, -mm.minX, -mm.minY);    
+    posArray.forEach((pos, i) => { 
+        if(i > 0) {
+            const posPre = posArray[i - 1];
+            ctx.beginPath();
+            ctx.moveTo(posPre.x, posPre.y);
+            ctx.lineTo(pos.x, pos.y);
+            ctx.stroke();
+        } 
+    });    
+    ctx.restore();
+
+    // ピクセルの外側と内側に分けて除去するピクセルを選択する
     const imageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
     const data = imageData.data;
-    const boundaryArray = [];
-    const innerArray = [];
+    let boundaryArray = []; // 境界の点の配列
+    let internalArray = []; // 内部の点の配列
+
     for(let i = 0; i < data.length / 4; i += 1) {
-        let x = i % ctx.canvas.width;
-        let y = Math.floor(i / ctx.canvas.width);
-        if(isPointBackground(imageData, x, y)) {
+        const x = i % ctx.canvas.width;
+        const y = Math.floor(i / ctx.canvas.width);
+
+        if(isPointExternal(imageData, x, y)) {// 外部
             continue;
         }
-        const rand = Math.random();
+        // 境界かどうか判定
         const boundary = isPointBoundary(imageData, x, y);
-
-        if(boundary) {
+        if(boundary) {// 境界
             boundaryArray.push({ x, y, });
-        } else {
-            innerArray.push({ x, y, });
+        } else {// 内部
+            internalArray.push({ x, y, });
         }
     }
 
-    // 外周を塗る
-    fillArray(boundaryArray, 0.1, { r: 255, g: 0, b: 0, a: 255, });
+    // 境界の点に乱数によるフィルターをかける
+    boundaryArray = boundaryArray.filter(() => Math.random() < boundaryThreshold);
 
-    // 内側を塗る
-    fillArray(innerArray, 0.015, { r: 0, g: 0, b: 0, a: 255, });
+    // 内部の点に乱数によるフィルターをかける
+    internalArray = internalArray.filter(() => Math.random() < internalThreshold);
 
-    return imageData;
+    let occurArray = [];
 
-    function fillArray(array, value, color) {
-        array.forEach(elm => {
-            const rand = Math.random();
-            if(rand >= value) { return; }
-            const i = elm.y * imageData.width + elm.x;
-            data[i * 4 + 0] = color.r;
-            data[i * 4 + 1] = color.g;
-            data[i * 4 + 2] = color.b;
-            data[i * 4 + 3] = color.a;
-        });
+    // 境界の点から生起する点を取得する
+    boundaryArray.forEach(p => {
+        const posArray = getPosArray(sigmaX, sigmaY, sigmaXY, p);
+        occurArray = occurArray.concat(posArray);
+    });
+    
+    // 内部の点から生起する点を取得する
+    internalArray.forEach(p => {
+        const posArray = getPosArray(sigmaX, sigmaY, sigmaXY, p);
+        occurArray = occurArray.concat(posArray);
+    });
+
+    occurArray = occurArray.concat(boundaryArray);
+    occurArray = occurArray.concat(internalArray);
+
+    // 除去する点を非表示にする
+    occurArray.forEach(p => {
+        const x = p.x;
+        const y = p.y;
+        if(x < 0 || x >= imageData.width) { return; }
+        if(y < 0 || y >= imageData.height) { return; }
+        const i = y * imageData.width + x;
+
+        data[i * 4 + 0] = 0;
+        data[i * 4 + 1] = 0;
+        data[i * 4 + 2] = 0;
+        data[i * 4 + 3] = 0;
+    });
+
+    ctx.putImageData(imageData, 0, 0);
+
+    // アニメーション用のcanvasを作成する
+    const canvasArray = [];
+
+    // 全体の長さを求めてみる
+    const wholeLength = posArray.reduce((p, c, i) => p + (i > 0 ? Vector.dist(posArray[i - 1], c) : 0), 0);    
+    console.log('whole length: ', wholeLength);
+
+    let curLength = 0;
+    let dbgCnt = 0;
+    while(true) {
+        if(dbgCnt++ > 1000) { 
+            console.error('inifinity loop!!');
+            break;
+        }
+        const targetLength = curLength + length;    // これを超えないようにする
+        let tmpLength = 0;
+        let tmpIndex = -1;
+        for(let i = 0; i < posArray.length; i += 1) {
+            if(i - 1 < 0) { continue; } // i === 1 からループする
+            const dist = Vector.dist(posArray[i - 1], posArray[i]);
+            tmpLength += dist;
+            if(curLength <= tmpLength) {      
+                tmpIndex = i;
+                const diff = curLength - tmpLength + dist;
+                createCanvas(canvas, posArray, tmpIndex, diff / dist);
+                break;
+            } else if(i + 1 >= posArray.length) {
+                // 最終
+                tmpIndex = posArray.length - 1;
+                createCanvas(canvas, posArray, tmpIndex, 1);
+            }
+        }
+        const epsilon = 0.00001;
+        if(curLength >= wholeLength - epsilon) {
+            break;
+        }        
+        curLength += length;
     }
 
-    function isPointBackground(imageData, x, y) {
+    return {
+        translate: {
+            x: mm.minX,
+            y: mm.minY,
+        },
+        canvas,
+        imageData,
+        boundaryArray,
+        internalArray,
+    };
+
+    function createCanvas(srcCanvas, posArray, index, rate) {
+        const tmpCanvas = document.createElement('canvas');
+        canvas.width = srcCanvas.width;
+        canvas.height = srcCanvas.height;
+        const tmpCtx = tmpCanvas.getContext('2d');
+        // 描画する(何色でもよいので、白色で塗る)
+        tmpCtx.save();
+        tmpCtx.lineCap = 'round';
+        tmpCtx.lineWidth = lineWidth;
+        tmpCtx.strokeStyle = `rgba(255, 255, 255, 1)`; // a は 0.0～1.0
+        tmpCtx.setTransform(1, 0, 0, 1, -mm.minX, -mm.minY);    
+        posArray.forEach((pos, i) => { 
+            if(i <= 0 || i > index) { return; }
+            const posPre = posArray[i - 1];
+            let newPos;
+            if(i < index) {     
+                newPos = pos;
+            } else if(i === index) {
+                let vec = Vector.subtract(pos, posPre);
+                vec = Vector.scale(vec, rate);
+                newPos = Vector.add(posPre, vec);
+            }
+            tmpCtx.beginPath();
+            tmpCtx.moveTo(posPre.x, posPre.y);
+            tmpCtx.lineTo(newPos.x, newPos.y);
+            tmpCtx.stroke();
+        });
+        tmpCtx.restore();
+
+        // 塗られている箇所のみを塗る
+        const tmpImageData = tmpCtx.getImageData(0, 0, tmpCtx.canvas.width, tmpCtx.canvas.height);
+
+        const tmpData = tmpImageData.data;
+        let filledCount = 0;
+        for(let i = 0; i < tmpData.length / 4; i += 1) {
+            const x = i % tmpCtx.canvas.width;
+            const y = Math.floor(i / tmpCtx.canvas.width);
+
+            if(isPointExternal(tmpImageData, x, y)) {// 外部
+                continue;
+            }
+            // debug用に塗られている箇所の数をカウントしてみる
+            filledCount++;
+        }
+        console.log('filledCount: ' + filledCount);
+    }
+
+    function oneTo255(value) {
+        if(value === 1) { return 255; }
+        return Math.round(value * 255);
+    }
+
+    /**
+     * 点が外部か判定する
+     */
+    function isPointExternal(imageData, x, y) {
         if(x < 0 || x >= imageData.width) { return false; }
         if(y < 0 || y >= imageData.height) { return false; }
         const data = imageData.data;
@@ -125,20 +308,23 @@ function pixelData(ctx) {
         const g = data[i * 4 + 1];
         const b = data[i * 4 + 2];
         const a = data[i * 4 + 3];
-        if(r === 0 && g === 0 && b === 0 && a === 255) {
+        if(r === 0 && g === 0 && b === 0 && a === 0) {
             return true;
         } else {
             return false;
         }
     }
 
+    /**
+     * 点が境界か判定する
+     */
     function isPointBoundary(imageData, x, y) {
         if(x < 0 || x >= imageData.width) { return false; }
         if(y < 0 || y >= imageData.height) { return false; }
-        if(isPointBackground(imageData, x + 1, y)
-        || isPointBackground(imageData, x, y + 1)
-        || isPointBackground(imageData, x - 1, y)
-        || isPointBackground(imageData, x, y - 1)) {
+        if(isPointExternal(imageData, x + 1, y)
+        || isPointExternal(imageData, x, y + 1)
+        || isPointExternal(imageData, x - 1, y)
+        || isPointExternal(imageData, x, y - 1)) {
             return true;
         } else {
             return false;
@@ -172,18 +358,39 @@ function getPosArray(sigmaX, sigmaY, sigmaXY, mu) {
     }
     return posArray;
 }
+
+/**
+ * pdf(確率密度関数)の値を求める
+ * @param {number} p 位置ベクトル
+ * @param {number} sigma 分散共分散行列
+ * @param {number} mu 平均
+ * @returns {void} なし
+ */
 function getPdf(p, sigma, mu) {
     const v = { x: p.x - mu.x, y: p.y - mu.y, };
     const invMat = Matrix.inverse(sigma);
     const nv = Matrix.multiplyVec(invMat, v);
-    const pdf = Math.exp(-1 / 2 * (v.x * nv.x + v.y * nv.y));
+    const pdf = Math.exp(-1 / 2 * (v.x * nv.x + v.y * nv.y)); // あえて正規化しない。そうすると平均の点のpdfがちょうど1になるので都合がよい
     return pdf;
 }
 
 </script>
+<style>
+.input-text {
+    width: 60px;
+}
+</style>
 </head>
 <body>
-    <canvas id="my-canvas"></canvas>
-    <canvas id="debug-canvas" width="400" height="400"></canvas>
+    <div style="margin: 8px;">
+        line width:&nbsp;<input id="line-width-text" class="input-text" type="text"><br>
+        boundary threshold:&nbsp;<input id="boundary-threshold-text" class="input-text" type="text"><br>
+        external threshold:&nbsp;<input id="external-threshold-text" class="input-text" type="text"><br>
+        sigma x:&nbsp;<input id="sigma-x-text" class="input-text" type="text"><br>
+        sigma y:&nbsp;<input id="sigma-y-text" class="input-text" type="text"><br>
+        sigma xy:&nbsp;<input id="sigma-xy-text" class="input-text" type="text"><br>
+        <input id="update-button" type="button" value="update">
+    </div>
+    <canvas id="canvas"></canvas><br>
 </body>
 </html>
