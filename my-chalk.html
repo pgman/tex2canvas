@@ -21,6 +21,12 @@ TODO
 Canvas2D: Multiple readback operations using getImageData are faster 
 with the willReadFrequently attribute set to true. 
 See: https://html.spec.whatwg.org/multipage/canvas.html#concept-canvas-will-read-frequently
+
+
+createCanvas	@	VM648 my-chalk.html:305
+getPixelData	@	VM648 my-chalk.html:237
+updateCanvas	@	VM648 my-chalk.html:27
+main	@	VM648 my-chalk.html:19
 */
 $(main);
 let lineWidth = 8,
@@ -68,7 +74,7 @@ function updateCanvas() {
             imageRendering: 'pixelated' 
         });
 
-        const ctx = canvas.getContext('2d');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
         ctx.fillStyle = 'black';
         ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
         ctx.drawImage(pixelData.canvasArray[count], 0, 0);
@@ -317,7 +323,7 @@ function getPixelData(posArray, lineWidth, strokeStyle, boundaryThreshold, inter
         const retImageData = retCtx.getImageData(0, 0, retCtx.canvas.width, retCtx.canvas.height);
         const retData = retImageData.data;
 
-        const srcCtx = srcCanvas.getContext('2d');
+        const srcCtx = srcCanvas.getContext('2d', { willReadFrequently: true });
         const srcImageData = srcCtx.getImageData(0, 0, srcCtx.canvas.width, srcCtx.canvas.height);
         const srcData = srcImageData.data;
         
