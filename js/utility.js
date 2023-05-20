@@ -220,6 +220,10 @@ class Utility {
 			image.src = dataUrl;
 	    });
 	}
+
+    static equalTo(value, comp, epsilon = 0.0001) {
+        return Math.abs(value - comp) < epsilon;
+    }
 }
 	
 

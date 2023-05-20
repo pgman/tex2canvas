@@ -8,25 +8,16 @@
 <script src="js/min-max.js"></script>
 <script src="js/vector.js"></script>
 <script src="js/utility.js"></script>
+<script src="js/pixel.js"></script>
 <script>
 /*
 TODO
-共分散 sigmaXYが効いていないような気がする
-点を消すときに乱数を複数回発生させて、それを透明度とするのはどうだろうか(10回中7回成功なら 255 * 7 / 10とする)
-線を細くするロジックを入れても面白いかもしれない
-結構メモリを食ってしまうので、描画するものだけ表示するロジックがよいかもしれない
-*/
-
-/*
-Canvas2D: Multiple readback operations using getImageData are faster 
-with the willReadFrequently attribute set to true. 
-See: https://html.spec.whatwg.org/multipage/canvas.html#concept-canvas-will-read-frequently
-
-
-createCanvas	@	VM648 my-chalk.html:305
-getPixelData	@	VM648 my-chalk.html:237
-updateCanvas	@	VM648 my-chalk.html:27
-main	@	VM648 my-chalk.html:19
+・共分散 sigmaXYが効いていないような気がする -> もうね、sigmaだけ指定させる
+・点を消すときに乱数を複数回発生させて、それを透明度とするのはどうだろうか(10回中7回成功なら 255 * 7 / 10とする)
+-> やりすぎるとランダムではなくなるので、やりすぎないように注意する
+・線を細くするロジックを入れても面白いかもしれない
+・結構メモリを食ってしまうので、描画するものだけ表示するロジックがよいかもしれない
+・表示するピクセルは増やすだけにする、現状おかしい
 */
 $(main);
 let lineWidth = 8,
@@ -36,9 +27,10 @@ let lineWidth = 8,
     sigmaY = 2,
     sigmaXY = 0, 
     length = 5;
+let intervalId = -1;
+
 function main() {
     updateView();
-    updateCanvas();
     document.querySelector('#update-button').addEventListener('click', e => {
         updateModel();
         updateCanvas();
@@ -63,11 +55,14 @@ function updateCanvas() {
     console.log(pixelData.memory + ' bytes');
 
     let count = 0;
-    setInterval(() => {
-        const zoomRate = 1;
+    if(intervalId >= 0) {
+        clearInterval(intervalId);
+    }
+    intervalId = setInterval(() => {
+        const zoomRate = 4;
         const canvas = $('#canvas')[0];
-        canvas.width = pixelData.imageData.width;
-        canvas.height = pixelData.imageData.height;
+        canvas.width = pixelData.rect.width;
+        canvas.height = pixelData.rect.height;
         $('#canvas').css({ 
             width: `${ canvas.width * zoomRate }px`, 
             height: `${ canvas.height * zoomRate }px`, 
@@ -83,21 +78,6 @@ function updateCanvas() {
             count = 0;
         }  
     }, 1000 / 60);
-
-    // const zoomRate = 1;
-    // const canvas = $('#canvas')[0];
-    // canvas.width = pixelData.imageData.width;
-    // canvas.height = pixelData.imageData.height;
-    // $('#canvas').css({ 
-    //     width: `${ canvas.width * zoomRate }px`, 
-    //     height: `${ canvas.height * zoomRate }px`, 
-    //     imageRendering: 'pixelated' 
-    // });
-
-    const ctx = canvas.getContext('2d');
-    ctx.fillStyle = 'black';
-    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-    ctx.drawImage(pixelData.canvas, 0, 0);  
 }
 
 function updateView() {
@@ -131,106 +111,22 @@ function updateModel() {
 
 function getPixelData(posArray, lineWidth, strokeStyle, boundaryThreshold, internalThreshold, 
                     sigmaX, sigmaY, sigmaXY, length) {
-    // posArrayのmin/maxを取得する
-    MinMax.init();
-    posArray.forEach(pos => { MinMax.add(pos); });
-    const mm = MinMax.get();
-    // minを切り捨てる maxを切り上げる
-    mm.minX = Math.floor(mm.minX);
-    mm.minY = Math.floor(mm.minY);
-    mm.maxX = Math.floor(mm.maxX);
-    mm.maxY = Math.floor(mm.maxY);
-
+    
+    // posArrayの min/max を取得する
     const padding = 2;
-    const radius = Math.round(lineWidth / 2);
-    mm.minX -= radius + padding;
-    mm.minY -= radius + padding;
-    mm.maxX += radius + padding;
-    mm.maxY += radius + padding;
+    const mm = Pixel.getMinMaxForDraw(posArray, lineWidth, padding);
 
-    // canvasを作成し、そこに描画する
+    // canvasを作成し、線分を描画する
     const width = mm.maxX - mm.minX;
     const height = mm.maxY - mm.minY;
-
     const canvas = Utility.createCanvas(width, height);
     const ctx = canvas.getContext('2d');
+    Pixel.drawPosArray(ctx, posArray, lineWidth, strokeStyle, { x: -mm.minX, y: -mm.minY });
 
-    ctx.save();
-    ctx.lineCap = 'round';
-    ctx.lineWidth = lineWidth;
-    ctx.strokeStyle = `rgba(${strokeStyle.r},${strokeStyle.g},${strokeStyle.b},${strokeStyle.a})`; // a は 0.0～1.0
-    ctx.setTransform(1, 0, 0, 1, -mm.minX, -mm.minY);    
-    posArray.forEach((pos, i) => { 
-        if(i > 0) {
-            const posPre = posArray[i - 1];
-            ctx.beginPath();
-            ctx.moveTo(posPre.x, posPre.y);
-            ctx.lineTo(pos.x, pos.y);
-            ctx.stroke();
-        } 
-    });    
-    ctx.restore();
-
-    // ピクセルの外側と内側に分けて除去するピクセルを選択する
-    const imageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
-    const data = imageData.data;
-    let boundaryArray = []; // 境界の点の配列
-    let internalArray = []; // 内部の点の配列
-
-    for(let i = 0; i < data.length / 4; i += 1) {
-        const x = i % ctx.canvas.width;
-        const y = Math.floor(i / ctx.canvas.width);
-
-        if(isPointExternal(imageData, x, y)) {// 外部
-            continue;
-        }
-        // 境界かどうか判定
-        const boundary = isPointBoundary(imageData, x, y);
-        if(boundary) {// 境界
-            boundaryArray.push({ x, y, });
-        } else {// 内部
-            internalArray.push({ x, y, });
-        }
-    }
-
-    // 境界の点に乱数によるフィルターをかける
-    boundaryArray = boundaryArray.filter(() => Math.random() < boundaryThreshold);
-
-    // 内部の点に乱数によるフィルターをかける
-    internalArray = internalArray.filter(() => Math.random() < internalThreshold);
-
-    let occurArray = [];
-
-    // 境界の点から生起する点を取得する
-    boundaryArray.forEach(p => {
-        const posArray = getPosArray(sigmaX, sigmaY, sigmaXY, p);
-        occurArray = occurArray.concat(posArray);
-    });
-    
-    // 内部の点から生起する点を取得する
-    internalArray.forEach(p => {
-        const posArray = getPosArray(sigmaX, sigmaY, sigmaXY, p);
-        occurArray = occurArray.concat(posArray);
-    });
-
-    occurArray = occurArray.concat(boundaryArray);
-    occurArray = occurArray.concat(internalArray);
-
-    // 除去する点を非表示にする
-    occurArray.forEach(p => {
-        const x = p.x;
-        const y = p.y;
-        if(x < 0 || x >= imageData.width) { return; }
-        if(y < 0 || y >= imageData.height) { return; }
-        const i = y * imageData.width + x;
-
-        data[i * 4 + 0] = 0;
-        data[i * 4 + 1] = 0;
-        data[i * 4 + 2] = 0;
-        data[i * 4 + 3] = 0;
-    });
-
-    ctx.putImageData(imageData, 0, 0);
+    // 除去する点群を取得する
+    const removeArray = Pixel.getRemoveArray(ctx, boundaryThreshold, internalThreshold, sigmaX, sigmaY, sigmaXY);
+    // 除去する点群を非表示にする
+    Pixel.drawRemoveArray(ctx, removeArray);
 
     // アニメーション用のcanvasを作成する
     const canvasArray = [];
@@ -242,7 +138,7 @@ function getPixelData(posArray, lineWidth, strokeStyle, boundaryThreshold, inter
     let curLength = 0;
     let dbgCnt = 0;
     while(true) {
-        if(dbgCnt++ > 1000) { 
+        if(dbgCnt++ > 100000) { 
             console.error('inifinity loop!!');
             break;
         }
@@ -274,14 +170,13 @@ function getPixelData(posArray, lineWidth, strokeStyle, boundaryThreshold, inter
     }
 
     return {
-        translate: {
+        rect: {            
             x: mm.minX,
             y: mm.minY,
+            width: canvas.width,
+            height: canvas.height,
         },
         canvas,
-        imageData,
-        boundaryArray,
-        internalArray,
         canvasArray,
         memory: canvasArray.length * canvas.width * canvas.height * 4,
     };
@@ -332,7 +227,7 @@ function getPixelData(posArray, lineWidth, strokeStyle, boundaryThreshold, inter
             const x = i % tmpCtx.canvas.width;
             const y = Math.floor(i / tmpCtx.canvas.width);
 
-            if(isPointExternal(tmpImageData, x, y)) {// 外部
+            if(Pixel.isPointExternal(tmpImageData, x, y)) {// 外部
                 continue;
             }
             // debug用に塗られている箇所の数をカウントしてみる
@@ -341,95 +236,11 @@ function getPixelData(posArray, lineWidth, strokeStyle, boundaryThreshold, inter
                 retData[i * 4 + j] = srcData[i * 4 + j];
             }            
         }
-        console.log('filledCount: ' + filledCount);
         retCtx.putImageData(retImageData, 0, 0);
         
         return retCanvas;
     }
-
-    function oneTo255(value) {
-        if(value === 1) { return 255; }
-        return Math.round(value * 255);
-    }
-
-    /**
-     * 点が外部か判定する
-     */
-    function isPointExternal(imageData, x, y) {
-        if(x < 0 || x >= imageData.width) { return false; }
-        if(y < 0 || y >= imageData.height) { return false; }
-        const data = imageData.data;
-        const i = y * imageData.width + x;
-        const r = data[i * 4 + 0];
-        const g = data[i * 4 + 1];
-        const b = data[i * 4 + 2];
-        const a = data[i * 4 + 3];
-        if(r === 0 && g === 0 && b === 0 && a === 0) {
-            return true;
-        } else {
-            return false;
-        }
-    }
-
-    /**
-     * 点が境界か判定する
-     */
-    function isPointBoundary(imageData, x, y) {
-        if(x < 0 || x >= imageData.width) { return false; }
-        if(y < 0 || y >= imageData.height) { return false; }
-        if(isPointExternal(imageData, x + 1, y)
-        || isPointExternal(imageData, x, y + 1)
-        || isPointExternal(imageData, x - 1, y)
-        || isPointExternal(imageData, x, y - 1)) {
-            return true;
-        } else {
-            return false;
-        }
-    }
 }
-/**
- * https://qiita.com/c60evaporator/items/d53053358105b0117f2c
- * 
- **/
-function getPosArray(sigmaX, sigmaY, sigmaXY, mu) {
-    const sigmaX2 = sigmaX * sigmaX;
-    const sigmaY2 = sigmaY * sigmaY;
-    const sigma = [ sigmaX2, sigmaXY,   0, 
-                    sigmaXY, sigmaY2,   0, 
-                          0,       0,   1];
-    const transMat = Matrix.translate(mu.x, mu.y);
-    const mat = Matrix.multiply(transMat, sigma);
-
-    const posArray = [];
-    const roundSigmaX = Math.round(sigmaX);
-    const roundSigmaY = Math.round(sigmaY);
-    for(let x = mu.x - 2 * roundSigmaX; x <= mu.x + 2 * roundSigmaX; x += 1) {
-        for(let y = mu.y - 2 * roundSigmaY; y <= mu.y + 2 * roundSigmaY; y += 1) {
-            const pdf = getPdf({x, y}, sigma, mu);
-            const rand = Math.random();
-            if(rand <= pdf) {
-                posArray.push({x, y});
-            }
-        }
-    }
-    return posArray;
-}
-
-/**
- * pdf(確率密度関数)の値を求める
- * @param {number} p 位置ベクトル
- * @param {number} sigma 分散共分散行列
- * @param {number} mu 平均
- * @returns {void} なし
- */
-function getPdf(p, sigma, mu) {
-    const v = { x: p.x - mu.x, y: p.y - mu.y, };
-    const invMat = Matrix.inverse(sigma);
-    const nv = Matrix.multiplyVec(invMat, v);
-    const pdf = Math.exp(-1 / 2 * (v.x * nv.x + v.y * nv.y)); // あえて正規化しない。そうすると平均の点のpdfがちょうど1になるので都合がよい
-    return pdf;
-}
-
 </script>
 <style>
 .input-text {
