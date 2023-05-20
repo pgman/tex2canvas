@@ -89,17 +89,17 @@ class Curve {
                 height: Math.abs(points[0].y - points[1].y),
             };
         } else if(this.type === 'qb' || this.type === 'cb') {// quadratic bezier curve or cubic bezier curve
-            let minX = minY = Number.MAX_VALUE,
-                maxX = maxY = -Number.MAX_VALUE;
+            // MinMaxをここでは読んではいけない
+            MinMax.save();
+            MinMax.init();
             for(let i = 0; i <= divLength; i += 1) {
                 const t = i / divLength;
                 const p = this.interpolate(t);
-                if(p.x < minX) { minX = p.x; }
-                if(p.y < minY) { minY = p.y; }
-                if(p.x > maxX) { maxX = p.x; }
-                if(p.y > maxY) { maxY = p.y; }
+                MinMax.add(p);
             }
-            return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+            const rect = MinMax.getRect();
+            MinMax.restore();
+            return rect;
         }    
     }
 

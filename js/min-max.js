@@ -3,6 +3,24 @@ class MinMax {
     static minY = Number.MAX_VALUE;
     static maxX = -Number.MAX_VALUE;
     static maxY = -Number.MAX_VALUE;
+    static savedMinX = Number.MAX_VALUE;
+    static savedMinY = Number.MAX_VALUE;
+    static savedMaxX = -Number.MAX_VALUE;
+    static savedMaxY = -Number.MAX_VALUE;
+
+    static save() {
+        MinMax.savedMinX = MinMax.minX;
+        MinMax.savedMinY = MinMax.minY;
+        MinMax.savedMaxX = MinMax.maxX;
+        MinMax.savedMaxY = MinMax.maxY;
+    }
+
+    static restore() {
+        MinMax.minX = MinMax.savedMinX;
+        MinMax.minY = MinMax.savedMinY;
+        MinMax.maxX = MinMax.savedMaxX;
+        MinMax.maxY = MinMax.savedMaxY;
+    }
 
     static init() {
         MinMax.minX = Number.MAX_VALUE;
@@ -24,6 +42,15 @@ class MinMax {
             minY: MinMax.minY,
             maxX: MinMax.maxX,
             maxY: MinMax.maxY,
+        };
+    }
+
+    static getRect() {
+        return { 
+            x: MinMax.minX,
+            y: MinMax.minY,
+            width: MinMax.maxX - MinMax.minX,
+            height: MinMax.maxY - MinMax.minY,
         };
     }
 }

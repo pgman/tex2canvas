@@ -177,21 +177,20 @@ class SvgParser {
      * @param {Array<Array<Curve>>} ca 曲線群
      * @returns {{x: number, y: number, }} 
      */
-    static getCurvesArrayRect(ca) {
+    static getCurvesArrayRect(curvesArray) {
         // ca : [ [curve, curve, ...], [curve, curve, ...], ... ]
-        let minX = minY = Number.MAX_VALUE,
-            maxX = maxY = -Number.MAX_VALUE;
-
-        ca.forEach(curves => {
+        MinMax.save();
+        MinMax.init();    
+        curvesArray.forEach(curves => {
             curves.forEach(curve => {
                 const rect = curve.rect();
-                if(rect.x < minX) { minX = rect.x; }
-                if(rect.y < minY) { minY = rect.y; }
-                if(rect.x + rect.width > maxX) { maxX = rect.x + rect.width; }
-                if(rect.y + rect.height > maxY) { maxY = rect.y + rect.height; }
+                MinMax.add({ x: rect.x, y: rect.y, });
+                MinMax.add({ x: rect.x + rect.width, y: rect.y + rect.height, });
             });
-        });
-        return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+        });      
+        const rect = MinMax.getRect();
+        MinMax.restore();  
+        return rect;
     }
 
     // svgを解析して、オブジェクトに変換する
@@ -497,18 +496,16 @@ class SvgParser {
         }        
 
         // 矩形を求める
-        let minX = minY = Number.MAX_VALUE,
-            maxX = maxY = -Number.MAX_VALUE;
+        MinMax.save();
+        MinMax.init();  
         for(let i = 0; i < paths.length; i += 1) {
             const path = paths[i];
             const r = path.rect;
-            if(r.x < minX) { minX = r.x; }
-            if(r.y < minY) { minY = r.y; }
-            if(r.x + r.width > maxX) { maxX = r.x + r.width; }
-            if(r.y + r.height > maxY) { maxY = r.y + r.height; }
+            MinMax.add({ x: r.x, y: r.y, });
+            MinMax.add({ x: r.x + r.width, y: r.y + r.height, });
         }
-        const rect = { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
-
+        const rect = MinMax.getRect();
+        MinMax.restore();
         return { id, c, paths, rect, };
     }
 

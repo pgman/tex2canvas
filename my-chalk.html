@@ -12,26 +12,37 @@
 <script>
 /*
 TODO
-・共分散 sigmaXYが効いていないような気がする -> もうね、sigmaだけ指定させる
+※対応中 -> ・表示するピクセルは増やすだけにする、現状おかしい -> 戻り値もインデックスの配列にしたい
+
+・全般的にx,yを排除してインデックスのみでやりたい
+
 ・点を消すときに乱数を複数回発生させて、それを透明度とするのはどうだろうか(10回中7回成功なら 255 * 7 / 10とする)
--> やりすぎるとランダムではなくなるので、やりすぎないように注意する
-・線を細くするロジックを入れても面白いかもしれない
+-> やりすぎるとランダムではなくなるので、やりすぎないように注意する -> 十分テストして決める
+・線を細くするロジックを入れても面白いかもしれない -> そういう描画関数を作る lineToEx
 ・結構メモリを食ってしまうので、描画するものだけ表示するロジックがよいかもしれない
-・表示するピクセルは増やすだけにする、現状おかしい
+
 */
 $(main);
 let lineWidth = 8,
     boundaryThreshold = 0.1,
     externalThreshold = 0.05,
-    sigmaX = 2,
-    sigmaY = 2,
-    sigmaXY = 0, 
-    length = 5;
+    sigma = 2, 
+    length = 5,
+    zoom = 4,
+    fps = 30;
 let intervalId = -1;
 
 function main() {
     updateView();
     document.querySelector('#update-button').addEventListener('click', e => {
+        updateModel();
+        updateCanvas();
+    }, false);
+    document.querySelector('#zoom-select').addEventListener('change', e => {
+        updateModel();
+        updateCanvas();
+    }, false);
+    document.querySelector('#fps-select').addEventListener('change', e => {
         updateModel();
         updateCanvas();
     }, false);
@@ -49,23 +60,20 @@ function updateCanvas() {
         lineWidth, 
         { r: 255, g: 255, b: 255, a: 1 },   // a は 0.0 ～ 1.0を指定
         boundaryThreshold, externalThreshold,
-        sigmaX, sigmaY, sigmaXY, length
+        sigma, length
     );
-
-    console.log(pixelData.memory + ' bytes');
 
     let count = 0;
     if(intervalId >= 0) {
         clearInterval(intervalId);
     }
     intervalId = setInterval(() => {
-        const zoomRate = 4;
         const canvas = $('#canvas')[0];
         canvas.width = pixelData.rect.width;
         canvas.height = pixelData.rect.height;
         $('#canvas').css({ 
-            width: `${ canvas.width * zoomRate }px`, 
-            height: `${ canvas.height * zoomRate }px`, 
+            width: `${ canvas.width * zoom }px`, 
+            height: `${ canvas.height * zoom }px`, 
             imageRendering: 'pixelated' 
         });
 
@@ -77,54 +85,55 @@ function updateCanvas() {
         if(count >= pixelData.canvasArray.length) {
             count = 0;
         }  
-    }, 1000 / 60);
+    }, 1000 / fps);
 }
 
 function updateView() {
     document.querySelector('#line-width-text').value = lineWidth + '';
     document.querySelector('#boundary-threshold-text').value = boundaryThreshold + '';
     document.querySelector('#external-threshold-text').value = externalThreshold + '';
-    document.querySelector('#sigma-x-text').value = sigmaX + '';
-    document.querySelector('#sigma-y-text').value = sigmaY + '';
-    document.querySelector('#sigma-xy-text').value = sigmaXY + '';
+    document.querySelector('#sigma-text').value = sigma + '';
+    document.querySelector('#zoom-select').value = zoom + '';
+    document.querySelector('#fps-select').value = fps + '';
 }
 
 function updateModel() {
     const tempLineWidth = Number(document.querySelector('#line-width-text').value);
     const tempBoundaryThreshold = Number(document.querySelector('#boundary-threshold-text').value);
     const tempExternalThreshold = Number(document.querySelector('#external-threshold-text').value);
-    const tempSigmaX = Number(document.querySelector('#sigma-x-text').value);
-    const tempSigmaY = Number(document.querySelector('#sigma-y-text').value);
-    const tempSigmaXY = Number(document.querySelector('#sigma-xy-text').value);
+    const tempSigma = Number(document.querySelector('#sigma-text').value);
+    const tempZoom = Number(document.querySelector('#zoom-select').value);
+    const tempFps = Number(document.querySelector('#fps-select').value);
     if(isNaN(tempLineWidth) || isNaN(tempBoundaryThreshold) || isNaN(tempExternalThreshold)
-    || isNaN(tempSigmaX) || isNaN(tempSigmaY) || isNaN(tempSigmaXY)) {
+    || isNaN(tempSigma)) {
         alert('invalid input.')
         return;
     }
     lineWidth = tempLineWidth;
     boundaryThreshold = tempBoundaryThreshold;
     externalThreshold = tempExternalThreshold;
-    sigmaX = tempSigmaX;
-    sigmaY = tempSigmaY;
-    sigmaXY = tempSigmaXY;
+    sigma = tempSigma;
+    zoom = tempZoom;
+    fps = tempFps;
 }
 
 function getPixelData(posArray, lineWidth, strokeStyle, boundaryThreshold, internalThreshold, 
-                    sigmaX, sigmaY, sigmaXY, length) {
-    
+                    sigma, length) {
+    console.time('getPixelData');
+
     // posArrayの min/max を取得する
-    const padding = 2;
+    const padding = 3;
     const mm = Pixel.getMinMaxForDraw(posArray, lineWidth, padding);
 
     // canvasを作成し、線分を描画する
     const width = mm.maxX - mm.minX;
     const height = mm.maxY - mm.minY;
     const canvas = Utility.createCanvas(width, height);
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
     Pixel.drawPosArray(ctx, posArray, lineWidth, strokeStyle, { x: -mm.minX, y: -mm.minY });
 
     // 除去する点群を取得する
-    const removeArray = Pixel.getRemoveArray(ctx, boundaryThreshold, internalThreshold, sigmaX, sigmaY, sigmaXY);
+    const removeArray = Pixel.getRemoveArray(ctx, boundaryThreshold, internalThreshold, sigma, sigma, 0);
     // 除去する点群を非表示にする
     Pixel.drawRemoveArray(ctx, removeArray);
 
@@ -134,6 +143,10 @@ function getPixelData(posArray, lineWidth, strokeStyle, boundaryThreshold, inter
     // 全体の長さを求めてみる
     const wholeLength = posArray.reduce((p, c, i) => p + (i > 0 ? Vector.dist(posArray[i - 1], c) : 0), 0);    
     console.log('whole length: ', wholeLength);
+    
+    // 作業用のcanvas
+    const tmpCanvas = Utility.createCanvas(width, height);
+    const tmpCtx = tmpCanvas.getContext('2d', { willReadFrequently: true });
 
     let curLength = 0;
     let dbgCnt = 0;
@@ -169,6 +182,8 @@ function getPixelData(posArray, lineWidth, strokeStyle, boundaryThreshold, inter
         curLength += length;
     }
 
+    console.timeEnd('getPixelData');
+
     return {
         rect: {            
             x: mm.minX,
@@ -181,15 +196,21 @@ function getPixelData(posArray, lineWidth, strokeStyle, boundaryThreshold, inter
         memory: canvasArray.length * canvas.width * canvas.height * 4,
     };
 
+    function checkCanvasArray(canvasArray) {
+
+    }
+
     function createCanvas(srcCanvas, posArray, index, rate) {
-        const tmpCanvas = Utility.createCanvas(srcCanvas.width, srcCanvas.height);
-        const tmpCtx = tmpCanvas.getContext('2d');
         // 描画する(何色でもよいので、白色で塗る)
         tmpCtx.save();
+        tmpCtx.reset();
         tmpCtx.lineCap = 'round';
+        tmpCtx.lineJoin = 'round';
         tmpCtx.lineWidth = lineWidth;
         tmpCtx.strokeStyle = `rgba(255, 255, 255, 1)`; // a は 0.0～1.0
-        tmpCtx.setTransform(1, 0, 0, 1, -mm.minX, -mm.minY);    
+        tmpCtx.setTransform(1, 0, 0, 1, -mm.minX, -mm.minY); 
+        tmpCtx.beginPath();   
+        tmpCtx.moveTo(posArray[0].x, posArray[0].y);
         posArray.forEach((pos, i) => { 
             if(i <= 0 || i > index) { return; }
             const posPre = posArray[i - 1];
@@ -201,11 +222,9 @@ function getPixelData(posArray, lineWidth, strokeStyle, boundaryThreshold, inter
                 vec = Vector.scale(vec, rate);
                 newPos = Vector.add(posPre, vec);
             }
-            tmpCtx.beginPath();
-            tmpCtx.moveTo(posPre.x, posPre.y);
-            tmpCtx.lineTo(newPos.x, newPos.y);
-            tmpCtx.stroke();
+            tmpCtx.lineTo(newPos.x, newPos.y);            
         });
+        tmpCtx.stroke();
         tmpCtx.restore();
 
         // 塗られている箇所のみを塗る
@@ -222,7 +241,7 @@ function getPixelData(posArray, lineWidth, strokeStyle, boundaryThreshold, inter
         const srcImageData = srcCtx.getImageData(0, 0, srcCtx.canvas.width, srcCtx.canvas.height);
         const srcData = srcImageData.data;
         
-        let filledCount = 0;
+        // 全検索はさすがに良くない
         for(let i = 0; i < tmpData.length / 4; i += 1) {
             const x = i % tmpCtx.canvas.width;
             const y = Math.floor(i / tmpCtx.canvas.width);
@@ -230,10 +249,8 @@ function getPixelData(posArray, lineWidth, strokeStyle, boundaryThreshold, inter
             if(Pixel.isPointExternal(tmpImageData, x, y)) {// 外部
                 continue;
             }
-            // debug用に塗られている箇所の数をカウントしてみる
-            filledCount++;
             for(j = 0; j < 4; j += 1) {
-                retData[i * 4 + j] = srcData[i * 4 + j];
+                retData[i * 4 + j] = srcData[i * 4 + j];    // コピーする
             }            
         }
         retCtx.putImageData(retImageData, 0, 0);
@@ -253,10 +270,26 @@ function getPixelData(posArray, lineWidth, strokeStyle, boundaryThreshold, inter
         line width:&nbsp;<input id="line-width-text" class="input-text" type="text"><br>
         boundary threshold:&nbsp;<input id="boundary-threshold-text" class="input-text" type="text"><br>
         external threshold:&nbsp;<input id="external-threshold-text" class="input-text" type="text"><br>
-        sigma x:&nbsp;<input id="sigma-x-text" class="input-text" type="text"><br>
-        sigma y:&nbsp;<input id="sigma-y-text" class="input-text" type="text"><br>
-        sigma xy:&nbsp;<input id="sigma-xy-text" class="input-text" type="text"><br>
-        <input id="update-button" type="button" value="update">
+        sigma:&nbsp;<input id="sigma-text" class="input-text" type="text"><br>
+        <input id="update-button" type="button" value="update"><br><br>
+        zoom:&nbsp;
+        <select id="zoom-select">
+            <option value="1">x1</option>
+            <option value="2">x2</option>
+            <option value="3">x3</option>
+            <option value="4">x4</option>
+            <option value="5">x5</option>
+            <option value="6">x6</option>
+        </select>
+        &nbsp;&nbsp;
+        fps:&nbsp;
+        <select id="fps-select">
+            <option value="5">5</option>
+            <option value="10">10</option>
+            <option value="24">24</option>
+            <option value="30">30</option>
+            <option value="60">60</option>
+        </select>
     </div>
     <canvas id="canvas"></canvas><br>
 </body>

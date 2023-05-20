@@ -9,9 +9,11 @@ class Pixel {
      */
     static getMinMaxForDraw(posArray, lineWidth, padding) {
         // posArrayのmin/maxを取得する
+        MinMax.save();
         MinMax.init();
         posArray.forEach(pos => { MinMax.add(pos); });
         const mm = MinMax.get();
+        MinMax.restore();
         // minを切り捨てる maxを切り上げる
         mm.minX = Math.floor(mm.minX);
         mm.minY = Math.floor(mm.minY);
@@ -39,18 +41,16 @@ class Pixel {
     static drawPosArray(ctx, posArray, lineWidth, strokeStyle, translate) {
         ctx.save();
         ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
         ctx.lineWidth = lineWidth;
         ctx.strokeStyle = `rgba(${strokeStyle.r},${strokeStyle.g},${strokeStyle.b},${strokeStyle.a})`; // a は 0.0～1.0
         ctx.setTransform(1, 0, 0, 1, translate.x, translate.y);    
+        ctx.beginPath();
         posArray.forEach((pos, i) => { 
-            if(i > 0) {
-                const posPre = posArray[i - 1];
-                ctx.beginPath();
-                ctx.moveTo(posPre.x, posPre.y);
-                ctx.lineTo(pos.x, pos.y);
-                ctx.stroke();
-            } 
+            if(i === 0) { ctx.moveTo(pos.x, pos.y); }
+            else { ctx.lineTo(pos.x, pos.y); } 
         });    
+        ctx.stroke();
         ctx.restore();
     }
 
@@ -132,7 +132,7 @@ class Pixel {
             data[i * 4 + 0] = 255;
             data[i * 4 + 1] = 255;
             data[i * 4 + 2] = 255;
-            data[i * 4 + 3] = Math.random() * 100;
+            data[i * 4 + 3] = Math.random() * 255;
         });
         ctx.putImageData(imageData, 0, 0);
     }
