@@ -10,6 +10,8 @@
 <script src="js/curve.js"></script>
 <script src="js/utility.js"></script>
 <script src="js/min-max.js"></script>
+<script src="js/pixel.js"></script>
+<script src="js/vector.js"></script>
 <script>
 /*
 [bug]
@@ -36,10 +38,10 @@ display: boolean でインラインかどうかわ変えることができそう
  * ・primise error を調べる
  * ・初期の拡大率調査 => 現状hugeをつけないと文字サイズが小さい件を調査する => display以外効かないので、もうソフト的に拡大とマージンを設けた
  * 
- * 
  * 行列の()は縦に長くなると複数のパスになる。これはうまく対応したところではある <- 長括弧対応
  * サイズを指定せずに svg の幅と高さを変えた方がよいかもしれない
  * そうすると、\bar{x} によるバーとのずれが無くなると思う
+ * 1の直線が開始点に3つ重なっていたのが気になった
  * 
  * デモで動作させたい数式
  * \大きめの行列
@@ -74,6 +76,7 @@ const BLACK_BOARD_IMAGE_PATH = 'images/black_board.jpg';
 
 let blackBoardImg = null;
 let datas = [];
+let animDatas = [];
 
 // チョーク風サンプル
 // https://codepen.io/mmoustafa/pen/AXprLM
@@ -127,9 +130,46 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     blackBoardImg = await Utility.loadImage(BLACK_BOARD_IMAGE_PATH);
 
-    datas = await loadDatas();
-    drawDatas(datas);    
+    load();
 });
+
+function getAnimDatas(datas) {
+    const ret = [];
+    datas.forEach(data => {
+        if(data.type === 'app') {
+            const strokeArray = [];
+            data.curvesArray.forEach((curves, i) => {
+                let posArray = [];
+                curves.forEach((curve, j) => { 
+                    const points = curve.divide();
+                    if(posArray.length === 0) {
+                        posArray = posArray.concat(points);
+                    } else {// 既に登録されている場合
+                        // 前の最後の線分の終点と、今回の最初の線分の始点が一致する可能性がある
+                        const last = posArray[posArray.length - 1];
+                        const start = points[0];
+                        const equal = Vector.equalsTo(last, start);
+                        if(equal) {
+                            points.shift();
+                        } 
+                        posArray = posArray.concat(points);
+                    }
+                });
+                const pixelData = Pixel.getAnimationPixelData(posArray, 
+                    6, //lineWidth, 
+                    { r: 255, g: 255, b: 255, a: 1 },   //strokeStyle, 
+                    0.02,   //boundaryThreshold, 
+                    0.05,   //internalThreshold, 
+                    2,  //sigma, 
+                    3,  //length
+                );
+                strokeArray.push({ posArray, pixelData });
+            });
+            ret.push(strokeArray);
+        }
+    });
+    return ret;
+}
 
 function drawDatas(datas) {
     const canvas = document.getElementById('canvas');
@@ -156,24 +196,22 @@ function drawData(ctx, data) {
     ctx.lineCap = 'round';
     ctx.lineWidth = dispLineWidth / mat[0];
     if(data.type === 'app') {
-        //ctx.beginPath();
+        ctx.beginPath();
         data.curvesArray.forEach((curves, i) => {
             curves.forEach((curve, j) => { 
-            //    curve.path(ctx, j === 0); 
-                curve.pathDivided(ctx, true, dispLineWidth);
+                curve.path(ctx, j === 0); 
             });
         });
-        //ctx.stroke();
+        ctx.stroke();
     } else {
         data.kvg.paths.forEach(path => {                
-            //ctx.beginPath();
+            ctx.beginPath();
             path.curvesArray.forEach((curves, i) => {
                 curves.forEach((curve, j) => { 
-                //    curve.path(ctx, j === 0); 
-                    curve.pathDivided(ctx, true, dispLineWidth);
+                    curve.path(ctx, j === 0); 
                 });
             });
-            //ctx.stroke();
+            ctx.stroke();
         });
     }
 
@@ -305,19 +343,18 @@ function getDatas(svgData, kvgData) {
     return ret;
 }
 
+
 function attachEvents() {
     // ボタン押下時の処理
     document.querySelector('#button').addEventListener('click', async () => {
-        datas = await loadDatas(); 
-        drawDatas(datas); 
+        load();
     });
 
     // テキストでCtrl + Sした時の処理
     document.querySelector('#textarea').addEventListener('keydown', async e => {
         if(e.ctrlKey && e.key === 's') {
             e.preventDefault(); // Prevent the Save dialog to open
-            datas = await loadDatas();   
-            drawDatas(datas); 
+            load();
         }
     });
 }
@@ -326,8 +363,13 @@ async function onChange() {
     dispLineWidth = Number(document.querySelector('#line-width-select').value);
     dispScale = Number(document.querySelector('#scale-select').value);
     dispPadding = Number(document.querySelector('#padding-select').value);
+    load();
+}
+
+async function load() {
     datas = await loadDatas();   
     drawDatas(datas); 
+    getAnimDatas(datas);
 }
 
 function getCurvesArrayRect(curvesArray) {

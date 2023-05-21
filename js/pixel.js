@@ -13,7 +13,7 @@ class Pixel {
      */
     static getAnimationPixelData(posArray, lineWidth, strokeStyle, boundaryThreshold, internalThreshold, 
         sigma, length) {
-        console.time('getPixelData');
+        console.time('getAnimationPixelData');
 
         // posArrayの min/max を取得する
         const padding = 4;
@@ -59,7 +59,7 @@ class Pixel {
                     tmpIndex = i;
                     const diff = curLength - tmpLength + dist;
                     const lastIndexes = indexesArray.length === 0 ? null : indexesArray[0];
-                    const indexes = Pixel.createIndexes(tmpCtx, lastIndexes, posArray, tmpIndex, diff / dist,
+                    const indexes = Pixel.createIndexes(tmpCtx, lastIndexes, posArray, tmpIndex, lineWidth, diff / dist,
                         { x: -mm.minX, y: -mm.minY });
                     indexesArray.push(indexes);
                     break;
@@ -67,7 +67,7 @@ class Pixel {
                     // 最終
                     tmpIndex = posArray.length - 1;
                     const lastIndexes = indexesArray.length === 0 ? null : indexesArray[0];
-                    const indexes = Pixel.createIndexes(tmpCtx, lastIndexes, posArray, tmpIndex, 1,
+                    const indexes = Pixel.createIndexes(tmpCtx, lastIndexes, posArray, tmpIndex, lineWidth, 1,
                         { x: -mm.minX, y: -mm.minY });
                     indexesArray.push(indexes);
                 }
@@ -79,7 +79,7 @@ class Pixel {
             curLength += length;
         }
 
-        console.timeEnd('getPixelData');
+        console.timeEnd('getAnimationPixelData');
 
         return {
             rect: {            
@@ -243,7 +243,7 @@ class Pixel {
      * @param {{x:number, y: number}} translate 平行移動量 
      * @returns {Array<number>} 描画するインデックスの配列
      */
-    static createIndexes(tmpCtx, lastIndexes, posArray, index, rate, translate) {
+    static createIndexes(tmpCtx, lastIndexes, posArray, index, lineWidth, rate, translate) {
         // 描画する(何色でもよいので、白色で塗る)
         tmpCtx.save();
         tmpCtx.reset();

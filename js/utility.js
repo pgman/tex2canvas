@@ -221,7 +221,7 @@ class Utility {
 	    });
 	}
 
-    static equalTo(value, comp, epsilon = 0.0001) {
+    static equalTo(value, comp, epsilon = 1e-5) {
         return Math.abs(value - comp) < epsilon;
     }
 }

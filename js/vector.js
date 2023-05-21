@@ -47,4 +47,11 @@ class Vector {
         const v = Vector.subtract(v0, v1);
         return Vector.length(v);
     }
+    static equalsTo(v0, v1, epsilon = 1e-5) {
+        if(Math.abs(v0.x - v1.x) < epsilon && Math.abs(v0.y - v1.y) < epsilon) {
+            return true;
+        } else {
+            return false;
+        }
+    }
 }

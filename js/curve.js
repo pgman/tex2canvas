@@ -41,6 +41,17 @@ class Curve {
         }        
     }
 
+    divide() {
+        const ret = [];
+        const divideCount = 3;
+        for(let i = 0; i <= divideCount; i += 1) {
+            const t = i / divideCount;
+            const pos = this.interpolate(t);
+            ret.push(pos);
+        }
+        return ret;
+    }
+
     pathDivided(ctx, move = false, brushDiameter) {
         const points = this.points;
 
