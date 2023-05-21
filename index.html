@@ -157,9 +157,9 @@ function getAnimDatas(datas) {
                 });
                 const pixelData = Pixel.getAnimationPixelData(posArray, 
                     6, //lineWidth, 
-                    { r: 255, g: 255, b: 255, a: 1 },   //strokeStyle, 
-                    0.02,   //boundaryThreshold, 
-                    0.05,   //internalThreshold, 
+                    { r: 0, g: 255, b: 255, a: 1 },   //strokeStyle, 
+                    0,   //boundaryThreshold, 
+                    0,   //internalThreshold, 
                     2,  //sigma, 
                     3,  //length
                 );
@@ -171,15 +171,22 @@ function getAnimDatas(datas) {
     return ret;
 }
 
+function drawAnimDatas(animDatas) {
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    datas.forEach(data => { drawData(ctx, data); });
+}
+function drawAnimData(ctx, animData) {
+    ctx.save();
+    ctx.restore();
+}
+
 function drawDatas(datas) {
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
-
-    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    ctx.reset();
     ctx.drawImage(blackBoardImg, 0, 0);
-    for(let i = 0; i < datas.length; i += 1) {
-        drawData(ctx, datas[i]);
-    }
+    datas.forEach(data => { drawData(ctx, data); });
 }
 
 function drawData(ctx, data) {
@@ -369,7 +376,7 @@ async function onChange() {
 async function load() {
     datas = await loadDatas();   
     drawDatas(datas); 
-    getAnimDatas(datas);
+    animDatas = getAnimDatas(datas);
 }
 
 function getCurvesArrayRect(curvesArray) {
