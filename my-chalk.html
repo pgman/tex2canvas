@@ -12,15 +12,12 @@
 <script>
 /*
 TODO
-※対応中 -> ・表示するピクセルは増やすだけにする、現状おかしい -> 戻り値もインデックスの配列にしたい
-
-・全般的にx,yを排除してインデックスのみでやりたい
+・乱数を固定せねばならない
+・線を細くするロジックを入れても面白いかもしれない -> そういう描画関数を作る lineToEx
 
 ・点を消すときに乱数を複数回発生させて、それを透明度とするのはどうだろうか(10回中7回成功なら 255 * 7 / 10とする)
 -> やりすぎるとランダムではなくなるので、やりすぎないように注意する -> 十分テストして決める
-・線を細くするロジックを入れても面白いかもしれない -> そういう描画関数を作る lineToEx
-・結構メモリを食ってしまうので、描画するものだけ表示するロジックがよいかもしれない
-
+・処理は当然マルチスレッドで行う
 */
 $(main);
 let lineWidth = 8,
@@ -49,7 +46,7 @@ function main() {
 }
 
 function updateCanvas() {
-    const pixelData = getPixelData(
+    const pixelData = Pixel.getAnimationPixelData(
         [
             { x: 20, y: 20, }, 
             { x: 180, y: 20, },
@@ -63,11 +60,21 @@ function updateCanvas() {
         sigma, length
     );
 
+    let drawCanvas, drawCtx, drawImageData, drawData;
+    const rawCtx = pixelData.canvas.getContext('2d', { willReadFrequently: true });
+    const rawImageData = rawCtx.getImageData(0, 0, rawCtx.canvas.width, rawCtx.canvas.height);
+    const rawData = rawImageData.data;
     let count = 0;
     if(intervalId >= 0) {
         clearInterval(intervalId);
     }
     intervalId = setInterval(() => {
+        if(count === 0) {
+            drawCanvas = Utility.createCanvas(pixelData.rect.width, pixelData.rect.height);
+            drawCtx = drawCanvas.getContext('2d');
+            drawImageData = drawCtx.getImageData(0, 0, drawCtx.canvas.width, drawCtx.canvas.height);
+            drawData = drawImageData.data;
+        }
         const canvas = $('#canvas')[0];
         canvas.width = pixelData.rect.width;
         canvas.height = pixelData.rect.height;
@@ -80,9 +87,20 @@ function updateCanvas() {
         const ctx = canvas.getContext('2d', { willReadFrequently: true });
         ctx.fillStyle = 'black';
         ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-        ctx.drawImage(pixelData.canvasArray[count], 0, 0);
+        
+        // 描画
+        const indexes = pixelData.indexesArray[count];
+        indexes.forEach(i => {
+            drawData[i * 4 + 0] = rawData[i * 4 + 0];
+            drawData[i * 4 + 1] = rawData[i * 4 + 1];
+            drawData[i * 4 + 2] = rawData[i * 4 + 2];
+            drawData[i * 4 + 3] = rawData[i * 4 + 3];
+        });
+        drawCtx.putImageData(drawImageData, 0, 0);
+        ctx.drawImage(drawCanvas, 0, 0);
+        
         count += 1;
-        if(count >= pixelData.canvasArray.length) {
+        if(count >= pixelData.indexesArray.length) {
             count = 0;
         }  
     }, 1000 / fps);
@@ -115,148 +133,6 @@ function updateModel() {
     sigma = tempSigma;
     zoom = tempZoom;
     fps = tempFps;
-}
-
-function getPixelData(posArray, lineWidth, strokeStyle, boundaryThreshold, internalThreshold, 
-                    sigma, length) {
-    console.time('getPixelData');
-
-    // posArrayの min/max を取得する
-    const padding = 3;
-    const mm = Pixel.getMinMaxForDraw(posArray, lineWidth, padding);
-
-    // canvasを作成し、線分を描画する
-    const width = mm.maxX - mm.minX;
-    const height = mm.maxY - mm.minY;
-    const canvas = Utility.createCanvas(width, height);
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    Pixel.drawPosArray(ctx, posArray, lineWidth, strokeStyle, { x: -mm.minX, y: -mm.minY });
-
-    // 除去する点群を取得する
-    const removeArray = Pixel.getRemoveArray(ctx, boundaryThreshold, internalThreshold, sigma, sigma, 0);
-    // 除去する点群を非表示にする
-    Pixel.drawRemoveArray(ctx, removeArray);
-
-    // アニメーション用のcanvasを作成する
-    const canvasArray = [];
-
-    // 全体の長さを求めてみる
-    const wholeLength = posArray.reduce((p, c, i) => p + (i > 0 ? Vector.dist(posArray[i - 1], c) : 0), 0);    
-    console.log('whole length: ', wholeLength);
-    
-    // 作業用のcanvas
-    const tmpCanvas = Utility.createCanvas(width, height);
-    const tmpCtx = tmpCanvas.getContext('2d', { willReadFrequently: true });
-
-    let curLength = 0;
-    let dbgCnt = 0;
-    while(true) {
-        if(dbgCnt++ > 100000) { 
-            console.error('inifinity loop!!');
-            break;
-        }
-        const targetLength = curLength + length;    // これを超えないようにする
-        let tmpLength = 0;
-        let tmpIndex = -1;
-        for(let i = 0; i < posArray.length; i += 1) {
-            if(i - 1 < 0) { continue; } // i === 1 からループする
-            const dist = Vector.dist(posArray[i - 1], posArray[i]);
-            tmpLength += dist;
-            if(curLength <= tmpLength) {      
-                tmpIndex = i;
-                const diff = curLength - tmpLength + dist;
-                const frameCanvas = createCanvas(canvas, posArray, tmpIndex, diff / dist);
-                canvasArray.push(frameCanvas);
-                break;
-            } else if(i + 1 >= posArray.length) {
-                // 最終
-                tmpIndex = posArray.length - 1;
-                const frameCanvas = createCanvas(canvas, posArray, tmpIndex, 1);
-                canvasArray.push(frameCanvas);
-            }
-        }
-        const epsilon = 0.00001;
-        if(curLength >= wholeLength - epsilon) {
-            break;
-        }        
-        curLength += length;
-    }
-
-    console.timeEnd('getPixelData');
-
-    return {
-        rect: {            
-            x: mm.minX,
-            y: mm.minY,
-            width: canvas.width,
-            height: canvas.height,
-        },
-        canvas,
-        canvasArray,
-        memory: canvasArray.length * canvas.width * canvas.height * 4,
-    };
-
-    function checkCanvasArray(canvasArray) {
-
-    }
-
-    function createCanvas(srcCanvas, posArray, index, rate) {
-        // 描画する(何色でもよいので、白色で塗る)
-        tmpCtx.save();
-        tmpCtx.reset();
-        tmpCtx.lineCap = 'round';
-        tmpCtx.lineJoin = 'round';
-        tmpCtx.lineWidth = lineWidth;
-        tmpCtx.strokeStyle = `rgba(255, 255, 255, 1)`; // a は 0.0～1.0
-        tmpCtx.setTransform(1, 0, 0, 1, -mm.minX, -mm.minY); 
-        tmpCtx.beginPath();   
-        tmpCtx.moveTo(posArray[0].x, posArray[0].y);
-        posArray.forEach((pos, i) => { 
-            if(i <= 0 || i > index) { return; }
-            const posPre = posArray[i - 1];
-            let newPos;
-            if(i < index) {     
-                newPos = pos;
-            } else if(i === index) {
-                let vec = Vector.subtract(pos, posPre);
-                vec = Vector.scale(vec, rate);
-                newPos = Vector.add(posPre, vec);
-            }
-            tmpCtx.lineTo(newPos.x, newPos.y);            
-        });
-        tmpCtx.stroke();
-        tmpCtx.restore();
-
-        // 塗られている箇所のみを塗る
-        const tmpImageData = tmpCtx.getImageData(0, 0, tmpCtx.canvas.width, tmpCtx.canvas.height);
-        const tmpData = tmpImageData.data;
-
-        // 返すcanvas
-        const retCanvas = Utility.createCanvas(srcCanvas.width, srcCanvas.height);
-        const retCtx = retCanvas.getContext('2d');
-        const retImageData = retCtx.getImageData(0, 0, retCtx.canvas.width, retCtx.canvas.height);
-        const retData = retImageData.data;
-
-        const srcCtx = srcCanvas.getContext('2d', { willReadFrequently: true });
-        const srcImageData = srcCtx.getImageData(0, 0, srcCtx.canvas.width, srcCtx.canvas.height);
-        const srcData = srcImageData.data;
-        
-        // 全検索はさすがに良くない
-        for(let i = 0; i < tmpData.length / 4; i += 1) {
-            const x = i % tmpCtx.canvas.width;
-            const y = Math.floor(i / tmpCtx.canvas.width);
-
-            if(Pixel.isPointExternal(tmpImageData, x, y)) {// 外部
-                continue;
-            }
-            for(j = 0; j < 4; j += 1) {
-                retData[i * 4 + j] = srcData[i * 4 + j];    // コピーする
-            }            
-        }
-        retCtx.putImageData(retImageData, 0, 0);
-        
-        return retCanvas;
-    }
 }
 </script>
 <style>
