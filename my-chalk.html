@@ -11,20 +11,6 @@
 <script src="js/pixel.js"></script>
 <script src="js/seedrandom.min.js"></script>
 <script>
-/*
-TODO
-・線を細くするロジックを入れても面白いかもしれない -> そういう描画関数を作る lineToEx
-・点を消すときに乱数を複数回発生させて、それを透明度とするのはどうだろうか(10回中7回成功なら 255 * 7 / 10とする)
--> やりすぎるとランダムではなくなるので、やりすぎないように注意する -> 十分テストして決める
-・アニメション作成処理はマルチスレッドで行う
-
-・乱数を固定せねばならない 入れた
-    https://github.com/davidbau/seedrandom/tree/released
-    使い方のコピペ
-    Math.seedrandom('hello.');
-    console.log(Math.random());          // Always 0.9282578795792454
-    console.log(Math.random());          // Always 0.3752569768646784
-*/
 $(main);
 let lineWidth = 8,
     boundaryThreshold = 0.1,
@@ -52,24 +38,23 @@ function main() {
 }
 
 function updateCanvas() {
-    const pixelData = Pixel.getAnimationPixelData(
-        [
+    const pixelData = Pixel.getAnimationPixelData({
+        posArray: [
             { x: 20, y: 20, }, 
             { x: 180, y: 20, },
             { x: 100, y: 100, },
             { x: 40, y: 60, },
             { x: 80, y: 20, },
         ], 
-        lineWidth, 
-        { r: 0, g: 255, b: 255, a: 1 },   // a は 0.0 ～ 1.0を指定
-        boundaryThreshold, externalThreshold,
-        sigma, length
-    );
+        lineWidth: lineWidth, 
+        strokeStyle: { r: 255, g: 255, b: 255, a: 255 },   // a は 0.0 ～ 1.0を指定
+        boundaryThreshold: boundaryThreshold, 
+        externalThreshold: externalThreshold,
+        sigma: sigma, 
+        pps: length,
+    });
 
     let drawCanvas, drawCtx, drawImageData, drawData;
-    const rawCtx = pixelData.canvas.getContext('2d', { willReadFrequently: true });
-    const rawImageData = rawCtx.getImageData(0, 0, rawCtx.canvas.width, rawCtx.canvas.height);
-    const rawData = rawImageData.data;
     let count = 0;
     if(intervalId >= 0) {
         clearInterval(intervalId);
@@ -97,10 +82,10 @@ function updateCanvas() {
         // 描画
         const indexes = pixelData.indexesArray[count];
         indexes.forEach(i => {
-            drawData[i * 4 + 0] = rawData[i * 4 + 0];
-            drawData[i * 4 + 1] = rawData[i * 4 + 1];
-            drawData[i * 4 + 2] = rawData[i * 4 + 2];
-            drawData[i * 4 + 3] = rawData[i * 4 + 3];
+            drawData[i * 4 + 0] = pixelData.imageData.data[i * 4 + 0];
+            drawData[i * 4 + 1] = pixelData.imageData.data[i * 4 + 1];
+            drawData[i * 4 + 2] = pixelData.imageData.data[i * 4 + 2];
+            drawData[i * 4 + 3] = pixelData.imageData.data[i * 4 + 3];
         });
         drawCtx.putImageData(drawImageData, 0, 0);
         ctx.drawImage(drawCanvas, 0, 0);

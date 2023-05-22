@@ -210,7 +210,7 @@ class Utility {
 
     /**
      * load image
-     * @param {String} dataUrl url
+     * @param {string} dataUrl url
      * @returns {Promise<Image>} 画像
      */
     static loadImage(dataUrl) {
@@ -223,6 +223,29 @@ class Utility {
 
     static equalTo(value, comp, epsilon = 1e-5) {
         return Math.abs(value - comp) < epsilon;
+    }
+
+    static saveBlob() {
+
+    }
+
+    static downloadBlob() {
+
+    }
+
+    /**
+     * イメージデータを作成する(canvasを経由して作成する)
+     * @param {number} width 
+     * @param {number} height 
+     * @returns {ImageData} イメージデータ 
+     */
+    static createImageData(width, height) {    
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        const imageData = ctx.createImageData(width, height);
+        return imageData;
     }
 }
 	

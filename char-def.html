@@ -24,14 +24,13 @@ let tempCurves = [];
 let svgData = null;
 let currentCode = '';
 
-let appFont = {};
+let avgData = {};
 
 document.addEventListener('DOMContentLoaded', async () => {
 
-    // TODO
     const jsonStr = localStorage.getItem('tex2canvas');
     if(jsonStr) {
-        appFont = JSON.parse(jsonStr);
+        avgData = JSON.parse(jsonStr);
     }
 
     const charCanvas = document.querySelector('#char-canvas');
@@ -45,7 +44,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if(mode === '') { return; }
         const worldPos = getWorldPosByEvent(e);
 
-        if(mode === 'interpolation') {
+        if(mode === 'interpolation' || mode === 'line') {
             if(e.button === 2) {// right button
                 mode = '';
                 curvesArray.push(tempCurves);
@@ -56,7 +55,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             tempCurves.push(new Curve([ worldPos, worldPos, worldPos, worldPos, ]));
         }
         onDraw();
-
     });
 
     charCanvas.addEventListener('mousemove', e => {
@@ -85,8 +83,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                     p[1] = Vector.center(p[0], p[2]);
                 }
                 q[2] = Vector.center(q[1], q[3]);
+            }
+            onDraw();
+        } else if(mode === 'line') {
+            if(tempCurves.length === 0) {
+                return;
             } 
-
+            const p = tempCurves[tempCurves.length - 1].points;
+            p[3] = worldPos;
+            const v = Vector.subtract(p[2], p[1]);
+            p[1] = Vector.add(p[0], Vector.scale(v, 1 / 3));
+            p[2] = Vector.add(p[0], Vector.scale(v, 2 / 3));
             onDraw();
         }
     });
@@ -107,6 +114,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         onDraw();
     });
 
+    document.querySelector('#line-button').addEventListener('click', e => {
+        mode = 'line';
+        tempCurves = [];
+        onDraw();
+    });
+
     document.querySelector('#cancel-button').addEventListener('click', e => {
         mode = '';
         tempCurves = [];
@@ -115,8 +128,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     document.querySelector('#save-button').addEventListener('click', e => {
         if(!currentCode) { return; }
-        appFont[currentCode] = JSON.parse(JSON.stringify(curvesArray));
-        localStorage.setItem('tex2canvas', JSON.stringify(appFont));
+        avgData[currentCode] = JSON.parse(JSON.stringify(curvesArray));
+        localStorage.setItem('tex2canvas', JSON.stringify(avgData));
     });  
     
     document.querySelector('#clear-button').addEventListener('click', e => {
@@ -204,8 +217,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         mode = '';
         curvesArray = [];
         tempCurves = [];
-        if(appFont[currentCode]) {
-            curvesArray = appFont[currentCode].map(curves => {
+        if(avgData[currentCode]) {
+            curvesArray = avgData[currentCode].map(curves => {
                 return curves.map(elm => new Curve(elm.points));
             });
         } 
@@ -329,7 +342,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     </div>
     <div class="mb-8">
         <button id="interpolation-button">interpolation</button>
-        <button id="cancel-button">cancel curve</button>
+        <button id="line-button">line</button>
+        <button id="cancel-button">cancel</button>
     </div>
     <div class="mb-8">
         <button id="save-button">save</button>
