@@ -6,10 +6,10 @@ class Settings {
     static SCALE_ARRAY = [ 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5 ];
     static PADDING_ARRAY = [ 0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50 ];
     static FPS_ARRAY = [ 1, 2, 3, 4, 5, 10, 16, 24, 30, 45, 60, 120, 180, 240 ];
-    static COLOR_WHITE = { r: 255, g: 255, b: 255, a: 255, };
-    static COLOR_YELLOW = { r: 255, g: 255, b: 146, a: 255, };
-    static COLOR_PINK = { r: 247, g: 171, b: 173, a: 255, };
-    static COLOR_BLUE = { r: 126, g: 203, b: 220, a: 255, };
+    static COLOR_WHITE = { r: 255, g: 255, b: 255, a: 216, };
+    static COLOR_YELLOW = { r: 255, g: 255, b: 146, a: 216, };
+    static COLOR_PINK = { r: 247, g: 171, b: 173, a: 216, };
+    static COLOR_BLUE = { r: 126, g: 203, b: 220, a: 216, };
     static COLOR_ARRAY = [ 
         { name: 'white', value: Settings.COLOR_WHITE, },
         { name: 'yellow', value: Settings.COLOR_YELLOW, },
