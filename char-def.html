@@ -5,12 +5,15 @@
 <title>Char Def</title>
 <script id="MathJax-script" async src="js/tex-svg-full.js"></script>
 <script src="js/define.js"></script>
-<script src="js/vector.js"></script>
 <script src="js/matrix.js"></script>
 <script src="js/svg-parser.js"></script>
 <script src="js/curve.js"></script>
 <script src="js/utility.js"></script>
 <script src="js/min-max.js"></script>
+<script src="js/pixel.js"></script>
+<script src="js/vector.js"></script>
+<script src="js/seedrandom.min.js"></script>
+<script src="js/app-svg.js"></script>
 <script>
 
 const VIEWBOX_SIZE = 119;
@@ -28,10 +31,7 @@ let avgData = {};
 
 document.addEventListener('DOMContentLoaded', async () => {
 
-    const jsonStr = localStorage.getItem('tex2canvas');
-    if(jsonStr) {
-        avgData = JSON.parse(jsonStr);
-    }
+    avgData = AppSvg.load('tex2canvas');
 
     const charCanvas = document.querySelector('#char-canvas');
     charCanvas.width = CANVAS_SIZE;
@@ -129,7 +129,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.querySelector('#save-button').addEventListener('click', e => {
         if(!currentCode) { return; }
         avgData[currentCode] = JSON.parse(JSON.stringify(curvesArray));
-        localStorage.setItem('tex2canvas', JSON.stringify(avgData));
+        AppSvg.save('tex2canvas', avgData);
     });  
     
     document.querySelector('#clear-button').addEventListener('click', e => {

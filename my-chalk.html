@@ -10,48 +10,41 @@
 <script src="js/utility.js"></script>
 <script src="js/pixel.js"></script>
 <script src="js/seedrandom.min.js"></script>
+<script src="js/app-svg.js"></script>
+<script src="js/settings.js"></script>
 <script>
 $(main);
-let lineWidth = 8,
-    boundaryThreshold = 0.1,
-    externalThreshold = 0.05,
-    sigma = 2, 
-    length = 5,
-    zoom = 4,
-    fps = 30;
 let intervalId = -1;
 
 function main() {
-    updateView();
+    Settings.load('my-chalk-settings');
+    Settings.createHtml('#settings-wrapper');
+    Settings.attachEvents(updateCanvas);
+
     document.querySelector('#update-button').addEventListener('click', e => {
-        updateModel();
-        updateCanvas();
-    }, false);
-    document.querySelector('#zoom-select').addEventListener('change', e => {
-        updateModel();
-        updateCanvas();
-    }, false);
-    document.querySelector('#fps-select').addEventListener('change', e => {
-        updateModel();
-        updateCanvas();
+        Settings.onChange();
     }, false);
 }
 
 function updateCanvas() {
+    Settings.save('my-chalk-settings');
     const pixelData = Pixel.getAnimationPixelData({
         posArray: [
-            { x: 20, y: 20, }, 
-            { x: 180, y: 20, },
-            { x: 100, y: 100, },
-            { x: 40, y: 60, },
-            { x: 80, y: 20, },
+            { x: 0, y: 0, }, 
+            { x: 5, y: 0, },
+            { x: 10, y: 0, },
+            { x: 15, y: 0, },
+            { x: 20, y: 0, },
+            { x: 25, y: 0, }, 
+            { x: 30, y: 0, },
         ], 
-        lineWidth: lineWidth, 
-        strokeStyle: { r: 255, g: 255, b: 255, a: 255 },   // a は 0.0 ～ 1.0を指定
-        boundaryThreshold: boundaryThreshold, 
-        externalThreshold: externalThreshold,
-        sigma: sigma, 
-        pps: length,
+        lineWidth: Settings.lineWidth, 
+        strokeStyle: { r: Settings.color.r, g: Settings.color.g, b: Settings.color.b, a: Settings.color.a }, 
+        boundaryThreshold: Settings.boundaryThreshold,   
+        internalThreshold: Settings.internalThreshold,
+        sigma: Settings.sigma, 
+        pps: Settings.pps,  
+        removeType: 'zero', // 'zero' or 'random'
     });
 
     let drawCanvas, drawCtx, drawImageData, drawData;
@@ -70,8 +63,8 @@ function updateCanvas() {
         canvas.width = pixelData.rect.width;
         canvas.height = pixelData.rect.height;
         $('#canvas').css({ 
-            width: `${ canvas.width * zoom }px`, 
-            height: `${ canvas.height * zoom }px`, 
+            width: `${ canvas.width * Settings.scale }px`, 
+            height: `${ canvas.height * Settings.scale }px`, 
             imageRendering: 'pixelated' 
         });
 
@@ -94,36 +87,7 @@ function updateCanvas() {
         if(count >= pixelData.indexesArray.length) {
             count = 0;
         }  
-    }, 1000 / fps);
-}
-
-function updateView() {
-    document.querySelector('#line-width-text').value = lineWidth + '';
-    document.querySelector('#boundary-threshold-text').value = boundaryThreshold + '';
-    document.querySelector('#external-threshold-text').value = externalThreshold + '';
-    document.querySelector('#sigma-text').value = sigma + '';
-    document.querySelector('#zoom-select').value = zoom + '';
-    document.querySelector('#fps-select').value = fps + '';
-}
-
-function updateModel() {
-    const tempLineWidth = Number(document.querySelector('#line-width-text').value);
-    const tempBoundaryThreshold = Number(document.querySelector('#boundary-threshold-text').value);
-    const tempExternalThreshold = Number(document.querySelector('#external-threshold-text').value);
-    const tempSigma = Number(document.querySelector('#sigma-text').value);
-    const tempZoom = Number(document.querySelector('#zoom-select').value);
-    const tempFps = Number(document.querySelector('#fps-select').value);
-    if(isNaN(tempLineWidth) || isNaN(tempBoundaryThreshold) || isNaN(tempExternalThreshold)
-    || isNaN(tempSigma)) {
-        alert('invalid input.')
-        return;
-    }
-    lineWidth = tempLineWidth;
-    boundaryThreshold = tempBoundaryThreshold;
-    externalThreshold = tempExternalThreshold;
-    sigma = tempSigma;
-    zoom = tempZoom;
-    fps = tempFps;
+    }, 1000 / Settings.fps);
 }
 </script>
 <style>
@@ -133,31 +97,8 @@ function updateModel() {
 </style>
 </head>
 <body>
-    <div style="margin: 8px;">
-        line width:&nbsp;<input id="line-width-text" class="input-text" type="text"><br>
-        boundary threshold:&nbsp;<input id="boundary-threshold-text" class="input-text" type="text"><br>
-        external threshold:&nbsp;<input id="external-threshold-text" class="input-text" type="text"><br>
-        sigma:&nbsp;<input id="sigma-text" class="input-text" type="text"><br>
-        <input id="update-button" type="button" value="update"><br><br>
-        zoom:&nbsp;
-        <select id="zoom-select">
-            <option value="1">x1</option>
-            <option value="2">x2</option>
-            <option value="3">x3</option>
-            <option value="4">x4</option>
-            <option value="5">x5</option>
-            <option value="6">x6</option>
-        </select>
-        &nbsp;&nbsp;
-        fps:&nbsp;
-        <select id="fps-select">
-            <option value="5">5</option>
-            <option value="10">10</option>
-            <option value="24">24</option>
-            <option value="30">30</option>
-            <option value="60">60</option>
-        </select>
-    </div>
+    <div id="settings-wrapper" style="margin: 8px;"></div>
+    <div style="margin: 8px;"><input id="update-button" type="button" value="update"></div>
     <canvas id="canvas"></canvas><br>
 </body>
 </html>

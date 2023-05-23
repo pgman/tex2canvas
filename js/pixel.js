@@ -81,25 +81,35 @@ class Pixel {
                 break;
             }
             let tmpLength = 0;
-            let tmpIndex = -1;
+            let lastIndex = 1;
+            let lastRate = 0;
             for(let i = 0; i < option.posArray.length; i += 1) {
                 if(i - 1 < 0) { continue; } // i === 1 からループする
                 const dist = Vector.dist(option.posArray[i - 1], option.posArray[i]);
                 tmpLength += dist;
                 if(curLength <= tmpLength) {      
-                    tmpIndex = i;
+                    const curIndex = i;
                     const diff = curLength - tmpLength + dist;
+                    const curRate = diff / dist;
                     const lastIndexes = indexesArray.length === 0 ? null : indexesArray[0];
-                    const indexes = Pixel.createIndexes(tmpCtx, lastIndexes, option.posArray, tmpIndex, option.lineWidth, diff / dist,
-                        option.translate);
+                    const indexes = Pixel.createIndexes(tmpCtx, lastIndexes, option.posArray, 
+                        curIndex, curRate, lastIndex, lastRate,
+                        option.lineWidth, option.translate);
+                    // 1つ前の割合を記憶    
+                    lastIndex = curIndex;
+                    lastRate = curRate;
                     indexesArray.push(indexes);
                     break;
                 } else if(i + 1 >= option.posArray.length) {
                     // 最終
-                    tmpIndex = option.posArray.length - 1;
+                    const curIndex = option.posArray.length - 1;
+                    const curRate = 1;
                     const lastIndexes = indexesArray.length === 0 ? null : indexesArray[0];
-                    const indexes = Pixel.createIndexes(tmpCtx, lastIndexes, option.posArray, tmpIndex, option.lineWidth, 1,
-                        option.translate);
+                    const indexes = Pixel.createIndexes(tmpCtx, lastIndexes, option.posArray, 
+                        curIndex, curRate, lastIndex, lastRate,
+                        option.lineWidth, option.translate);
+                    lastIndex = curIndex;
+                    lastRate = curRate;
                     indexesArray.push(indexes);
                 }
             }
@@ -238,9 +248,9 @@ class Pixel {
                 data[i * 4 + 1] = option.strokeStyle.g;
                 data[i * 4 + 2] = option.strokeStyle.b;
                 let a;
-                if(!option.removeType || option.removeType === 'zero') {
+                if(!option.removeType || option.removeType === 'zero') {// 未定義または 'zero'
                     a = 0;
-                } else {
+                } else {// 'random' (ランダムってあまりよくない気がしている)
                     a = Math.random() * option.strokeStyle.a;
                 }
                 data[i * 4 + 3] = a;
@@ -254,12 +264,17 @@ class Pixel {
      * @param {CanvasRenderingContext2D} tmpCtx 作業用canvasのコンテキスト
      * @param {Array<number>} lastIndexes 1つ前のインデックスの配列
      * @param {Array<{x:number, y: number}>} posArray 点配列 
-     * @param {number} index インデックス
-     * @param {number} rate 割合 
+     * @param {number} curIndex 現在のインデックス
+     * @param {number} curRate 現在の割合 
+     * @param {number} lastIndex 1つ前のインデックス
+     * @param {number} lastRate 1つ前の割合 
      * @param {{x:number, y: number}} translate 平行移動量 
      * @returns {Array<number>} 描画するインデックスの配列
      */
-    static createIndexes(tmpCtx, lastIndexes, posArray, index, lineWidth, rate, translate) {
+    static createIndexes(tmpCtx, lastIndexes, posArray, curIndex, curRate, lastIndex, lastRate, lineWidth, translate) {
+        let mm;
+        MinMax.save();
+        MinMax.init();
         // 描画する(何色でもよいので、白色で塗る)
         tmpCtx.save();
         tmpCtx.reset();
@@ -269,30 +284,39 @@ class Pixel {
         tmpCtx.strokeStyle = `rgba(255, 255, 255, 1)`; // 何色でもよいので、白色で塗る
         tmpCtx.setTransform(1, 0, 0, 1, translate.x, translate.y); 
         tmpCtx.beginPath();   
-        tmpCtx.moveTo(posArray[0].x, posArray[0].y); 
-        let mm;       
+        //tmpCtx.moveTo(posArray[0].x, posArray[0].y); 
         posArray.forEach((pos, i) => { 
-            if(i <= 0 || i > index) { return; }
-            const posPre = posArray[i - 1];
-            let newPos;
-            if(i < index) {     
-                newPos = pos;
-            } else if(i === index) {
-                let vec = Vector.subtract(pos, posPre);
-                vec = Vector.scale(vec, rate);
-                newPos = Vector.add(posPre, vec);
-
-                MinMax.save();
-                MinMax.init();
-                MinMax.add(pos);
-                MinMax.add(newPos);
-                mm = MinMax.get();
-                MinMax.restore();
+            if(i <= 0 || i > curIndex) { return; }
+            if(i < lastIndex) { return; }
+            const prePos = posArray[i - 1];
+            //let newPos;
+            let startPos, endPos;
+            // 始点を決める
+            if(i === lastIndex) {
+                let vec = Vector.subtract(pos, prePos);
+                vec = Vector.scale(vec, lastRate);
+                startPos = Vector.add(prePos, vec);
+                tmpCtx.moveTo(posArray[0].x, posArray[0].y); 
+            } else {
+                startPos = prePos;
+            }            
+            // 終点を決める
+            if(i === curIndex) {
+                let vec = Vector.subtract(pos, prePos);
+                vec = Vector.scale(vec, curRate);
+                endPos = Vector.add(prePos, vec);                             
+            } else {
+                endPos = pos;
             }
-            tmpCtx.lineTo(newPos.x, newPos.y);            
+            tmpCtx.lineTo(endPos.x, endPos.y);    
+            MinMax.add(startPos);
+            MinMax.add(endPos);           
         });
         tmpCtx.stroke();
         tmpCtx.restore();
+
+        mm = MinMax.get();
+        MinMax.restore();
 
         // 塗られている箇所のみを塗る
         const tmpImageData = tmpCtx.getImageData(0, 0, tmpCtx.canvas.width, tmpCtx.canvas.height);
