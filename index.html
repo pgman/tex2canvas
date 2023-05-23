@@ -16,14 +16,15 @@
 <script src="js/app-svg.js"></script>
 <script src="js/settings.js"></script>
 <script>
-const STRING_COLOR = { r: 247, g: 171, b: 173, a: 50 };
 const BLACK_BOARD_IMAGE_PATH = 'images/black_board.jpg';
+const CHALK_IMAGE_PATH = 'images/hand3.png';
 
 // Mathjaxの返すSVG => MVG
 // KanjiVGのデータ => KVG
 // アプリで定義されたSVG => AVG
 
 let blackBoardImg = null;
+let chalkImg = null;
 let datas = [];
 let animDatas = [];
 
@@ -61,21 +62,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     avgData = AppSvg.load('tex2canvas');
 
     blackBoardImg = await Utility.loadImage(BLACK_BOARD_IMAGE_PATH);
+    chalkImg = await Utility.loadImage(CHALK_IMAGE_PATH);
 
-    Settings.onChange();
-});
-async function load() {
-    datas = await loadDatas();   
+    //Settings.onChange();
 
-    // for debug
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
     ctx.reset();
-    //ctx.drawImage(blackBoardImg, 0, 0);
-    //ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
-    //ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-    //drawSvg(ctx, svgData, { fillChar: true, strokeRect: true, });
-    drawDatas(datas); 
+    ctx.drawImage(blackBoardImg, 0, 0);
+});
+async function load() {
+    datas = await loadDatas(); 
+    //drawDatas(datas); 
     animDatas = getAnimDatas(datas);
     if(animIntervalId !== -1) {
         clearInterval(animIntervalId);
@@ -98,16 +96,22 @@ async function load() {
             rectArray.push(data.rect);     
         });
     });
+    let chalkPos = { x: 0, y: 0 };
     animIntervalId = setInterval(() => {
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        ctx.reset();
+        ctx.drawImage(blackBoardImg, 0, 0);
         // animCtxArrayを更新
+        
         let elmCount = 0;
         let dataIndex = 0;
         let escapeFlag = false;
         for(let i = 0; i < animDatas.length; i += 1) {
             for(let j = 0; j < animDatas[i].length; j += 1) {
-                for(let k = 0; k < animDatas[i][j].indexesArray.length; k += 1) {
+                for(let k = 0; k < animDatas[i][j].animArray.length; k += 1) {
                     const animData = animDatas[i][j];
-                    const indexes = animData.indexesArray[k];
+                    const indexes = animData.animArray[k].indexes;
                     const imageData = animData.imageData;
                     if(animCount <= elmCount) {
                         const animImageData = animImageDataArray[dataIndex];
@@ -119,6 +123,7 @@ async function load() {
                             data[l * 4 + 3] = imageData.data[l * 4 + 3];
                         });
                         animCtxArray[dataIndex].putImageData(animImageData, 0, 0);
+                        chalkPos = animData.animArray[k].pos;
                         escapeFlag = true;
                     }
                     if(escapeFlag) { break; }
@@ -139,6 +144,9 @@ async function load() {
             ctx.drawImage(animCanvas, 0, 0);
             ctx.restore();
         }
+        // chalk 
+        
+        ctx.drawImage(chalkImg, chalkPos.x - 101, chalkPos.y - 26); // 101, 26
     }, 1000 / Settings.fps);
 }
 function getAnimDatas(datas) {
@@ -188,8 +196,9 @@ function getAnimDatas(datas) {
 function drawDatas(datas) {
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
-    ctx.reset();
-    ctx.drawImage(blackBoardImg, 0, 0);
+    //ctx.reset();
+    //ctx.drawImage(blackBoardImg, 0, 0);
+    
     //datas.forEach(data => { drawData(ctx, data); });
 }
 function drawData(ctx, data) {

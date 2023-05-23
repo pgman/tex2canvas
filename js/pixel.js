@@ -36,7 +36,7 @@ class Pixel {
         Pixel.drawRemoveArray(option);
 
         // アニメーション用のindexの配列を作成する
-        const indexesArray = Pixel.getIndexesArray(option);
+        const animArray = Pixel.getAnimArray(option);
         
         console.timeEnd('getAnimationPixelData');
 
@@ -48,8 +48,8 @@ class Pixel {
                 height: canvas.height,
             },
             imageData: option.ctx.getImageData(0, 0, option.ctx.canvas.width, option.ctx.canvas.height), 
-            indexesArray,
-            memory: indexesArray.length * canvas.width * canvas.height * 4,
+            animArray,
+            memory: animArray.length * canvas.width * canvas.height * 4,
         };    
     }
 
@@ -58,17 +58,16 @@ class Pixel {
      * @param {Object} option 設定
      * @returns 
      */
-    static getIndexesArray(option) {
+    static getAnimArray(option) {
         if(option.posArray.length < 2) {
             throw 'posArray length is not invalid.'
         }
         // アニメーション用のindexの配列を作成する
-        const indexesArray = [];
+        const animArray = [];
 
         // 全体の長さを求めてみる
         const wholeLength = option.posArray.reduce((p, c, i) => p + (i > 0 ? Vector.dist(option.posArray[i - 1], c) : 0), 0);    
-        //console.log('whole length: ', wholeLength);
-
+        
         // 作業用のcanvas
         const tmpCanvas = Utility.createCanvas(option.width, option.height);
         const tmpCtx = tmpCanvas.getContext('2d', { willReadFrequently: true });
@@ -91,26 +90,26 @@ class Pixel {
                     const curIndex = i;
                     const diff = curLength - tmpLength + dist;
                     const curRate = diff / dist;
-                    const lastIndexes = indexesArray.length === 0 ? null : indexesArray[0];
-                    const indexes = Pixel.createIndexes(tmpCtx, lastIndexes, option.posArray, 
+                    const lastIndexes = animArray.length === 0 ? null : animArray[0].indexes;
+                    const anim = Pixel.createIndexes(tmpCtx, lastIndexes, option.posArray, 
                         curIndex, curRate, lastIndex, lastRate,
                         option.lineWidth, option.translate);
                     // 1つ前の割合を記憶    
                     lastIndex = curIndex;
                     lastRate = curRate;
-                    indexesArray.push(indexes);
+                    animArray.push(anim);
                     break;
                 } else if(i + 1 >= option.posArray.length) {
                     // 最終
                     const curIndex = option.posArray.length - 1;
                     const curRate = 1;
-                    const lastIndexes = indexesArray.length === 0 ? null : indexesArray[0];
-                    const indexes = Pixel.createIndexes(tmpCtx, lastIndexes, option.posArray, 
+                    const lastIndexes = animArray.length === 0 ? null : animArray[0].indexes;
+                    const anim = Pixel.createIndexes(tmpCtx, lastIndexes, option.posArray, 
                         curIndex, curRate, lastIndex, lastRate,
                         option.lineWidth, option.translate);
                     lastIndex = curIndex;
                     lastRate = curRate;
-                    indexesArray.push(indexes);
+                    animArray.push(anim);
                 }
             }
             const epsilon = 0.00001;
@@ -119,7 +118,7 @@ class Pixel {
             }        
             curLength += option.pps;
         }
-        return indexesArray;
+        return animArray;
     }
 
     /**
@@ -283,14 +282,13 @@ class Pixel {
         tmpCtx.lineWidth = lineWidth;
         tmpCtx.strokeStyle = `rgba(255, 255, 255, 1)`; // 何色でもよいので、白色で塗る
         tmpCtx.setTransform(1, 0, 0, 1, translate.x, translate.y); 
-        tmpCtx.beginPath();   
-        //tmpCtx.moveTo(posArray[0].x, posArray[0].y); 
+        tmpCtx.beginPath();  
+        let startPos, endPos = null;
         posArray.forEach((pos, i) => { 
             if(i <= 0 || i > curIndex) { return; }
             if(i < lastIndex) { return; }
             const prePos = posArray[i - 1];
-            //let newPos;
-            let startPos, endPos;
+            
             // 始点を決める
             if(i === lastIndex) {
                 let vec = Vector.subtract(pos, prePos);
@@ -365,7 +363,7 @@ class Pixel {
                 }     
             }
         }
-        return indexes;
+        return { indexes, pos: endPos };
     }
 
     /**
