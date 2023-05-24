@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Tex To Canvas</title>
+<script id="MathJax-script" async src="js/tex-svg-full.js"></script>
+<script src="js/define.js"></script>
+<script src="js/matrix.js"></script>
+<script src="js/svg-parser.js"></script>
+<script src="js/curve.js"></script>
+<script src="js/utility.js"></script>
+<script src="js/min-max.js"></script>
+<script src="js/pixel.js"></script>
+<script src="js/vector.js"></script>
+<script src="js/seedrandom.min.js"></script>
+<script src="js/app-svg.js"></script>
+<script src="js/settings.js"></script>
+<script src="js/paint.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const canvas = document.querySelector('#my-canvas');
+    const ctx = canvas.getContext('2d');
+    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    ctx.fillStyle = 'white';
+    Paint.fillTrapezoid(ctx, 
+        { pos: { x: 200, y: 200 }, width: 100, arc: true, },
+        { pos: { x: 400, y: 400 }, width: 50, arc: false, });
+});
+</script>
+</head>
+<body>
+    <canvas id="my-canvas" width="800" height = "600"></canvas>
+</body>
+</html>

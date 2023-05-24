@@ -24,22 +24,21 @@ H-038: 色をsettingsに入れる
 H-039: H-032をやっつけるために my-chalk.html に setting.js を組み込む
 H-032: ppsを上げると表示がおかしくなる。恐らく線分で区切るロジックがおかしい
 H-042: getAnimationPixelDataでチョークの位置を返すようにする
+
+2023/05/24:
 H-033: アニメーションに手を付ける
+H-043: 画の間、文字の間は手のみを動かす
+
+2023/05/25
+H-014-1: 台形描画関数を作成する
 
 [アイデア]
 curves を stroke として定義したい
 curvesArray を strokeArray として定義したい
 
 [作業中]
-&&sin(\alpha+\beta)=sin\alpha cos\beta+cos\alpha sin\beta\\
-&&cos(\alpha+\beta)=cos\alpha cos\beta-sin\alpha sin\beta\\
-&&ax^2+bx+c=0\\
-&&x = {-b \pm \sqrt{b^2-4ac} \over 2a}\\
-&&Thank{\bf g}you{\bf g}for{\bf g}watching!\\
 
 [優先度高め H-XXX]
-H-043
-・画の間、文字の間は手のみを動かす
 
 H-034
 ・ラーフルで消す
@@ -63,7 +62,7 @@ H-006
   ☑mathjaxで取得したsvgファイルの中身
 
 H-014
-・線の太さを変えるロジックを入れても面白いかもしれない -> そういう描画関数を作る lineToEx
+・線の太さを変えるロジックを入れても面白いかもしれない
 
 H-029
 ・ReferenceError: MathJax is not definedに対応したい
