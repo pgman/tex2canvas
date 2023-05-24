@@ -99,6 +99,7 @@ async function load() {
     let chalkPos = { x: 0, y: 0, };
     let chalkAnchorPos = { x: 101, y: 26, };
 
+    let moveLastFlag = false;
     let moveDataIndex = -1;
     let moveMaxCount = 30;
     let moveCount = 30;
@@ -125,6 +126,10 @@ async function load() {
             }
             ctx.drawImage(chalkImg, chalkPos.x - chalkAnchorPos.x, chalkPos.y - chalkAnchorPos.y);
             moveCount -= 1;
+            if(moveCount <= 0 && moveLastFlag) {
+                clearInterval(animIntervalId);
+                animIntervalId = -1;
+            }
             return;
         }
         // animCtxArrayを更新        
@@ -173,55 +178,20 @@ async function load() {
                                 moveEndPos = { x: 1000, y: moveStartPos.y, };
                                 moveMaxCount = 30;
                                 moveCount = 30;
+                                moveLastFlag = true;
                             }
                         }
                         escapeFlag = true;
-                    }         
-                                 
+                    }            
                     if(escapeFlag) { break; }
                     elmCount++; 
-                }      
-                
+                }    
                 if(escapeFlag) { break; }
                 dataIndex += 1; 
             }
             if(escapeFlag) { break; }
         }
         animCount++;
-        // if(escapeFlag && moveDataIndex < dataIndex) {
-        //     moveDataIndex = dataIndex;
-        //     // 次の座標を取得する
-        //     moveStartPos.x = chalkPos.x;
-        //     moveStartPos.y = chalkPos.y;
-        //     elmCount = 0;
-        //     dataIndex = 0;
-        //     escapeFlag = false;
-        //     for(let i = 0; i < animDatas.length; i += 1) {
-        //         for(let j = 0; j < animDatas[i].length; j += 1) {
-        //             for(let k = 0; k < animDatas[i][j].animArray.length; k += 1) {
-        //                 const animData = animDatas[i][j];
-        //                 const indexes = animData.animArray[k].indexes;
-        //                 const imageData = animData.imageData;
-        //                 if(animCount <= elmCount) {
-        //                     moveEndPos.x = animData.animArray[k].pos.x;
-        //                     moveEndPos.y = animData.animArray[k].pos.y;
-        //                     escapeFlag = true;
-        //                 }
-        //                 if(escapeFlag) { break; }
-        //                 elmCount++;
-        //             }
-        //             if(escapeFlag) { break; }
-        //             dataIndex += 1;
-        //         }
-        //         if(escapeFlag) { break; }
-        //     }
-        //     if(escapeFlag) {
-        //         console.log('start', moveStartPos);
-        //         console.log('end', moveEndPos);
-        //         moveMaxCount = 24;
-        //         moveCount = 24;
-        //     }
-        // }
 
         for(let i = 0; i < animCanvasArray.length; i += 1) {
             const animCanvas = animCanvasArray[i];
@@ -457,9 +427,24 @@ function getDatas(svgData, kvgData) {
     return ret;
 }
 function attachEvents() {
-    // ボタン押下時の処理
-    document.querySelector('#button').addEventListener('click', async () => {
+    // text2svg ボタン押下時の処理
+    document.querySelector('#tex2svg-button').addEventListener('click', async () => {
         Settings.onChange();
+    });
+
+    // save app svg ボタン押下時の処理
+    document.querySelector('#save-app-svg-button').addEventListener('click', async () => {
+        Utility.saveJsonFile(avgData, 'avg.json');
+    });
+
+    // load app svg ボタン押下時の処理
+    document.querySelector('#load-app-svg-button').addEventListener('click', async () => {
+        const tmpAvgData = await Utility.loadJsonFile();
+        if(tmpAvgData) {
+            avgData = tmpAvgData;
+        } else {
+            console.log('cancelされた');
+        }
     });
 
     // テキストでCtrl + Sした時の処理
@@ -523,7 +508,11 @@ function getNewMatrix(screenRect, rect) {
     </div>
     <div class="mb-8">
 	    <input id="display-checkbox" type="checkbox" checked="true"/><label for="display-checkbox">display</label>    
-        <button id="button">tex2svg</button>
+        <button id="tex2svg-button">tex2svg</button>
+        &nbsp;&nbsp;
+        <button id="save-app-svg-button">save app svg</button>
+        &nbsp;&nbsp;
+        <button id="load-app-svg-button">load app svg</button>
         &nbsp;&nbsp;
         <a href="char-def.html">char-def</a>&nbsp;&nbsp;
         <a href="my-chalk.html">my-chalk</a>&nbsp;&nbsp;

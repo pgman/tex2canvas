@@ -225,8 +225,52 @@ class Utility {
         return Math.abs(value - comp) < epsilon;
     }
 
-    static saveBlob() {
+    static saveJsonFile(obj, fileName) {
+        // テキストデータの Blob オブジェクトを生成
+        const blob = new Blob([JSON.stringify(obj)], { type: 'text/plain' });
+        Utility.saveBlob(blob, fileName);
+    }
 
+    static async loadJsonFile() {
+        const fileoptions = {
+            multiple : false, //複数のファイルを選択する場合
+            excludeAcceptAllOption : false,  //使い道が見いだせないのでとりあえず無視
+            types : [ //ファイルの種類のフィルター
+                {
+                    // ファイルの説明
+                    description : 'Application config file',  
+                    // MIME typeと対象の拡張子
+                    accept : {'application/json': ['.json']} 
+                }
+            ],
+        };
+        try {
+            const fileHandles = await window.showOpenFilePicker(fileoptions);
+            if(fileHandles.length !== 1) {
+                throw 'file count is not one.'
+            }
+            const file = await fileHandles[0].getFile();
+            const text = await file.text();
+            if(text) {
+                return JSON.parse(text);
+            } else {
+                return null;
+            }
+        } catch(e) {
+            // ファイル未選択
+            return null;
+        }
+    }
+
+    static async saveBlob(blob, fileName) {
+         // ファイル保存ダイアログを表示して FileSystemFileHandle オブジェクトを取得
+        const fh = await window.showSaveFilePicker({ suggestedName: fileName });        
+        // FileSystemWritableFileStream オブジェクトを取得
+        const stream = await fh.createWritable();        
+        // テキストデータをファイルに書き込む
+        await stream.write(blob);        
+        // ファイルを閉じる
+        await stream.close();
     }
 
     static downloadBlob() {
