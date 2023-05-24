@@ -96,14 +96,38 @@ async function load() {
             rectArray.push(data.rect);     
         });
     });
-    let chalkPos = { x: 0, y: 0 };
+    let chalkPos = { x: 0, y: 0, };
+    let chalkAnchorPos = { x: 101, y: 26, };
+
+    let moveDataIndex = -1;
+    let moveMaxCount = 30;
+    let moveCount = 30;
+    let moveStartPos = { x: 300, y: 300, };
+    let moveEndPos = animDatas[0][0].animArray[0].pos; 
+    
     animIntervalId = setInterval(() => {
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
         ctx.reset();
         ctx.drawImage(blackBoardImg, 0, 0);
-        // animCtxArrayを更新
-        
+        if(moveCount > 0) {
+            const moveVec = Vector.subtract(moveEndPos, moveStartPos);
+            const rate = (moveMaxCount - moveCount) / moveMaxCount;
+            chalkPos.x = moveStartPos.x + moveVec.x * rate;
+            chalkPos.y = moveStartPos.y + moveVec.y * rate;
+            for(let i = 0; i < animCanvasArray.length; i += 1) {
+                const animCanvas = animCanvasArray[i];
+                const rect = rectArray[i];
+                ctx.save();
+                ctx.setTransform(1, 0, 0, 1, rect.x, rect.y);
+                ctx.drawImage(animCanvas, 0, 0);
+                ctx.restore();
+            }
+            ctx.drawImage(chalkImg, chalkPos.x - chalkAnchorPos.x, chalkPos.y - chalkAnchorPos.y);
+            moveCount -= 1;
+            return;
+        }
+        // animCtxArrayを更新        
         let elmCount = 0;
         let dataIndex = 0;
         let escapeFlag = false;
@@ -124,17 +148,80 @@ async function load() {
                         });
                         animCtxArray[dataIndex].putImageData(animImageData, 0, 0);
                         chalkPos = animData.animArray[k].pos;
+                        if(k === animDatas[i][j].animArray.length - 1) {
+                            moveStartPos.x = chalkPos.x;
+                            moveStartPos.y = chalkPos.y;
+                            if(j !== animDatas[i].length - 1) {
+                                moveEndPos = animDatas[i][j + 1].animArray[0].pos;
+                                const dist = Vector.dist(moveStartPos, moveEndPos);
+                                let count = Math.round(dist / Settings.pps);
+                                if(dist > 200) {
+                                    count = Math.round(dist / 12);
+                                }
+                                moveMaxCount = count;
+                                moveCount = count;
+                            } else if(i !== animDatas.length - 1) {
+                                moveEndPos = animDatas[i + 1][0].animArray[0].pos;
+                                const dist = Vector.dist(moveStartPos, moveEndPos);
+                                let count = Math.round(dist / Settings.pps);
+                                if(dist > 200) {
+                                    count = Math.round(dist / 12);
+                                }
+                                moveMaxCount = count;
+                                moveCount = count;
+                            } else {
+                                moveEndPos = { x: 1000, y: moveStartPos.y, };
+                                moveMaxCount = 30;
+                                moveCount = 30;
+                            }
+                        }
                         escapeFlag = true;
-                    }
+                    }         
+                                 
                     if(escapeFlag) { break; }
-                    elmCount++;                    
-                }
+                    elmCount++; 
+                }      
+                
                 if(escapeFlag) { break; }
-                dataIndex += 1;
+                dataIndex += 1; 
             }
             if(escapeFlag) { break; }
         }
         animCount++;
+        // if(escapeFlag && moveDataIndex < dataIndex) {
+        //     moveDataIndex = dataIndex;
+        //     // 次の座標を取得する
+        //     moveStartPos.x = chalkPos.x;
+        //     moveStartPos.y = chalkPos.y;
+        //     elmCount = 0;
+        //     dataIndex = 0;
+        //     escapeFlag = false;
+        //     for(let i = 0; i < animDatas.length; i += 1) {
+        //         for(let j = 0; j < animDatas[i].length; j += 1) {
+        //             for(let k = 0; k < animDatas[i][j].animArray.length; k += 1) {
+        //                 const animData = animDatas[i][j];
+        //                 const indexes = animData.animArray[k].indexes;
+        //                 const imageData = animData.imageData;
+        //                 if(animCount <= elmCount) {
+        //                     moveEndPos.x = animData.animArray[k].pos.x;
+        //                     moveEndPos.y = animData.animArray[k].pos.y;
+        //                     escapeFlag = true;
+        //                 }
+        //                 if(escapeFlag) { break; }
+        //                 elmCount++;
+        //             }
+        //             if(escapeFlag) { break; }
+        //             dataIndex += 1;
+        //         }
+        //         if(escapeFlag) { break; }
+        //     }
+        //     if(escapeFlag) {
+        //         console.log('start', moveStartPos);
+        //         console.log('end', moveEndPos);
+        //         moveMaxCount = 24;
+        //         moveCount = 24;
+        //     }
+        // }
 
         for(let i = 0; i < animCanvasArray.length; i += 1) {
             const animCanvas = animCanvasArray[i];
@@ -144,9 +231,8 @@ async function load() {
             ctx.drawImage(animCanvas, 0, 0);
             ctx.restore();
         }
-        // chalk 
-        
-        ctx.drawImage(chalkImg, chalkPos.x - 101, chalkPos.y - 26); // 101, 26
+        // chalk        
+        ctx.drawImage(chalkImg, chalkPos.x - chalkAnchorPos.x, chalkPos.y - chalkAnchorPos.y); // 101, 26
     }, 1000 / Settings.fps);
 }
 function getAnimDatas(datas) {

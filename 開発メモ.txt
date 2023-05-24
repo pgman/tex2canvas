@@ -31,6 +31,11 @@ curves を stroke として定義したい
 curvesArray を strokeArray として定義したい
 
 [作業中]
+&&sin(\alpha+\beta)=sin\alpha cos\beta+cos\alpha sin\beta\\
+&&cos(\alpha+\beta)=cos\alpha cos\beta-sin\alpha sin\beta\\
+&&ax^2+bx+c=0\\
+&&x = {-b \pm \sqrt{b^2-4ac} \over 2a}\\
+&&Thank{\bf g}you{\bf g}for{\bf g}watching!\\
 
 [優先度高め H-XXX]
 H-043
