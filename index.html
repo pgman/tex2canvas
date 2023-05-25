@@ -504,11 +504,17 @@ function getNewMatrix(screenRect, rect) {
     newMat = Matrix.multiply(revTrans, newMat);
     return newMat;
 }
+async function drawBackCanvas(selector, imgPath) {
+    const img = await Utility.loadImage(imgPath);    
+    const canvas = document.querySelector(selector);
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0);
+}
 </script>
 <style>
 #textarea {
 	width: 600px;
-	height: 200px;
+	height: 160px;
     font-size: 18px;
 }
 .mb-8 {
@@ -522,7 +528,7 @@ label {
 .draw-canvas {
     position: absolute;
     left: 8px;
-    top: 360px;
+    top: 320px;
 }
 </style>
 </head>
@@ -567,8 +573,16 @@ label {
         </label>
     </div>
     <div id="canvas-area">
+        <!-- 黒板用canvas -->
         <canvas id="back-canvas" class="draw-canvas" width="1024" height="576"></canvas>
+        <!-- アニメーション用canvas -->
         <canvas id="canvas" class="draw-canvas" width="1024" height="576"></canvas>
+        <!-- avg -->
+        <canvas id="avg-canvas" class="draw-canvas" width="1024" height="576"></canvas>
+        <!-- kvg -->
+        <canvas id="kvg-canvas" class="draw-canvas" width="1024" height="576"></canvas>
+        <!-- mvg -->
+        <canvas id="mvg-canvas" class="draw-canvas" width="1024" height="576"></canvas>
     </div>	
 </body>
 </html>
