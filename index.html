@@ -77,10 +77,6 @@ async function load() {
 }
 function play() {
     if(animDatas.length === 0) { return; }
-    if(animIntervalId !== -1) {
-        clearInterval(animIntervalId);
-        animIntervalId = -1;
-    }
     // 初期化
     let animCount = 0;
     let animCanvasArray = [];
@@ -108,6 +104,11 @@ function play() {
     let moveCount = 30;
     let moveStartPos = { x: 300, y: 300, };
     let moveEndPos = animDatas[0][0].animArray[0].pos; 
+    
+    if(animIntervalId !== -1) {
+        clearInterval(animIntervalId);
+        animIntervalId = -1;
+    }
     
     animIntervalId = setInterval(() => {
         const canvas = document.getElementById('canvas');
@@ -155,7 +156,7 @@ function play() {
                             data[l * 4 + 3] = imageData.data[l * 4 + 3];
                         });
                         animCtxArray[dataIndex].putImageData(animImageData, 0, 0);
-                        chalkPos = animData.animArray[k].pos;
+                        chalkPos = JSON.parse(JSON.stringify(animData.animArray[k].pos));
                         if(k === animDatas[i][j].animArray.length - 1) {
                             moveStartPos.x = chalkPos.x;
                             moveStartPos.y = chalkPos.y;
@@ -178,6 +179,7 @@ function play() {
                                 moveMaxCount = count;
                                 moveCount = count;
                             } else {
+                                console.log(moveStartPos, k);
                                 moveEndPos = { x: 1000, y: moveStartPos.y, };
                                 moveMaxCount = 30;
                                 moveCount = 30;
