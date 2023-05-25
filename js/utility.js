@@ -291,6 +291,22 @@ class Utility {
         const imageData = ctx.createImageData(width, height);
         return imageData;
     }
+
+    /**
+     * 使える声の配列を得る(※非同期で読み込まれて且つそのloadイベントが存在しないため、タイマーで監視する)
+     * @returns {Array<Object>} 使える声の配列
+     */
+    static async getVoices() {
+        return new Promise(resolve => {
+            const intervalId = setInterval(() => {
+                const voices = speechSynthesis.getVoices();
+                if(voices.length) {
+                    clearInterval(intervalId);
+                    resolve(voices);
+                }
+            }, 100);
+        });
+    }
 }
 	
 

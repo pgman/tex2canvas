@@ -17,7 +17,27 @@
 <script src="js/settings.js"></script>
 <script src="js/paint.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    const voices = await Utility.getVoices();
+    const html = voices.reduce((p, c) => `${p}<option value="${c.name}">${c.name}</option>`, '');
+    document.querySelector('#voice-select').innerHTML = html;
+
+    document.querySelector('#speak-button').addEventListener('click', () => {
+        const text = document.querySelector('#speak-text').value;
+        if(!text) { return; } // テキストが空        
+        // 発言を作成
+        const uttr = new SpeechSynthesisUtterance();
+        uttr.text = text;   // 指定されたテキストを指定
+        const selectedVoiceName = document.querySelector('#voice-select').value;
+        const selectedVoice = voices.find(voice => voice.name === selectedVoiceName);
+        uttr.voice = selectedVoice; // 選択された声を指定
+        uttr.addEventListener('end', event => {
+            console.log(`Utterance has finished being spoken after ${event.elapsedTime} seconds.`);
+        });
+        // 発言を再生 (発言キューに発言を追加)
+        speechSynthesis.speak(uttr);
+    });
+    
     const canvas = document.querySelector('#my-canvas');
     const ctx = canvas.getContext('2d');
     ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
@@ -29,6 +49,8 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 </head>
 <body>
-    <canvas id="my-canvas" width="800" height = "600"></canvas>
+    <canvas id="my-canvas" width="800" height = "600"></canvas><br><br>
+    <select id="voice-select"></select>
+    <input id="speak-text" type="text" value="こんにちは">&nbsp;<button id="speak-button">speak</button>
 </body>
 </html>

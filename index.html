@@ -64,8 +64,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     blackBoardImg = await Utility.loadImage(BLACK_BOARD_IMAGE_PATH);
     chalkImg = await Utility.loadImage(CHALK_IMAGE_PATH);
 
-    //Settings.onChange();
-
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
     ctx.reset();
@@ -73,10 +71,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 async function load() {
     datas = await loadDatas(); 
+    if(datas.length === 0) { return; }
     //drawDatas(datas); 
     animDatas = getAnimDatas(datas);
+}
+function play() {
+    if(animDatas.length === 0) { return; }
     if(animIntervalId !== -1) {
         clearInterval(animIntervalId);
+        animIntervalId = -1;
     }
     // 初期化
     let animCount = 0;
@@ -298,12 +301,15 @@ async function loadDatas() {
     const ctx = canvas.getContext('2d');
     // 設定内容の保存
     Settings.save('tex2canvas-settings');
+    // AppSvgの保存
+    AppSvg.save('tex2canvas', avgData);
     // 数式(MathJax用)
     const equation = document.querySelector('#textarea').value;
     localStorage.setItem('tex2canvas-equation', equation);
     const display = document.querySelector('#display-checkbox').checked;
     // svgに変換
     const svgText = SvgParser.getMathJaxSvgText(equation, display);
+    console.log(svgText);
     // パースする
     svgData = SvgParser.parseMathJaxSvg(svgText);
 
@@ -427,9 +433,14 @@ function getDatas(svgData, kvgData) {
     return ret;
 }
 function attachEvents() {
-    // text2svg ボタン押下時の処理
+    // tex2svg ボタン押下時の処理
     document.querySelector('#tex2svg-button').addEventListener('click', async () => {
         Settings.onChange();
+    });
+
+    // play ボタン押下時の処理
+    document.querySelector('#play-button').addEventListener('click', async () => {
+        play();
     });
 
     // save app svg ボタン押下時の処理
@@ -442,6 +453,7 @@ function attachEvents() {
         const tmpAvgData = await Utility.loadJsonFile();
         if(tmpAvgData) {
             avgData = tmpAvgData;
+            AppSvg.save('tex2canvas', avgData);
         } else {
             console.log('cancelされた');
         }
@@ -500,6 +512,16 @@ function getNewMatrix(screenRect, rect) {
 .mb-8 {
     margin-bottom: 8px;
 }
+label {
+    -webkit-user-select: none; /* Safari */
+    -ms-user-select: none; /* IE 10 and IE 11 */
+    user-select: none; /* Standard syntax */
+}
+.draw-canvas {
+    position: absolute;
+    left: 8px;
+    top: 360px;
+}
 </style>
 </head>
 <body>
@@ -509,6 +531,8 @@ function getNewMatrix(screenRect, rect) {
     <div class="mb-8">
 	    <input id="display-checkbox" type="checkbox" checked="true"/><label for="display-checkbox">display</label>    
         <button id="tex2svg-button">tex2svg</button>
+        &nbsp;&nbsp;
+        <button id="play-button">play</button>
         &nbsp;&nbsp;
         <button id="save-app-svg-button">save app svg</button>
         &nbsp;&nbsp;
@@ -520,6 +544,29 @@ function getNewMatrix(screenRect, rect) {
     </div>
     <div id="settings-wrapper" class="mb-8">
     </div>
-	<canvas id="canvas" width="1024" height="576"></canvas>
+    <div id="show-wrapper" class="mb-8">
+        <label for="mvg-check">
+            <input type="checkbox" id="mvg-check" />MVG
+        </label>
+        <label for="mvg-rect-check">
+            <input type="checkbox" id="mvg-rect-check" />MVG-Rect
+        </label>
+        <label for="kvg-check">
+            <input type="checkbox" id="kvg-check" />KVG
+        </label>
+        <label for="kvg-rect-check">
+            <input type="checkbox" id="kvg-rect-check" />KVG-Rect
+        </label>
+        <label for="avg-check">
+            <input type="checkbox" id="avg-check" />AVG
+        </label>
+        <label for="avg-rect-check">
+            <input type="checkbox" id="avg-rect-check" />AVG-Rect
+        </label>
+    </div>
+    <div id="canvas-area">
+        <canvas id="back-canvas" class="draw-canvas" width="1024" height="576"></canvas>
+        <canvas id="canvas" class="draw-canvas" width="1024" height="576"></canvas>
+    </div>	
 </body>
 </html>

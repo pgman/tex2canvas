@@ -3,23 +3,26 @@ class MinMax {
     static minY = Number.MAX_VALUE;
     static maxX = -Number.MAX_VALUE;
     static maxY = -Number.MAX_VALUE;
-    static savedMinX = Number.MAX_VALUE;
-    static savedMinY = Number.MAX_VALUE;
-    static savedMaxX = -Number.MAX_VALUE;
-    static savedMaxY = -Number.MAX_VALUE;
+    static stack = []; // for save / restore
 
     static save() {
-        MinMax.savedMinX = MinMax.minX;
-        MinMax.savedMinY = MinMax.minY;
-        MinMax.savedMaxX = MinMax.maxX;
-        MinMax.savedMaxY = MinMax.maxY;
+        this.stack.push({
+            minX: MinMax.minX,
+            minY: MinMax.minY,
+            maxX: MinMax.maxX,
+            maxY: MinMax.maxY,            
+        });
     }
 
     static restore() {
-        MinMax.minX = MinMax.savedMinX;
-        MinMax.minY = MinMax.savedMinY;
-        MinMax.maxX = MinMax.savedMaxX;
-        MinMax.maxY = MinMax.savedMaxY;
+        if(this.stack.length <= 0) {
+            throw 'stack is empty.';
+        }
+        const popped = this.stack.pop();
+        MinMax.minX = popped.minX;
+        MinMax.minY = popped.minY;
+        MinMax.maxX = popped.maxX;
+        MinMax.maxY = popped.maxY;
     }
 
     static init() {

@@ -207,6 +207,9 @@ class SvgParser {
         }
         // ビューボリューム
         const vv = parsedSvg.viewBox.baseVal;
+        if(vv.x === 0 && vv.y === 0 && vv.width === 0 && vv.height === 0) {
+            throw 'viewBox is not defined.'
+        }
         // SVGの高さ (単位はex?)
         const svgWidth = parsedSvg.width.baseVal.valueAsString;
         const svgHeight = parsedSvg.height.baseVal.valueAsString;
@@ -247,9 +250,11 @@ class SvgParser {
                 // そうしないと MJX-2-TEX-LO-222B のように MJX-の直後の数字がインクリメントする
                 const c = splits[4];
                 const d = child.getAttribute('d');
-                const curvesArray = SvgParser.parsePathD(d);
-                const rect = SvgParser.getCurvesArrayRect(curvesArray);
-                paths.push({ id, c, d, curvesArray, rect, });
+                if(d) {// dが未定義の場合がある(\ (半角スペース)など)
+                    const curvesArray = SvgParser.parsePathD(d);
+                    const rect = SvgParser.getCurvesArrayRect(curvesArray);
+                    paths.push({ id, c, d, curvesArray, rect, });
+                }                
             }
         }
 
@@ -295,7 +300,9 @@ class SvgParser {
             if(end < 0) { return []; }
 
             // 数値の文字列
-            const sliced = str.slice(index + start + 1, index + end);
+            let sliced = str.slice(index + start + 1, index + end);
+            // カンマスペース' ,'はカンマに置換する
+            sliced = sliced.replaceAll(', ', ',');
 
             // 1つの数値または2の数値がスペースまたはカンマで区切られている可能性がある
             const splitsBySpace = sliced.split(' ');
@@ -310,8 +317,22 @@ class SvgParser {
         }
 
         function getTransformValues(str) {
+            const indexes = [ 'translate', 'scale', 'matrix' ].map(type => {
+                return { 
+                    type,
+                    index: str.indexOf(type),
+                    values: getTransformOneValues(str, type),
+                };
+            }).filter(elm => elm.index >= 0);
+            indexes.sort((a, b) => a.index - b.index);
+            return indexes;
+
             const translateIndex = str.indexOf('translate');
             const translateValues = getTransformOneValues(str, 'translate');
+            indexes.push({ 
+                type: 'translate',
+                index: translateIndex,
+            });
             const scaleIndex = str.indexOf('scale');
             const scaleValues = getTransformOneValues(str, 'scale');
             if(translateIndex < 0 && scaleIndex < 0) {// no
