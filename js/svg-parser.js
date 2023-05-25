@@ -317,15 +317,39 @@ class SvgParser {
         }
 
         function getTransformValues(str) {
-            const indexes = [ 'translate', 'scale', 'matrix' ].map(type => {
-                return { 
-                    type,
-                    index: str.indexOf(type),
-                    values: getTransformOneValues(str, type),
-                };
-            }).filter(elm => elm.index >= 0);
-            indexes.sort((a, b) => a.index - b.index);
+            let tmpStr = str;
+            const indexes = [];
+            let dbgcnt = 0;
+            while(true) {
+                if(dbgcnt++ > 1000) {
+                    throw 'inifinity loop.';
+                }
+                const tmpIndexes = [ 'translate', 'scale', 'matrix' ].map(type => {
+                    return { 
+                        type,
+                        index: tmpStr.indexOf(type),
+                        values: getTransformOneValues(tmpStr, type),
+                    };
+                }).filter(elm => elm.index >= 0);
+                tmpIndexes.sort((a, b) => a.index - b.index);
+                if(tmpIndexes.length === 0) {
+                    break;
+                } else {
+                    const first = tmpIndexes[0];
+                    indexes.push(tmpIndexes[0]);
+                    tmpStr = tmpStr.substring(first.index + first.type.length);
+                }
+            };
             return indexes;
+            // const indexes = [ 'translate', 'scale', 'matrix' ].map(type => {
+            //     return { 
+            //         type,
+            //         index: str.indexOf(type),
+            //         values: getTransformOneValues(str, type),
+            //     };
+            // }).filter(elm => elm.index >= 0);
+            // indexes.sort((a, b) => a.index - b.index);
+            // return indexes;
 
             const translateIndex = str.indexOf('translate');
             const translateValues = getTransformOneValues(str, 'translate');
