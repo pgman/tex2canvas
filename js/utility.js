@@ -263,14 +263,19 @@ class Utility {
     }
 
     static async saveBlob(blob, fileName) {
-         // ファイル保存ダイアログを表示して FileSystemFileHandle オブジェクトを取得
-        const fh = await window.showSaveFilePicker({ suggestedName: fileName });        
-        // FileSystemWritableFileStream オブジェクトを取得
-        const stream = await fh.createWritable();        
-        // テキストデータをファイルに書き込む
-        await stream.write(blob);        
-        // ファイルを閉じる
-        await stream.close();
+        try {
+            // ファイル保存ダイアログを表示して FileSystemFileHandle オブジェクトを取得
+            const fh = await window.showSaveFilePicker({ suggestedName: fileName });        
+            // FileSystemWritableFileStream オブジェクトを取得
+            const stream = await fh.createWritable();        
+            // テキストデータをファイルに書き込む
+            await stream.write(blob);        
+            // ファイルを閉じる
+            await stream.close();
+        } catch(e) {
+            // ファイル未選択
+            return;
+        }
     }
 
     static downloadBlob() {
@@ -306,7 +311,7 @@ class Utility {
                 }
             }, 100);
         });
-    }
+    }    
 }
 	
 

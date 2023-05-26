@@ -1,0 +1,91 @@
+body,input,textarea	{ font-family: Lato, Helvetica, sans-serif; font-size: 16px }
+body	{ margin: 0 0 }
+p,pre	{ margin: 8px 0 0 0; padding: 0 0 0 0 }
+h1	{ font-size: 45px; font-weight: 300; line-height: 50px; margin: 0 0 }
+h2	{ color: black; font-size: 28px; font-weight: 300; margin: 40px 0 15px 0 }
+h3	{ color: black; font-size: 16px; font-weight: 900; margin: 25px 0 8px 0 }
+
+a	{ color: #0066cc; text-decoration: none }
+a:hover		{ color: #003399 }
+
+th	{ text-align: left }
+tt	{ color: #666; font-size: 15px }
+tt.title	{ color: #000; font-size: 15px; font-weight: bold }
+pre	{ background-color: #eee; border-radius: 3px; color: #666; font-size: 15px; overflow: auto; padding: 10px 10px }
+
+ul	{ list-style: none; margin: 4px 0 0 0; padding: 0 0 0 0 }
+ul li	{ margin: 5px 0 0 15px }
+ul li:before	{ content: "â€“"; display: inline-block; margin-left: -15px; width: 15px }
+
+div.box	{  }
+div.box p	{ font-size: 14px; font-weight: 200; margin: 10px 0 0 0 }
+div.box p:first-child	{ margin: 0 0 }
+div.box h2	{ margin: 10px 0 0 0 }
+div.box h2:first-child	{ margin: 0 0 }
+div.box b	{ font-weight: bold }
+
+div.top	{ background-color: #444; padding: 7px 20px }
+div.top > div	{ color: white; font-size: 12px; margin: 0 auto; padding: 0 0; width: 900px }
+div.title	{ background-color: #eee; color: #444; margin: 0 0; padding: 0 20px }
+div.title > div	{ margin: 0 auto; padding: 35px 0 35px 0; width: 900px }
+div.content	{ padding: 35px 20px 150px 20px }
+div.content > div	{ margin: 0 auto; width: 900px }
+div.content > div > div	{ position: relative; width: 600px }
+div.bottom	{ padding: 0 20px }
+div.bottom > div	{ color: #999; font-size: 12px; margin: 0 auto; padding: 10px 0; width: 900px }
+
+div.menu a	{ color: #999999; font-size: 15px; font-weight: 800; margin-left: 20px; text-decoration: none }
+div.menu a:hover	{ color: #444 }
+
+div.textarea	{ background-color: #eee; border-radius: 3px; margin-top: 6px; padding: 2px }
+div.textarea > textarea	{ background: none; border: none; box-sizing: border-box; margin: 0; max-width: 100%; min-width: 100%; padding: 4px; width: 100% }
+
+table.textwidth	{ border-bottom: 1px solid black; border-collapse: collapse; border-spacing: 0; border-top: 1px solid black; margin-top: 10px; width: 100% }
+table.textwidth th	{ border-bottom: 1px solid black; font-weight: bold; padding: 2px 2px }
+table.textwidth td	{ padding: 2px 2px }
+
+/* Small screens */
+@media (max-width: 600px) {
+	div.top > div { margin: 0 0; width: 100% }
+	div.title > div	{ margin: 0 0; width: 100% }
+	div.content > div { margin: 0 0; width: 100% }
+	div.content > div > div { width: 100% }
+	div.bottom > div { margin: 0 0; width: 100% }
+	#largeScreen { display: none }
+	#smallScreen { display: block }
+}
+
+@font-face {
+	font-family: "Lato";
+	font-style: normal;
+	font-weight: 300;
+	src: url(../fonts/LatoLatin-Light.woff) format('woff'), url(../fonts/LatoLatin-Light.woff2) format('woff2')
+	}
+
+@font-face {
+	font-family: "Lato";
+	font-style: normal;
+	font-weight: normal;
+	src: url(../fonts/LatoLatin-Regular.woff) format('woff'), url(../fonts/LatoLatin-Regular.woff2) format('woff2')
+	}
+
+@font-face {
+	font-family: "Lato";
+	font-style: italic;
+	font-weight: normal;
+	src: url(../fonts/LatoLatin-Italic.woff) format('woff'), url(../fonts/LatoLatin-Italic.woff2) format('woff2')
+	}
+
+@font-face {
+	font-family: "Lato";
+	font-style: normal;
+	font-weight: bold;
+	src: url(../fonts/LatoLatin-Bold.woff) format('woff'), url(../fonts/LatoLatin-Bold.woff2) format('woff2')
+	}
+
+@font-face {
+	font-family: "Lato";
+	font-style: normal;
+	font-weight: 900;
+	src: url(../fonts/LatoLatin-Black.woff) format('woff'), url(../fonts/LatoLatin-Black.woff2) format('woff2')
+	}

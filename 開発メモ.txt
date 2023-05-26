@@ -29,7 +29,7 @@ H-042: getAnimationPixelDataでチョークの位置を返すようにする
 H-033: アニメーションに手を付ける
 H-043: 画の間、文字の間は手のみを動かす
 
-2023/05/25
+2023/05/25:
 H-014-1: 台形描画関数を作成する
 H-XXX: チョークの色のα値を190にした
 H-045: アニメーション完了フラグを作成する
@@ -48,19 +48,34 @@ H-056: playボタンを２回押すとアニメーションがとびとびにな
 H-040: my-chalk.htmlのupdateではアニメーションが発生しないようにする
 H-010: \bar{x} によるバーとのずれ <- ok でも\huge{\bar{x}}がおかしい。でもmathjaxのバグぽいので終了とする
 
+2023/05/26:
+H-061: https://viereck.ch/latex-to-svg/をローカルで動かす -> スタイルがやや崩れたが動く -> tex2svg/index.html
+H-059: 測定時間を全体のものにする
+H-068: エラーを検知する
+
 [動画作成調査]
 ・ffmpeg.wasmがよいらしい
-・最悪デスクトップアプリケーションに録画させる
+・最悪デスクトップアプリケーションに録画させる(mediaRecorder?)
 
 [アイデア]
 curves を stroke として定義したい
 curvesArray を strokeArray として定義したい
 
 [作業中]
-H-010: \bar{x} によるバーとのずれ
-->  translate(313.8,475.9) translate(-250 0) とtranslateが2つあった
 
 [優先度高め H-XXX]
+H-066: Settingsを削除したい
+H-068: my-chalk.html を index.html のダイアログとして組み込みたい
+H-067: 大きい括弧調査 -> 大きい左括弧 MJX-3-TEX-S3-28, 小さい左括弧 
+H-060: mvc組み込み
+H-063: \huge{\bar x}でも https://viereck.ch/latex-to-svg/ ならうまく動く -> 最新版だとバグがある？ -> 3.0.0がよい？
+H-064: eqnarrayとか文字列をくくることができる https://viereck.ch/latex-to-svg/
+H-065: exTopxメソッドを作りたい https://viereck.ch/latex-to-svg/
+H-062: vkbeautify.jsを組み込む
+H-058: 録画のテスト
+H-057: skewのテスト
+H-014: 線の太さを変えるロジックを入れても面白いかもしれない
+H-053: 文字にランダムにアフィン変換をかます
 H-005: 線の太さを考慮した矩形計算
 H-006: index.html に元の mathjax が返した svg を表示するようなデバッグ機能が欲しい
   それと併せて svg ファイルの中身も見れるようにしたいところ
@@ -82,12 +97,9 @@ H-048: チョークを持った手の画像のチョークの色をそもそも�
 -> 色の変更箇所を定義させる ←これで本当に行ける？色を変えたやつを用意した方がよいんじゃ？
 H-034: ラーフルで消す(時間がかかるだけ)
 H-041: 大きめのルートと小さめのルートがある気がする
-H-014: 線の太さを変えるロジックを入れても面白いかもしれない
-H-053: 文字にランダムにアフィン変換をかます
 H-029: ReferenceError: MathJax is not definedに対応したい
 H-003: Pixel.getAnimationPixelData で曲線(正確には曲線群)の曲率によってスピードを変えたい
 H-008: 大きな括弧(大きめの行列や大括弧)に対応しないといけない
-
 H-012:日本語のMVG読み込み対応
   日本語入力したときはpathが取れない？
 H-013: アニメーション作成処理はマルチスレッドで行う
@@ -121,6 +133,9 @@ L-001
 [memo]
 MathJax v3: TeX to SVG 正規のサンプルコード
 https://mathjax.github.io/MathJax-demos-web/input-tex2svg.html
+
+MathJaxのよいサンプル見つけた
+https://viereck.ch/latex-to-svg/
 
 mathjaxのsvg読み込みのサンプル
 https://stackoverflow.com/questions/71031646/write-svg-latex-into-a-canvas-html

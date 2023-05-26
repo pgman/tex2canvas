@@ -12,8 +12,6 @@ class Pixel {
      * @returns {Object} アニメーション用のピクセルデータのオブジェクト
      */
     static getAnimationPixelData(argOption) {
-        console.time('getAnimationPixelData');
-
         const option = argOption;
         // posArrayの min/max を取得する
         option.padding = 4;
@@ -37,8 +35,6 @@ class Pixel {
 
         // アニメーション用のindexの配列を作成する
         const animArray = Pixel.getAnimArray(option);
-        
-        console.timeEnd('getAnimationPixelData');
 
         return {
             rect: {            

@@ -15,26 +15,15 @@
 <script src="js/seedrandom.min.js"></script>
 <script src="js/app-svg.js"></script>
 <script src="js/settings.js"></script>
+<script src="js/controller.js"></script>
+<script src="js/model.js"></script>
+<script src="js/view.js"></script>
+<script src="js/mathjax-svg.js"></script>
 <script>
-const BLACK_BOARD_IMAGE_PATH = 'images/black_board.jpg';
-const CHALK_IMAGE_PATH = 'images/hand3.png';
-
-// Mathjaxの返すSVG => MVG
-// KanjiVGのデータ => KVG
-// アプリで定義されたSVG => AVG
-
-let blackBoardImg = null;
-let chalkImg = null;
 let datas = [];
 let animDatas = [];
 
-// KanjiVGのファイル名から.svgを除いたコードの配列
-let kvgCodes = null;
-
-// アプリで定義した曲線群
-let avgData = {};
 let svgData = null;
-
 let animIntervalId = -1;
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -43,37 +32,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     Settings.load('tex2canvas-settings');
     Settings.createHtml('#settings-wrapper');
-    Settings.attachEvents(load);
+    Settings.attachEvents();    
 
-    // text
-    const equation = localStorage.getItem('tex2canvas-equation');
-    if(equation) {
-        document.querySelector('#textarea').value = equation;
-    }    
-
-    try {
-        const res = await fetch(Define.KVG_FILE);
-        const data = await res.text();
-        kvgCodes = data.split('\r\n').filter(d => d).map(d => d.replaceAll('.svg', ''));
-    } catch(e) {
-
-    }    
-
-    avgData = AppSvg.load('tex2canvas');
-
-    blackBoardImg = await Utility.loadImage(BLACK_BOARD_IMAGE_PATH);
-    chalkImg = await Utility.loadImage(CHALK_IMAGE_PATH);
-
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
-    ctx.reset();
-    ctx.drawImage(blackBoardImg, 0, 0);
+    Controller.init();
+    await Model.init();
+    View.init();    
 });
 async function load() {
     datas = await loadDatas(); 
     if(datas.length === 0) { return; }
     //drawDatas(datas); 
+    console.time('getAnimDatas');
     animDatas = getAnimDatas(datas);
+    console.timeEnd('getAnimDatas');
 }
 function play() {
     if(animDatas.length === 0) { return; }
@@ -114,7 +85,7 @@ function play() {
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
         ctx.reset();
-        ctx.drawImage(blackBoardImg, 0, 0);
+        ctx.drawImage(Model.blackBoardImg, 0, 0);
         if(moveCount > 0) {
             const moveVec = Vector.subtract(moveEndPos, moveStartPos);
             const rate = (moveMaxCount - moveCount) / moveMaxCount;
@@ -128,7 +99,7 @@ function play() {
                 ctx.drawImage(animCanvas, 0, 0);
                 ctx.restore();
             }
-            ctx.drawImage(chalkImg, chalkPos.x - chalkAnchorPos.x, chalkPos.y - chalkAnchorPos.y);
+            ctx.drawImage(Model.chalkImg, chalkPos.x - chalkAnchorPos.x, chalkPos.y - chalkAnchorPos.y);
             moveCount -= 1;
             if(moveCount <= 0 && moveLastFlag) {
                 clearInterval(animIntervalId);
@@ -179,7 +150,6 @@ function play() {
                                 moveMaxCount = count;
                                 moveCount = count;
                             } else {
-                                console.log(moveStartPos, k);
                                 moveEndPos = { x: 1000, y: moveStartPos.y, };
                                 moveMaxCount = 30;
                                 moveCount = 30;
@@ -207,7 +177,7 @@ function play() {
             ctx.restore();
         }
         // chalk        
-        ctx.drawImage(chalkImg, chalkPos.x - chalkAnchorPos.x, chalkPos.y - chalkAnchorPos.y); // 101, 26
+        ctx.drawImage(Model.chalkImg, chalkPos.x - chalkAnchorPos.x, chalkPos.y - chalkAnchorPos.y); // 101, 26
     }, 1000 / Settings.fps);
 }
 function getAnimDatas(datas) {
@@ -258,7 +228,7 @@ function drawDatas(datas) {
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
     //ctx.reset();
-    //ctx.drawImage(blackBoardImg, 0, 0);
+    //ctx.drawImage(Model.blackBoardImg, 0, 0);
     
     //datas.forEach(data => { drawData(ctx, data); });
 }
@@ -299,21 +269,24 @@ function drawData(ctx, data) {
     ctx.restore();
 }
 async function loadDatas() {
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
     // 設定内容の保存
     Settings.save('tex2canvas-settings');
     // AppSvgの保存
-    AppSvg.save('tex2canvas', avgData);
-    // 数式(MathJax用)
-    const equation = document.querySelector('#textarea').value;
-    localStorage.setItem('tex2canvas-equation', equation);
-    const display = document.querySelector('#display-checkbox').checked;
-    // svgに変換
-    const svgText = SvgParser.getMathJaxSvgText(equation, display);
-    console.log(svgText);
+    AppSvg.save('tex2canvas', Model.avgData);
+    // 数式(MathJax用)を保存
+    localStorage.setItem('tex2canvas-equation', Model.equation);
+    
+    // svg に変換(MathJax.tex2svg を呼ぶだけ)
+    Model.svgText = MathJaxSvg.getMathJaxSvgText(Model.equation, Model.display);    
+    console.log(Model.svgText);
+    // エラーがないか調べる
+    const error = MathJaxSvg.getError(Model.svgText);
+    if(error) {
+        alert(error);
+        return;
+    }
     // パースする
-    svgData = SvgParser.parseMathJaxSvg(svgText);
+    svgData = MathJaxSvg.parseMathJaxSvg(Model.svgText);
 
     const kvgData = [];
     for(let i = 0; i < svgData.paths.length; i += 1) {
@@ -321,7 +294,7 @@ async function loadDatas() {
         let code = SvgParser.toKanjiVGCodeById(path.id);
         code = Utility.zeroPadding(code, 5);
         try {
-            if(kvgCodes.indexOf(code) >= 0) {
+            if(Model.kvgCodes.indexOf(code) >= 0) {
                 const ret = await SvgParser.loadSvg(code);
                 kvgData.push(ret);
             } else {
@@ -401,9 +374,9 @@ function getDatas(svgData, kvgData) {
             let splits = id.split('-');
             const avgCode = splits[4]; 
 
-            if(avgData[avgCode]) {
+            if(Model.avgData[avgCode]) {
                 // calc rect
-                const curvesArray = avgData[avgCode].map(curves => {
+                const curvesArray = Model.avgData[avgCode].map(curves => {
                     return curves.map(elm => new Curve(elm.points));
                 });
                 const rect = getCurvesArrayRect(curvesArray);
@@ -438,28 +411,13 @@ function attachEvents() {
     // tex2svg ボタン押下時の処理
     document.querySelector('#tex2svg-button').addEventListener('click', async () => {
         Settings.onChange();
+        load();
     });
 
     // play ボタン押下時の処理
     document.querySelector('#play-button').addEventListener('click', async () => {
         play();
-    });
-
-    // save app svg ボタン押下時の処理
-    document.querySelector('#save-app-svg-button').addEventListener('click', async () => {
-        Utility.saveJsonFile(avgData, 'avg.json');
-    });
-
-    // load app svg ボタン押下時の処理
-    document.querySelector('#load-app-svg-button').addEventListener('click', async () => {
-        const tmpAvgData = await Utility.loadJsonFile();
-        if(tmpAvgData) {
-            avgData = tmpAvgData;
-            AppSvg.save('tex2canvas', avgData);
-        } else {
-            console.log('cancelされた');
-        }
-    });
+    });    
 
     // テキストでCtrl + Sした時の処理
     document.querySelector('#textarea').addEventListener('keydown', async e => {

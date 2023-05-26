@@ -27,7 +27,7 @@ class Settings {
     static fps = 60;
     static color = Settings.COLOR_WHITE;
 
-    static afterFunc = null;
+    //static afterFunc = null;
 
     static load(key) {
         const json = localStorage.getItem(key);
@@ -127,7 +127,7 @@ class Settings {
     }
 
     static attachEvents(afterFunc) {
-        Settings.afterFunc = afterFunc;
+        //Settings.afterFunc = afterFunc;
         document.querySelector('#line-width-select').addEventListener('change', Settings.onChange);
         document.querySelector('#sigma-select').addEventListener('change', Settings.onChange);
         document.querySelector('#boundary-threshold-select').addEventListener('change', Settings.onChange);
@@ -151,7 +151,7 @@ class Settings {
         const colorName = document.querySelector('#color-select').value;
         const color = Settings.getColorByName(colorName);
         Settings.color = color.value;
-        if(Settings.afterFunc){ Settings.afterFunc(); }
+        //if(Settings.afterFunc){ Settings.afterFunc(); }
     }
 
     /**
