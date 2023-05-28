@@ -51,7 +51,7 @@ class Model {
     static async load() {
         Model.datas = await loadDatas(); 
         if(Model.datas.length === 0) { return; }
-        drawDatas(Model.datas); 
+        View.drawDatas(Model.datas); 
         Model.animDatas = Model.getAnimDatas(Model.datas);
     }
 
