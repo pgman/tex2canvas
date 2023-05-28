@@ -49,7 +49,7 @@ class Model {
     }
 
     static async load() {
-        Model.datas = await loadDatas(); 
+        Model.datas = await Model.loadDatas(); 
         if(Model.datas.length === 0) { return; }
         View.drawDatas(Model.datas); 
         Model.animDatas = Model.getAnimDatas(Model.datas);
@@ -97,6 +97,100 @@ class Model {
                 ret.push(strokeArray);
             }
         });
+        return ret;
+    }
+
+    static async loadDatas() {
+        // 設定内容の保存
+        Settings.save('tex2canvas-settings');
+        // AppSvgの保存
+        AppSvg.save('tex2canvas', Model.avgData);
+        // 数式(MathJax用)を保存
+        localStorage.setItem('tex2canvas-equation', Model.equation);
+        
+        // svg に変換(MathJax.tex2svg を呼ぶだけ)
+        Model.svgText = MathJaxSvg.getMathJaxSvgText(Model.equation, Model.display);
+        // エラーがないか調べる
+        const error = MathJaxSvg.getError(Model.svgText);
+        if(error) {
+            alert(error);
+            return;
+        }
+        // パースする
+        Model.mvgData = MathJaxSvg.parseMathJaxSvg(Model.svgText);
+    
+        const kvgData = [];
+        for(let i = 0; i < Model.mvgData.paths.length; i += 1) {
+            const path = Model.mvgData.paths[i];
+            let code = SvgParser.toKanjiVGCodeById(path.id);
+            code = Utility.zeroPadding(code, 5);
+            try {
+                if(Model.kvgCodes.indexOf(code) >= 0) {
+                    const ret = await SvgParser.loadSvg(code);
+                    kvgData.push(ret);
+                } else {
+                    console.log(`${code} is not defined.`);
+                }                
+            } catch(e) {
+                console.log(`${code} is error.`);
+                throw 'error';
+            }          
+        }
+    
+        return Model.getDatas(Model.mvgData, kvgData);
+    }
+
+    static getDatas(mvgData, kvgData) {
+        const ret = [];
+    
+        // ret に kvgDataのインデックスと変換行列を格納していく
+        mvgData.shapes.forEach(shape => {
+            if(shape.tagName === 'use') {// <use>
+                // 描画するpathを取得する
+                const path = mvgData.paths.find(p => p.c === shape.c);
+                if(!path) { return; } // continue;       
+    
+                // MathJax のshape.rectをスクリーン座標系へ変換する
+                const mat = Matrix.multiply(mvgData.vpMat, shape.mat);                
+                const screenRect = Matrix.multiplyRect(mat, path.rect); // スクリーン座標系の矩形
+    
+                const id = shape.xlinkHref.substring(1);
+                let kvgCode = SvgParser.toKanjiVGCodeById(id);
+                kvgCode = Utility.zeroPadding(kvgCode, Define.SVG_FILE_NAME_LENGTH);
+                let splits = id.split('-');
+                const avgCode = splits[4]; 
+    
+                if(Model.avgData[avgCode]) {
+                    // calc rect
+                    const curvesArray = Model.avgData[avgCode].map(curves => {
+                        return curves.map(elm => new Curve(elm.points));
+                    });
+                    const rect = getCurvesArrayRect(curvesArray);
+                    // push data
+                    ret.push({ type: 'app', curvesArray, mat: getNewMatrix(screenRect, rect), });
+                } else {
+                    // get kvg paths
+                    const data = kvgData.find(data => data.c === kvgCode); 
+                    if(!data) { 
+                        console.log('kvg paths are not found.');
+                        return;
+                    }
+                    // push data
+                    ret.push({ type: 'kvg', kvg: data, mat: getNewMatrix(screenRect, data.rect), });
+                }
+            } else if(shape.tagName === 'rect') {
+                // MathJax のshape.rectをスクリーン座標系へ変換する
+                const mat = Matrix.multiply(mvgData.vpMat, shape.mat);                
+                const screenRect = Matrix.multiplyRect(mat, shape.rect); // スクリーン座標系の矩形
+                const curvesArray = [
+                    [new Curve([{ x: 0, y: 0 }, { x: 30, y: 0 }, { x: 60, y: 0 }, { x: 90, y: 0 }]) ]
+                ];
+                const rect = getCurvesArrayRect(curvesArray);
+                    
+                ret.push({ type: 'app', curvesArray, mat: getNewMatrix(screenRect, rect), });
+            }                
+        });
+    
         return ret;
     }
 }

@@ -53,4 +53,51 @@ class View {
     
         ctx.restore();
     }
+
+    static drawSvg(ctx, mvgData, options) {
+        ctx.save();
+    
+        const transMat = Matrix.translate(Settings.padding, Settings.padding);
+        const scaleMat = Matrix.scale(Settings.scale, Settings.scale);
+    
+        // ビューポート変換行列
+        Matrix.setTransform(ctx, transMat);
+    
+        Matrix.transform(ctx, scaleMat);
+    
+        Matrix.transform(ctx, mvgData.vpMat);
+    
+        mvgData.shapes.forEach(shape => {
+            ctx.save();
+            // オブジェクト変換行列をかける
+            Matrix.transform(ctx, shape.mat);
+    
+            // 描画するpathを取得する
+            const path = mvgData.paths.find(p => p.c === shape.c);
+            if(!path) { return; } // continue;
+            
+            if(options.fillChar) {// 文字を塗る
+                ctx.fillStyle = options.fillStyle ? options.fillStyle : 'green';
+                ctx.lineWidth = 10;
+                ctx.beginPath();
+                path.curvesArray.forEach(curves => {
+                    curves.forEach((curve, i) => { 
+                        curve.path(ctx, i === 0); 
+                    });
+                });
+                ctx.closePath();
+                ctx.fill();
+            }       
+            
+            if(options.strokeRect) {
+                const rect = path.rect;
+                ctx.strokeStyle = 'red';
+                ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
+            }               
+    
+            ctx.restore();                 
+        });
+    
+        ctx.restore();
+    }
 }
