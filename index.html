@@ -20,10 +20,7 @@
 <script src="js/view.js"></script>
 <script src="js/mathjax-svg.js"></script>
 <script>
-let datas = [];
 let animDatas = [];
-
-let svgData = null;
 let animIntervalId = -1;
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -39,11 +36,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     View.init();    
 });
 async function load() {
-    datas = await loadDatas(); 
-    if(datas.length === 0) { return; }
-    //drawDatas(datas); 
+    Model.datas = await loadDatas(); 
+    if(Model.datas.length === 0) { return; }
+    drawDatas(Model.datas); 
     console.time('getAnimDatas');
-    animDatas = getAnimDatas(datas);
+    animDatas = getAnimDatas(Model.datas);
     console.timeEnd('getAnimDatas');
 }
 function play() {
@@ -200,7 +197,7 @@ function getAnimDatas(datas) {
                         // 前の最後の線分の終点と、今回の最初の線分の始点が一致する可能性がある
                         const last = posArray[posArray.length - 1];
                         const start = points[0];
-                        const equal = Vector.equalsTo(last, start);
+                        const equal = Vector.equals(last, start);
                         if(equal) {
                             points.shift();
                         } 
@@ -227,10 +224,9 @@ function getAnimDatas(datas) {
 function drawDatas(datas) {
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
-    //ctx.reset();
-    //ctx.drawImage(Model.blackBoardImg, 0, 0);
-    
-    //datas.forEach(data => { drawData(ctx, data); });
+    ctx.reset();
+    ctx.drawImage(Model.blackBoardImg, 0, 0);    
+    datas.forEach(data => { drawData(ctx, data); });
 }
 function drawData(ctx, data) {
     const transMat = Matrix.translate(Settings.padding, Settings.padding);
@@ -286,11 +282,11 @@ async function loadDatas() {
         return;
     }
     // パースする
-    svgData = MathJaxSvg.parseMathJaxSvg(Model.svgText);
+    Model.mvgData = MathJaxSvg.parseMathJaxSvg(Model.svgText);
 
     const kvgData = [];
-    for(let i = 0; i < svgData.paths.length; i += 1) {
-        const path = svgData.paths[i];
+    for(let i = 0; i < Model.mvgData.paths.length; i += 1) {
+        const path = Model.mvgData.paths[i];
         let code = SvgParser.toKanjiVGCodeById(path.id);
         code = Utility.zeroPadding(code, 5);
         try {
@@ -306,9 +302,9 @@ async function loadDatas() {
         }          
     }
 
-    return getDatas(svgData, kvgData);
+    return getDatas(Model.mvgData, kvgData);
 }
-function drawSvg(ctx, svgData, options) {
+function drawSvg(ctx, mvgData, options) {
     ctx.save();
 
     const transMat = Matrix.translate(Settings.padding, Settings.padding);
@@ -319,15 +315,15 @@ function drawSvg(ctx, svgData, options) {
 
     Matrix.transform(ctx, scaleMat);
 
-    Matrix.transform(ctx, svgData.vpMat);
+    Matrix.transform(ctx, mvgData.vpMat);
 
-    svgData.shapes.forEach(shape => {
+    mvgData.shapes.forEach(shape => {
         ctx.save();
         // オブジェクト変換行列をかける
         Matrix.transform(ctx, shape.mat);
 
         // 描画するpathを取得する
-        const path = svgData.paths.find(p => p.c === shape.c);
+        const path = mvgData.paths.find(p => p.c === shape.c);
         if(!path) { return; } // continue;
         
         if(options.fillChar) {// 文字を塗る
@@ -354,18 +350,18 @@ function drawSvg(ctx, svgData, options) {
 
     ctx.restore();
 }
-function getDatas(svgData, kvgData) {
+function getDatas(mvgData, kvgData) {
     const ret = [];
 
     // ret に kvgDataのインデックスと変換行列を格納していく
-    svgData.shapes.forEach(shape => {
+    mvgData.shapes.forEach(shape => {
         if(shape.tagName === 'use') {// <use>
             // 描画するpathを取得する
-            const path = svgData.paths.find(p => p.c === shape.c);
+            const path = mvgData.paths.find(p => p.c === shape.c);
             if(!path) { return; } // continue;       
 
             // MathJax のshape.rectをスクリーン座標系へ変換する
-            const mat = Matrix.multiply(svgData.vpMat, shape.mat);                
+            const mat = Matrix.multiply(mvgData.vpMat, shape.mat);                
             const screenRect = Matrix.multiplyRect(mat, path.rect); // スクリーン座標系の矩形
 
             const id = shape.xlinkHref.substring(1);
@@ -394,7 +390,7 @@ function getDatas(svgData, kvgData) {
             }
         } else if(shape.tagName === 'rect') {
             // MathJax のshape.rectをスクリーン座標系へ変換する
-            const mat = Matrix.multiply(svgData.vpMat, shape.mat);                
+            const mat = Matrix.multiply(mvgData.vpMat, shape.mat);                
             const screenRect = Matrix.multiplyRect(mat, shape.rect); // スクリーン座標系の矩形
             const curvesArray = [
                 [new Curve([{ x: 0, y: 0 }, { x: 30, y: 0 }, { x: 60, y: 0 }, { x: 90, y: 0 }]) ]

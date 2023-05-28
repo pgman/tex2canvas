@@ -13,7 +13,8 @@ class Model {
     static svgText = '';    // 数式を MathJax で svg に変換した文字列
     static kvgCodes = [];   // KanjiVGのファイル名から.svgを除いたコードの配列
     static avgData = {};    // アプリで定義した曲線群
-    // 設定内容
+    static datas = [];
+    static mvgData = null;    // 設定内容
     static settings = {
 
     };
