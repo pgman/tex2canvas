@@ -20,9 +20,6 @@
 <script src="js/view.js"></script>
 <script src="js/mathjax-svg.js"></script>
 <script>
-let animDatas = [];
-let animIntervalId = -1;
-
 document.addEventListener('DOMContentLoaded', async () => {
 
     attachEvents();
@@ -40,18 +37,18 @@ async function load() {
     if(Model.datas.length === 0) { return; }
     drawDatas(Model.datas); 
     console.time('getAnimDatas');
-    animDatas = getAnimDatas(Model.datas);
+    Model.animDatas = getAnimDatas(Model.datas);
     console.timeEnd('getAnimDatas');
 }
 function play() {
-    if(animDatas.length === 0) { return; }
+    if(Model.animDatas.length === 0) { return; }
     // 初期化
     let animCount = 0;
     let animCanvasArray = [];
     let animCtxArray = [];
     let animImageDataArray = [];
     let rectArray = [];
-    animDatas.forEach(datas => {
+    Model.animDatas.forEach(datas => {
         datas.forEach(data => {
             const animCanvas = Utility.createCanvas(data.rect.width, data.rect.height);
             const animCtx = animCanvas.getContext('2d');
@@ -71,14 +68,14 @@ function play() {
     let moveMaxCount = 30;
     let moveCount = 30;
     let moveStartPos = { x: 300, y: 300, };
-    let moveEndPos = animDatas[0][0].animArray[0].pos; 
+    let moveEndPos = Model.animDatas[0][0].animArray[0].pos; 
     
-    if(animIntervalId !== -1) {
-        clearInterval(animIntervalId);
-        animIntervalId = -1;
+    if(Model.animIntervalId !== -1) {
+        clearInterval(Model.animIntervalId);
+        Model.animIntervalId = -1;
     }
     
-    animIntervalId = setInterval(() => {
+    Model.animIntervalId = setInterval(() => {
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
         ctx.reset();
@@ -99,8 +96,8 @@ function play() {
             ctx.drawImage(Model.chalkImg, chalkPos.x - chalkAnchorPos.x, chalkPos.y - chalkAnchorPos.y);
             moveCount -= 1;
             if(moveCount <= 0 && moveLastFlag) {
-                clearInterval(animIntervalId);
-                animIntervalId = -1;
+                clearInterval(Model.animIntervalId);
+                Model.animIntervalId = -1;
             }
             return;
         }
@@ -108,10 +105,10 @@ function play() {
         let elmCount = 0;
         let dataIndex = 0;
         let escapeFlag = false;
-        for(let i = 0; i < animDatas.length; i += 1) {
-            for(let j = 0; j < animDatas[i].length; j += 1) {
-                for(let k = 0; k < animDatas[i][j].animArray.length; k += 1) {
-                    const animData = animDatas[i][j];
+        for(let i = 0; i < Model.animDatas.length; i += 1) {
+            for(let j = 0; j < Model.animDatas[i].length; j += 1) {
+                for(let k = 0; k < Model.animDatas[i][j].animArray.length; k += 1) {
+                    const animData = Model.animDatas[i][j];
                     const indexes = animData.animArray[k].indexes;
                     const imageData = animData.imageData;
                     if(animCount <= elmCount) {
@@ -125,11 +122,11 @@ function play() {
                         });
                         animCtxArray[dataIndex].putImageData(animImageData, 0, 0);
                         chalkPos = JSON.parse(JSON.stringify(animData.animArray[k].pos));
-                        if(k === animDatas[i][j].animArray.length - 1) {
+                        if(k === Model.animDatas[i][j].animArray.length - 1) {
                             moveStartPos.x = chalkPos.x;
                             moveStartPos.y = chalkPos.y;
-                            if(j !== animDatas[i].length - 1) {
-                                moveEndPos = animDatas[i][j + 1].animArray[0].pos;
+                            if(j !== Model.animDatas[i].length - 1) {
+                                moveEndPos = Model.animDatas[i][j + 1].animArray[0].pos;
                                 const dist = Vector.dist(moveStartPos, moveEndPos);
                                 let count = Math.round(dist / Settings.pps);
                                 if(dist > 200) {
@@ -137,8 +134,8 @@ function play() {
                                 }
                                 moveMaxCount = count;
                                 moveCount = count;
-                            } else if(i !== animDatas.length - 1) {
-                                moveEndPos = animDatas[i + 1][0].animArray[0].pos;
+                            } else if(i !== Model.animDatas.length - 1) {
+                                moveEndPos = Model.animDatas[i + 1][0].animArray[0].pos;
                                 const dist = Vector.dist(moveStartPos, moveEndPos);
                                 let count = Math.round(dist / Settings.pps);
                                 if(dist > 200) {

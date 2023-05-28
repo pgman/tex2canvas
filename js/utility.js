@@ -209,7 +209,7 @@ class Utility {
     }
 
     /**
-     * load image
+     * 画像を読み込む
      * @param {string} dataUrl url
      * @returns {Promise<Image>} 画像
      */
@@ -221,10 +221,12 @@ class Utility {
 	    });
 	}
 
-    static equalTo(value, comp, epsilon = 1e-5) {
-        return Math.abs(value - comp) < epsilon;
-    }
-
+    /**
+     * オブジェクトを.jsonとして、ユーザー指定の箇所へ保存
+     * @param {any} obj オブジェクト
+     * @param {string} fileName ファイル保存ダイアログに表示されるデフォルトのファイル名
+     * @returns {void} なし
+     */
     static saveJsonFile(obj, fileName) {
         // テキストデータの Blob オブジェクトを生成
         const blob = new Blob([JSON.stringify(obj)], { type: 'text/plain' });
@@ -233,9 +235,9 @@ class Utility {
 
     static async loadJsonFile() {
         const fileoptions = {
-            multiple : false, //複数のファイルを選択する場合
-            excludeAcceptAllOption : false,  //使い道が見いだせないのでとりあえず無視
-            types : [ //ファイルの種類のフィルター
+            multiple : false, // 複数のファイルを選択しない
+            excludeAcceptAllOption : false,  // 使い道が見いだせないのでとりあえず無視
+            types : [// ファイルの種類のフィルター
                 {
                     // ファイルの説明
                     description : 'Application config file',  
@@ -256,8 +258,7 @@ class Utility {
             } else {
                 return null;
             }
-        } catch(e) {
-            // ファイル未選択
+        } catch(e) {// ファイル未選択            
             return null;
         }
     }
@@ -284,8 +285,8 @@ class Utility {
 
     /**
      * イメージデータを作成する(canvasを経由して作成する)
-     * @param {number} width 
-     * @param {number} height 
+     * @param {number} width 幅
+     * @param {number} height 高さ
      * @returns {ImageData} イメージデータ 
      */
     static createImageData(width, height) {    

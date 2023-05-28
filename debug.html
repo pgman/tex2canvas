@@ -17,6 +17,11 @@
 <script src="js/settings.js"></script>
 <script src="js/paint.js"></script>
 <script>
+let intervalId = -1;
+let degree = 0.0;
+let degreeX = 0.0;
+let degreeY = 0.0;
+
 document.addEventListener('DOMContentLoaded', async () => {
     const voices = await Utility.getVoices();
     const html = voices.reduce((p, c) => `${p}<option value="${c.name}">${c.name}</option>`, '');
@@ -36,20 +41,109 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
         // 発言を再生 (発言キューに発言を追加)
         speechSynthesis.speak(uttr);
+    });    
+
+    document.querySelector('#rotate-button').addEventListener('click', async () => {
+        if(intervalId >= 0) {
+            clearInterval(intervalId);
+            degree = 0.0;
+        }
+        intervalId = setInterval(() => {
+            drawImage((ctx, img) => {
+                const halfWidth = img.width / 2;
+                const halfHeight = img.height / 2;
+                const trans = Matrix.translate(-halfWidth, -halfHeight);
+                const revTrans = Matrix.translate(halfWidth, halfHeight);
+                degree += 1;
+                if(degree > 360) { degree -= 360; }
+                document.querySelector('#degree-span').innerText = degree;
+                const radian = degree * Math.PI / 180;
+                const rotate = Matrix.rotate(radian);
+
+                const baseTrans = Matrix.translate(ctx.canvas.width / 2 - halfWidth, ctx.canvas.height / 2 - halfHeight);
+
+                let mat = Matrix.multiply(rotate, trans);
+                mat = Matrix.multiply(revTrans, mat);
+                mat = Matrix.multiply(baseTrans, mat);
+                Matrix.setTransform(ctx, mat);
+            });
+        }, 1000 / 60);
     });
-    
+
+    document.querySelector('#skew-x-button').addEventListener('click', async () => {
+        animSkew(1, 0);
+    });
+
+    document.querySelector('#skew-y-button').addEventListener('click', async () => {
+        animSkew(0, 1);
+    });
+
+    document.querySelector('#skew-xy-button').addEventListener('click', async () => {
+        animSkew(0.125, 0.125);
+    });
+
+    drawImage((ctx, img) => {
+        const halfWidth = img.width / 2;
+        const halfHeight = img.height / 2;
+        const baseTrans = Matrix.translate(ctx.canvas.width / 2 - halfWidth, ctx.canvas.height / 2 - halfHeight);
+        Matrix.setTransform(ctx, baseTrans);
+    });
+});
+
+function animSkew(deltaX, deltaY) {
+    if(intervalId >= 0) {
+        clearInterval(intervalId);
+        degreeX = 0.0;
+        degreeY = 0.0;
+    }
+    intervalId = setInterval(() => {
+        drawImage((ctx, img) => {
+            const halfWidth = img.width / 2;
+            const halfHeight = img.height / 2;
+            const trans = Matrix.translate(-halfWidth, -halfHeight);
+            const revTrans = Matrix.translate(halfWidth, halfHeight);
+            degreeX += deltaX;
+            if(degreeX > 45) { degreeX -= 45; }
+            document.querySelector('#skew-x-span').innerText = degreeX.toFixed(1);
+            const radianX = degreeX * Math.PI / 180;
+            degreeY += deltaY;
+            if(degreeY > 45) { degreeY -= 45; }
+            document.querySelector('#skew-y-span').innerText = degreeY.toFixed(1);
+            const radianY = degreeY * Math.PI / 180;
+
+            const skew = Matrix.skew(radianX, radianY);
+
+            const baseTrans = Matrix.translate(ctx.canvas.width / 2 - halfWidth, ctx.canvas.height / 2 - halfHeight);
+
+            let mat = Matrix.multiply(skew, trans);
+            mat = Matrix.multiply(revTrans, mat);
+            mat = Matrix.multiply(baseTrans, mat);
+            Matrix.setTransform(ctx, mat);
+        });
+    }, 1000 / 60);
+}
+
+async function drawImage(func) {
+    const img = await Utility.loadImage('images/Lenna.bmp');
     const canvas = document.querySelector('#my-canvas');
     const ctx = canvas.getContext('2d');
+    ctx.save();
     ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-    ctx.fillStyle = 'white';
-    Paint.fillTrapezoid(ctx, 
-        { pos: { x: 200, y: 200 }, width: 100, arc: true, },
-        { pos: { x: 400, y: 400 }, width: 50, arc: false, });
-});
+    if(func) {
+        func(ctx, img);
+    }
+    ctx.drawImage(img, 0, 0);
+    ctx.restore();
+}
 </script>
 </head>
 <body>
     <canvas id="my-canvas" width="800" height = "600"></canvas><br><br>
+    <button id="rotate-button">rotate</button>&nbsp;<span id="degree-span"></span>度<br>
+    <button id="skew-x-button">skew x</button>&nbsp;<span id="skew-x-span"></span>度<br>
+    <button id="skew-y-button">skew y</button>&nbsp;<span id="skew-y-span"></span>度<br>
+    <button id="skew-xy-button">skew xy</button>
+    <br><br>
     <select id="voice-select"></select>
     <input id="speak-text" type="text" value="こんにちは">&nbsp;<button id="speak-button">speak</button>
 </body>

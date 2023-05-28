@@ -15,6 +15,8 @@ class Model {
     static avgData = {};    // アプリで定義した曲線群
     static datas = [];
     static mvgData = null;    // 設定内容
+    static animDatas = [];
+    static animIntervalId = -1; // アニメーション用インターバルID
     static settings = {
 
     };

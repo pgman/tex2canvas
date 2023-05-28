@@ -89,6 +89,18 @@ class Matrix {
     }
 
     /**
+     * スキュー行列作成
+     * @param {number} thetaX 回転角度(ラジアン)
+     * @param {number} thetaY 回転角度(ラジアン)
+     * @returns {Array<number>} 行列
+     */
+    static skew(thetaX, thetaY) {
+        const tanX = Math.tan(thetaX), 
+            tanY = Math.tan(thetaY);
+        return [ 1, tanX, 0, tanY, 1, 0, 0, 0, 1 ];
+    }
+
+    /**
      * 逆行列作成
      * @param {Array<number>} m 行列
      * @returns {Array<number>} 逆行列

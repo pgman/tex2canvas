@@ -64,6 +64,8 @@ curvesArray を strokeArray として定義したい
 [作業中]
 
 [優先度高め H-XXX]
+H-069: ちなみにmathjaxが吐いたsvgの文字ごとの間隔寄せは非常に難しい。
+    latexにはその設定があるようなのでそれを使った方がいいんじゃないかな？
 H-066: Settingsを削除したい
 H-068: my-chalk.html を index.html のダイアログとして組み込みたい
 H-067: 大きい括弧調査 -> 大きい左括弧 MJX-3-TEX-S3-28, 小さい左括弧 
