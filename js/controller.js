@@ -1,9 +1,25 @@
 class Controller {
     static init() {
+        Settings.attachEvents();  
+
+        // テキストでCtrl + Sした時の処理
+        document.querySelector('#textarea').addEventListener('keydown', async e => {
+            if(e.ctrlKey && e.key === 's') {
+                e.preventDefault(); // Prevent the Save dialog to open
+                Settings.onChange();
+            }
+        });
+
         // tex2svg ボタン押下時の処理
         document.querySelector('#tex2svg-button').addEventListener('click', async () => {
-            //Settings.onChange();
+            Settings.onChange();
+            Model.load();
         });
+
+        // play ボタン押下時の処理
+        document.querySelector('#play-button').addEventListener('click', async () => {
+            play();
+        });   
     
         // save app svg ボタン押下時の処理
         document.querySelector('#save-app-svg-button').addEventListener('click', async () => {

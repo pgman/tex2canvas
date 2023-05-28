@@ -27,6 +27,8 @@ class Model {
 
         Model.avgData = AppSvg.load('tex2canvas');
 
+        Settings.load('tex2canvas-settings');   
+
         try {
             const res = await fetch(Model.KVG_FILE);
             const data = await res.text();
@@ -44,5 +46,57 @@ class Model {
         }
 
         Model.equation = localStorage.getItem('tex2canvas-equation');
+    }
+
+    static async load() {
+        Model.datas = await loadDatas(); 
+        if(Model.datas.length === 0) { return; }
+        drawDatas(Model.datas); 
+        Model.animDatas = Model.getAnimDatas(Model.datas);
+    }
+
+    static getAnimDatas(datas) {
+        const ret = [];
+        datas.forEach(data => {
+            if(data.type === 'app') {
+                const strokeArray = [];
+                data.curvesArray.forEach((curves, i) => {
+                    let posArray = [];
+                    curves.forEach((curve, j) => { 
+                        let points = curve.divide();
+                        const transMat = Matrix.translate(Settings.padding, Settings.padding);
+                        const scaleMat = Matrix.scale(Settings.scale, Settings.scale);
+                        let mat = Matrix.multiply(scaleMat, data.mat);
+                        mat = Matrix.multiply(transMat, mat);
+                        points = points.map(p => Matrix.multiplyVec(mat, p));
+                        if(posArray.length === 0) {
+                            posArray = posArray.concat(points);
+                        } else {// 既に登録されている場合
+                            // 前の最後の線分の終点と、今回の最初の線分の始点が一致する可能性がある
+                            const last = posArray[posArray.length - 1];
+                            const start = points[0];
+                            const equal = Vector.equals(last, start);
+                            if(equal) {
+                                points.shift();
+                            } 
+                            posArray = posArray.concat(points);
+                        }
+                    });
+                    const pixelData = Pixel.getAnimationPixelData({
+                        posArray: posArray, 
+                        lineWidth: Settings.lineWidth, 
+                        strokeStyle: { r: Settings.color.r, g: Settings.color.g, b: Settings.color.b, a: Settings.color.a, }, 
+                        boundaryThreshold: Settings.boundaryThreshold,   
+                        internalThreshold: Settings.internalThreshold,
+                        sigma: Settings.sigma, 
+                        pps: Settings.pps,  
+                        removeType: 'zero', // 'zero' or 'random'
+                    });
+                    strokeArray.push(pixelData);
+                });
+                ret.push(strokeArray);
+            }
+        });
+        return ret;
     }
 }

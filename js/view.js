@@ -1,5 +1,6 @@
 class View {
     static init() {
+        Settings.createHtml('#settings-wrapper');
         document.querySelector('#textarea').value = Model.equation;
 
         const canvas = document.getElementById('canvas');
