@@ -27,8 +27,6 @@ class Controller {
             document.querySelector('#erase-canvas').addEventListener('mousedown', mousedown);
             document.addEventListener('mousemove', mousemove);
             document.addEventListener('mouseup', mouseup);
-            const eraseCanvas = document.querySelector('#erase-canvas');
-            const eraseCtx = eraseCanvas.getContext('2d');
             function mousedown(e) {
                 if(moveFlag) { return; }
                 moveFlag = true;
@@ -47,6 +45,16 @@ class Controller {
                 document.removeEventListener('mouseup', mouseup);
                 localStorage.setItem('debug-erase', JSON.stringify(Model.posArray));
             }
+        });
+
+        // erase ボタン押下時の処理
+        document.querySelector('#erase-button').addEventListener('click', async () => {
+            const eraseCanvas = document.querySelector('#erase-canvas');
+            const indexes = Eraser.getFilledPixels(eraseCanvas);
+
+            // eraserの回転行列を決める
+            // アスペクト比で多少閾値を持たせて回転角度を決めればよい
+            console.log(indexes);
         });
     
         // save app svg ボタン押下時の処理
