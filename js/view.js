@@ -7,6 +7,26 @@ class View {
         const ctx = canvas.getContext('2d');
         ctx.reset();
         ctx.drawImage(Model.blackBoardImg, 0, 0);
+
+        View.drawPosArray(Model.posArray);
+    }
+    static drawPosArray(posArray) {
+        const eraseCanvas = document.querySelector('#erase-canvas');
+        const eraseCtx = eraseCanvas.getContext('2d');
+        eraseCtx.reset();
+
+        eraseCtx.save();
+        eraseCtx.strokeStyle = 'white';
+        eraseCtx.lineWidth = 6;
+        eraseCtx.lineCap = 'round';
+        eraseCtx.lineJoin = 'round';
+        eraseCtx.beginPath();
+        posArray.forEach((pos, i) => {
+            if(i === 0) { eraseCtx.moveTo(pos.x, pos.y); }
+            else { eraseCtx.lineTo(pos.x, pos.y); }
+        });        
+        eraseCtx.stroke();
+        eraseCtx.restore();
     }
 
     static drawDatas(datas) {

@@ -19,7 +19,35 @@ class Controller {
         // play ボタン押下時の処理
         document.querySelector('#play-button').addEventListener('click', async () => {
             play();
-        });   
+        });
+        
+        // mouse ボタン押下時の処理
+        document.querySelector('#mouse-button').addEventListener('click', async () => {
+            let moveFlag = false;
+            document.querySelector('#erase-canvas').addEventListener('mousedown', mousedown);
+            document.addEventListener('mousemove', mousemove);
+            document.addEventListener('mouseup', mouseup);
+            const eraseCanvas = document.querySelector('#erase-canvas');
+            const eraseCtx = eraseCanvas.getContext('2d');
+            function mousedown(e) {
+                if(moveFlag) { return; }
+                moveFlag = true;
+                Model.posArray = [];
+                Model.posArray.push({ x: e.offsetX, y: e.offsetY, });
+            }
+            function mousemove(e) {
+                if(!moveFlag) { return; }
+                Model.posArray.push({ x: e.offsetX, y: e.offsetY, });
+                View.drawPosArray(Model.posArray);
+            }
+            function mouseup(e) {
+                if(!moveFlag) { return; }
+                document.querySelector('#erase-canvas').removeEventListener('mousedown', mousedown);
+                document.removeEventListener('mousemove', mousemove);
+                document.removeEventListener('mouseup', mouseup);
+                localStorage.setItem('debug-erase', JSON.stringify(Model.posArray));
+            }
+        });
     
         // save app svg ボタン押下時の処理
         document.querySelector('#save-app-svg-button').addEventListener('click', async () => {

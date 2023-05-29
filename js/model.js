@@ -17,6 +17,7 @@ class Model {
     static mvgData = null;    // 設定内容
     static animDatas = [];
     static animIntervalId = -1; // アニメーション用インターバルID
+    static posArray = [];
     static settings = {
 
     };
@@ -26,6 +27,11 @@ class Model {
         Model.chalkImg = await Utility.loadImage(Model.CHALK_IMAGE_PATH);
 
         Model.avgData = AppSvg.load('tex2canvas');
+
+        const json = localStorage.getItem('debug-erase');
+        if(json) {
+            Model.posArray = JSON.parse(json);
+        }
 
         Settings.load('tex2canvas-settings');   
 
