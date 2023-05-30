@@ -313,6 +313,55 @@ class Utility {
             }, 100);
         });
     }    
+
+    /**
+     * ローカルストレージへ保存
+     * @param {string} key 
+     * @param {Object} data 
+     * @returns {void} なし
+     */
+    static saveToLocalStorage(key, data) {
+        localStorage.setItem(key, JSON.stringify(data));
+    }
+
+    /**
+     * ローカルストレージからロード
+     * @param {string} key 
+     * @returns {Object} データ
+     */
+    static loadFromLocalStorage(key) {
+        let ret = {};
+        const jsonStr = localStorage.getItem(key);
+        if(jsonStr) {
+            ret = JSON.parse(jsonStr);
+        }
+        return ret;
+    }
+
+    /**
+     * ラジアンを度に変換
+     * @param {number} rad ラジアン 
+     * @returns {number} 度
+     */
+    static rad2deg(rad) { return rad * 180 / Math.PI; }
+
+    /**
+     * 度をラジアンに変換
+     * @param {number} deg 度
+     * @returns {number} ラジアン
+     */
+    static deg2rad(deg) { return deg / 180 * Math.PI; }
+
+    /**
+     * 補間する
+     * @param {number} start 開始の値
+     * @param {number} end 終了の値 
+     * @param {number} rate 割合
+     * @returns {number} 補間された値 
+     */
+    static interpolation(start, end, rate) {
+        return (end - start) * rate + start;
+    }
 }
 	
 

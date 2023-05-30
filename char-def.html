@@ -31,7 +31,7 @@ let avgData = {};
 
 document.addEventListener('DOMContentLoaded', async () => {
 
-    avgData = AppSvg.load('tex2canvas');
+    avgData = Utility.loadFromLocalStorage('tex2canvas');
 
     const charCanvas = document.querySelector('#char-canvas');
     charCanvas.width = CANVAS_SIZE;
@@ -129,7 +129,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.querySelector('#save-button').addEventListener('click', e => {
         if(!currentCode) { return; }
         avgData[currentCode] = JSON.parse(JSON.stringify(curvesArray));
-        AppSvg.save('tex2canvas', avgData);
+        Utility.saveToLocalStorage('tex2canvas', avgData);
     });  
     
     document.querySelector('#clear-button').addEventListener('click', e => {

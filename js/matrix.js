@@ -7,6 +7,9 @@ class Matrix {
      * @returns {Array<number>} 行列
      */
     static multiply(m0, m1) {        
+        if(m0.length !== 9 || m1.length !== 9) {
+            throw 'the arguments are invalid.'
+        }
         return [
             m0[0] * m1[0] + m0[1] * m1[3] + m0[2] * m1[6],
             m0[0] * m1[1] + m0[1] * m1[4] + m0[2] * m1[7],

@@ -3,11 +3,13 @@ class Model {
     // 定数
     static BLACK_BOARD_IMAGE_PATH = 'images/black_board.jpg';
     static CHALK_IMAGE_PATH = 'images/hand3.png';
+    static ERASER_IMAGE_PATH = 'images/eraser.png';
     static KVG_FILE = 'kvg-file.txt';
     
     // 変数
     static blackBoardImg = null;
     static chalkImg = null;
+    static eraserImg = null;
     static equation = '';   // 式
     static display = true;
     static svgText = '';    // 数式を MathJax で svg に変換した文字列
@@ -26,7 +28,16 @@ class Model {
         Model.blackBoardImg = await Utility.loadImage(Model.BLACK_BOARD_IMAGE_PATH);
         Model.chalkImg = await Utility.loadImage(Model.CHALK_IMAGE_PATH);
 
-        Model.avgData = AppSvg.load('tex2canvas');
+        const angle = 61;
+        const radian = angle * Math.PI / 180;
+        const rotate = Matrix.rotate(radian);
+        const trans = Matrix.translate(168, 78);
+        const mat = Matrix.multiply(trans, rotate);
+        Eraser.init(mat, 200, 82, 4, Model.ERASER_IMAGE_PATH);
+
+        Model.eraserImg = await Utility.loadImage(Model.ERASER_IMAGE_PATH);
+
+        Model.avgData = Utility.loadFromLocalStorage('tex2canvas');
 
         const json = localStorage.getItem('debug-erase');
         if(json) {
@@ -110,7 +121,7 @@ class Model {
         // 設定内容の保存
         Settings.save('tex2canvas-settings');
         // AppSvgの保存
-        AppSvg.save('tex2canvas', Model.avgData);
+        Utility.saveToLocalStorage('tex2canvas', Model.avgData);
         // 数式(MathJax用)を保存
         localStorage.setItem('tex2canvas-equation', Model.equation);
         

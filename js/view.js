@@ -10,11 +10,13 @@ class View {
 
         View.drawPosArray(Model.posArray);
     }
-    static drawPosArray(posArray) {
+    static drawPosArray(posArray, drawEraser = false) {
+        
         const eraseCanvas = document.querySelector('#erase-canvas');
         const eraseCtx = eraseCanvas.getContext('2d');
         eraseCtx.reset();
-
+        if(drawEraser) { Eraser.draw(eraseCtx); }
+        
         eraseCtx.save();
         eraseCtx.strokeStyle = 'white';
         eraseCtx.lineWidth = 6;
@@ -24,7 +26,7 @@ class View {
         posArray.forEach((pos, i) => {
             if(i === 0) { eraseCtx.moveTo(pos.x, pos.y); }
             else { eraseCtx.lineTo(pos.x, pos.y); }
-        });        
+        });
         eraseCtx.stroke();
         eraseCtx.restore();
     }

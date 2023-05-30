@@ -47,14 +47,21 @@ class Controller {
             }
         });
 
+        // clear ボタン押下時の処理
+        document.querySelector('#clear-button').addEventListener('click', async () => {
+            Model.posArray = [];
+            View.drawPosArray(Model.posArray);
+            localStorage.setItem('debug-erase', JSON.stringify(Model.posArray));
+        });
+
         // erase ボタン押下時の処理
         document.querySelector('#erase-button').addEventListener('click', async () => {
             const eraseCanvas = document.querySelector('#erase-canvas');
             const indexes = Eraser.getFilledPixels(eraseCanvas);
+            Eraser.getAngle(indexes, eraseCanvas.width);
 
             // eraserの回転行列を決める
             // アスペクト比で多少閾値を持たせて回転角度を決めればよい
-            console.log(indexes);
         });
     
         // save app svg ボタン押下時の処理
@@ -77,7 +84,7 @@ class Controller {
             const tmpAvgData = await Utility.loadJsonFile();
             if(tmpAvgData) {
                 Model.avgData = tmpAvgData;
-                AppSvg.save('tex2canvas', Model.avgData);
+                Utility.saveToFromLocalStorage('tex2canvas', Model.avgData);
             } else {
                 console.log('cancelされた');
             }
