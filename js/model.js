@@ -28,12 +28,12 @@ class Model {
         Model.blackBoardImg = await Utility.loadImage(Model.BLACK_BOARD_IMAGE_PATH);
         Model.chalkImg = await Utility.loadImage(Model.CHALK_IMAGE_PATH);
 
-        const angle = 61;
+        const angle = 151;
         const radian = angle * Math.PI / 180;
         const rotate = Matrix.rotate(radian);
-        const trans = Matrix.translate(168, 78);
+        const trans = Matrix.translate(264, 252);
         const mat = Matrix.multiply(trans, rotate);
-        Eraser.init(mat, 200, 82, 4, Model.ERASER_IMAGE_PATH);
+        Eraser.init(mat, 82, 200, 4, Model.ERASER_IMAGE_PATH);
 
         Model.eraserImg = await Utility.loadImage(Model.ERASER_IMAGE_PATH);
 

@@ -56,9 +56,11 @@ class Controller {
 
         // erase ボタン押下時の処理
         document.querySelector('#erase-button').addEventListener('click', async () => {
-            const eraseCanvas = document.querySelector('#erase-canvas');
-            const indexes = Eraser.getFilledPixels(eraseCanvas);
-            Eraser.getAngle(indexes, eraseCanvas.width);
+            const eraserCanvas = document.querySelector('#erase-canvas');
+            const eraserCtx = eraserCanvas.getContext('2d');
+            const indexes = Eraser.getFilledPixels(eraserCanvas);
+            const mat = Eraser.getLeftMatrix(indexes, eraserCanvas.width);
+            Eraser.draw(eraserCtx, mat);
 
             // eraserの回転行列を決める
             // アスペクト比で多少閾値を持たせて回転角度を決めればよい

@@ -26,15 +26,28 @@ class Eraser {
         Eraser.img = await Utility.loadImage(filePath);
     }
 
-    static draw(ctx) {
+    static draw(ctx, mat) {
+        //ctx.reset();
+        ctx.save();
+        if(mat) {
+            Matrix.setTransform(ctx, mat);
+        }
         ctx.drawImage(Model.eraserImg, 0, 0);
         ctx.restore();
+
         ctx.save();
         ctx.strokeStyle = 'red';
         ctx.lineWidth = 4;
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
-        Matrix.setTransform(ctx, Eraser.mat);
+        if(mat) {
+            Matrix.setTransform(ctx, mat);
+            Matrix.transform(ctx, Eraser.mat);
+        } else {
+            Matrix.setTransform(ctx, Eraser.mat);
+        }
+        
+        
         ctx.beginPath();
         ctx.roundRect(0, 0, Eraser.width, Eraser.height, Eraser.radius);
         ctx.stroke();
@@ -67,7 +80,7 @@ class Eraser {
         return indexes;
     }
 
-    static getAngle(indexes, width) {
+    static getLeftMatrix(indexes, width) {
         // x, y の min / max を求める
         MinMax.save();
         indexes.forEach(i => {
@@ -89,16 +102,17 @@ class Eraser {
         // 黒板消しの角度を求める
         console.log(mm);
         const aspect = rect.width / rect.height;
-        const threshhold = 5;
+        const threshhold = 3;
+        console.log(aspect);
         let deg;
         if(aspect > threshhold) {// 結構横長
-            deg = 0;
+            deg = 180;
         } else if(aspect < 1 / threshhold) {// 結構縦長
             deg = 90;
         } else if(1 < aspect && aspect <= threshhold) {// 1 < aspect <= t
-            deg = Utility.interpolation(0, 45, (threshhold - aspect) / (threshhold - 1)); 
+            deg = Utility.interpolation(135, 180, (aspect - 1) / (threshhold - 1)); 
         } else if(1 / threshhold <= aspect && aspect <= 1) {// 1 / t <= aspect <= 1
-            deg = Utility.interpolation(45, 90, (1 - aspect) / (1 - 1 / threshhold)); 
+            deg = Utility.interpolation(90, 135, 1 - (1 - aspect) / (1 - 1 / threshhold)); 
         }
         const rad = Utility.deg2rad(deg);
 
