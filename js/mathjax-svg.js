@@ -14,7 +14,8 @@ class MathJaxSvg {
         if(!svg) { return ''; }
 
         // エスケープする
-        const svgText = unescape(encodeURIComponent(svg.outerHTML));
+        //const svgText = unescape(encodeURIComponent(svg.outerHTML));
+        const svgText = svg.outerHTML;
         return svgText;
     }   
 
@@ -243,7 +244,15 @@ class MathJaxSvg {
                         curMat = Matrix.multiply(curMat, matStacks[i]);
                     }
                     shapes.push({ tagName: 'rect', rect: {x, y, width, height }, mat: curMat });
+                } 
+            } else if(g.nodeName === 'text') {// <text>
+                // <text data-variant="normal" transform="scale(1,-1)" font-size="884px" font-family="serif">お</text>
+                // 現在の行列を求める
+                let curMat = Matrix.identify();
+                for(let i = 0; i < matStacks.length; i += 1) {
+                    curMat = Matrix.multiply(curMat, matStacks[i]);
                 }
+                shapes.push({ tagName: 'text', text: g.innerHTML, fontSize: g.getAttribute('font-size'), mat: curMat, });
             } else {
                 for(let i = 0; i < g.childNodes.length; i += 1) {
                     traceGElm(g.childNodes[i]);
