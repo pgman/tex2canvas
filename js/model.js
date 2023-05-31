@@ -153,6 +153,26 @@ class Model {
                 throw 'error';
             }          
         }
+
+        // <text>
+        for(let i = 0; i < Model.mvgData.shapes.length; i += 1) {
+            const shape = Model.mvgData.shapes[i];
+            if(shape.tagName !== 'text') { continue; }
+            if(shape.text.length !== 1) { continue; }
+            // あ -> 03042
+            const code = Utility.getCodeByChar(shape.text);
+            try {
+                if(Model.kvgCodes.indexOf(code) >= 0) {
+                    const ret = await SvgParser.loadSvg(code);
+                    kvgData.push(ret);
+                } else {
+                    console.log(`${code} is not defined.`);
+                }                
+            } catch(e) {
+                console.log(`${code} is error.`);
+                throw 'error';
+            }          
+        }
     
         return Model.getDatas(Model.mvgData, kvgData);
     }
@@ -205,7 +225,26 @@ class Model {
                 const rect = getCurvesArrayRect(curvesArray);
                     
                 ret.push({ type: 'app', curvesArray, mat: getNewMatrix(screenRect, rect), });
-            }                
+            } else if(shape.tagName === 'text') {// <text>    
+                // rect を適当に決めてみる(本当はfont-sizeから決めるべき？)
+                const fontSize = parseInt(shape.fontSize);
+                const rect = { x: 0, y: -fontSize, width: fontSize, height: fontSize };
+                // MathJax のshape.rectをスクリーン座標系へ変換する
+                const mat = Matrix.multiply(mvgData.vpMat, shape.mat);                
+                const screenRect = Matrix.multiplyRect(mat, rect); // スクリーン座標系の矩形      
+                
+                const kvgCode = Utility.getCodeByChar(shape.text);
+
+                // get kvg paths
+                const data = kvgData.find(data => data.c === kvgCode); 
+                if(!data) { 
+                    console.log('kvg paths are not found.');
+                    return;
+                }
+                const tmpRect = { x: 0, y: 0, width: 119, height: 119, };
+                // push data
+                ret.push({ type: 'kvg', kvg: data, mat: getNewMatrix(screenRect, tmpRect), });
+            }
         });
     
         return ret;
