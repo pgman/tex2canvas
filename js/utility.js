@@ -155,6 +155,20 @@ class Utility {
 		return ret;
 	}
 
+    /**
+     * 全角文字かどうか
+     * strが文字列の場合、すべて全角なら true, そうでなければ false 
+     * @param {string} str 文字列
+     * @returns {boolean} 全角かどうか 
+     */
+    static isZenkaku(str) {
+        if(str.match(/^[^\x01-\x7E\uFF61-\uFF9F]+$/)) {// 全角文字
+            return true;
+        } else {// 全角文字以外
+            return false;
+        }
+    }
+
     // debug 中
     static getCharByCode(code) {    }
 
