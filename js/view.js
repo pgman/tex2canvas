@@ -9,7 +9,7 @@ class View {
         ctx.drawImage(Model.blackBoardImg, 0, 0);
 
         View.drawPosArray(Model.posArray);
-        //Eraser.draw(ctx);
+        Eraser.draw(ctx);
     }
     static drawPosArray(posArray, drawEraser = false) {
         

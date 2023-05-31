@@ -115,7 +115,7 @@ class Eraser {
             deg = Utility.interpolation(90, 135, 1 - (1 - aspect) / (1 - 1 / threshhold)); 
         }
         const rad = Utility.deg2rad(deg);
-
+        
         // 実際に回す角度を計算する
         // 行列を左からかける
         // T'RT・M の T'RT を求める

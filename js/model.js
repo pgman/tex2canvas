@@ -28,7 +28,7 @@ class Model {
         Model.blackBoardImg = await Utility.loadImage(Model.BLACK_BOARD_IMAGE_PATH);
         Model.chalkImg = await Utility.loadImage(Model.CHALK_IMAGE_PATH);
 
-        const angle = 151;
+        const angle = -29;
         const radian = angle * Math.PI / 180;
         const rotate = Matrix.rotate(radian);
         const trans = Matrix.translate(264, 252);
