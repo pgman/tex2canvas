@@ -95,6 +95,24 @@ class Utility {
 		ctx.stroke();
 	}	
 
+    static strokePath(ctx, points, close = true) {
+        ctx.save();
+        ctx.strokeStyle = 'green';
+        ctx.beginPath();
+        points.forEach((p, i) => {
+            if(i === 0) {
+                ctx.moveTo(p.x, p.y);
+            } else {
+                ctx.lineTo(p.x, p.y);
+            }
+        });
+        if(close) {
+            ctx.closePath();
+        }
+        ctx.stroke();
+        ctx.restore();
+    }
+
     /**
 	 * 点配列を拡大する
 	 * @param {Array<T>} curves 点群

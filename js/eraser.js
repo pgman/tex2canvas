@@ -93,27 +93,23 @@ class Eraser {
         MinMax.restore();
 
         // 現在の黒板消しの角度を求める
-        // (0, 0) と (1, 0) を動かすことで角度を求める
-        const movedOrigin = Matrix.multiplyVec(Eraser.mat, { x: 0, y: 0 });
-        const movedOneZero = Matrix.multiplyVec(Eraser.mat, { x: 1, y: 0 });
-        const vec = Vector.subtract(movedOneZero, movedOrigin);
-        const baseRad = Math.atan2(vec.y, vec.x);
+        const baseRad = Matrix.getRotateAngle(Eraser.mat);
 
-        // 黒板消しの角度を求める
-        console.log(mm);
+        // 黒板消しの角度を消す箇所を覆う矩形のアスペクト比を考慮して求める
         const aspect = rect.width / rect.height;
-        const threshhold = 3;
-        console.log(aspect);
+        const threshhold = 2;
+        
         let deg;
         if(aspect > threshhold) {// 結構横長
-            deg = 180;
+            deg = 0;
         } else if(aspect < 1 / threshhold) {// 結構縦長
-            deg = 90;
+            deg = -90;
         } else if(1 < aspect && aspect <= threshhold) {// 1 < aspect <= t
-            deg = Utility.interpolation(135, 180, (aspect - 1) / (threshhold - 1)); 
+            deg = Utility.interpolation(-45, 0, (aspect - 1) / (threshhold - 1)); 
         } else if(1 / threshhold <= aspect && aspect <= 1) {// 1 / t <= aspect <= 1
-            deg = Utility.interpolation(90, 135, 1 - (1 - aspect) / (1 - 1 / threshhold)); 
+            deg = Utility.interpolation(-90, -45, 1 - (1 - aspect) / (1 - 1 / threshhold)); 
         }
+        console.log(`aspect: ${aspect.toFixed(2)}, degree: ${deg.toFixed(2)}`);
         const rad = Utility.deg2rad(deg);
         
         // 実際に回す角度を計算する
@@ -129,5 +125,33 @@ class Eraser {
         mat = Matrix.multiply(revTrans, mat);
 
         return mat;
+    }
+
+    static getRect(width, indexes, mat) {
+        const rad = Matrix.getRotateAngle(mat);
+        console.log(Utility.rad2deg(rad));
+
+        // 現在の黒板消しの角度を求める
+        const baseRad = Matrix.getRotateAngle(Eraser.mat);
+
+        console.log(Utility.rad2deg(rad + baseRad));
+
+        const rot = Matrix.rotate(-(rad + baseRad));
+
+        MinMax.save();
+        MinMax.init();
+        for(let i = 0; i < indexes.length; i += 1) {
+            const x = indexes[i] % width;
+            const y = Math.floor(indexes[i] / width);
+            const rotated = Matrix.multiplyVec(rot, { x, y, });
+            MinMax.add(rotated);
+        }
+        const points = MinMax.getRectPoints();              
+        MinMax.restore();
+
+        const invertRot = Matrix.rotate(rad + baseRad);
+        const inverted = points.map(p => Matrix.multiplyVec(invertRot, p));  
+
+        return inverted;
     }
 }

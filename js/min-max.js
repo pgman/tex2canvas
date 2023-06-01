@@ -56,4 +56,13 @@ class MinMax {
             height: MinMax.maxY - MinMax.minY,
         };
     }
+
+    static getRectPoints() {
+        return [
+            { x: MinMax.minX, y: MinMax.minY, },
+            { x: MinMax.maxX, y: MinMax.minY, },
+            { x: MinMax.maxX, y: MinMax.maxY, },
+            { x: MinMax.minX, y: MinMax.maxY, },
+        ];
+    }
 }

@@ -19,6 +19,8 @@
 <script src="js/view.js"></script>
 <script src="js/mathjax-svg.js"></script>
 <script src="js/eraser.js"></script>
+<script src="js/vkbeautify.js"></script>
+<script src="js/app-svg.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', async () => {
     await Model.init();
@@ -200,6 +202,7 @@ function getNewMatrix(screenRect, rect) {
 	width: 600px;
 	height: 160px;
     font-size: 18px;
+    tab-size: 2;    /* tab size */
 }
 .mb-8 {
     margin-bottom: 8px;
@@ -212,13 +215,17 @@ label {
 .draw-canvas {
     position: absolute;
     left: 8px;
-    top: 320px;
+    top: 360px;
 }
 </style>
 </head>
 <body>
     <div class="mb-8">
-	    <textarea id="textarea"></textarea>
+        <input id="svg-checkbox" type="checkbox" /><label for="svg-checkbox">svg</label>
+        &nbsp;
+        <button id="edit-avg-button">edit AVG</button>
+        <br><br>
+	    <textarea id="textarea" wrap="off"></textarea>
     </div>
     <div class="mb-8">
 	    <input id="display-checkbox" type="checkbox" checked="true"/><label for="display-checkbox">display</label>    
@@ -236,9 +243,9 @@ label {
         &nbsp;&nbsp;
         <button id="load-app-svg-button">load app svg</button>
         &nbsp;&nbsp;
-        <a href="char-def.html">char-def</a>&nbsp;&nbsp;
-        <a href="my-chalk.html">my-chalk</a>&nbsp;&nbsp;
         <a href="input-tex2svg.html">sample page</a>
+        &nbsp;&nbsp;
+        <a href="chalkboard.html">chalkboard</a>
     </div>
     <div id="settings-wrapper" class="mb-8">
     </div>

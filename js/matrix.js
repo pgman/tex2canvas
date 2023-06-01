@@ -151,4 +151,18 @@ class Matrix {
     static transform(ctx, m) {
         ctx.transform(m[0], m[3], m[1], m[4], m[2], m[5]);
     }
+
+    /**
+     * 回転角度を求める
+     * @param {Array<number>} m 行列 
+     * @returns {number} 回転角度(ラジアン)
+     */
+    static getRotateAngle(m) {
+        // (0, 0) と (1, 0) を動かすことで角度を求める
+        const movedOrigin = Matrix.multiplyVec(m, { x: 0, y: 0 });
+        const movedOneZero = Matrix.multiplyVec(m, { x: 1, y: 0 });
+        const vec = { x: movedOneZero.x - movedOrigin.x, y: movedOneZero.y - movedOrigin.y, };
+        const rad = Math.atan2(vec.y, vec.x);
+        return rad;
+    }
 }

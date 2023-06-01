@@ -10,19 +10,17 @@ class Model {
     static blackBoardImg = null;
     static chalkImg = null;
     static eraserImg = null;
-    static equation = '';   // 式
+    static svgCheck = false;    // SVG の表示
+    static equation = '';       // 式
     static display = true;
-    static svgText = '';    // 数式を MathJax で svg に変換した文字列
-    static kvgCodes = [];   // KanjiVGのファイル名から.svgを除いたコードの配列
-    static avgData = {};    // アプリで定義した曲線群
+    static svgText = '';        // 数式を MathJax で svg に変換した文字列
+    static kvgCodes = [];       // KanjiVGのファイル名から.svgを除いたコードの配列
+    static avgData = {};        // アプリで定義した曲線群
     static datas = [];
-    static mvgData = null;    // 設定内容
+    static mvgData = null;      // 設定内容
     static animDatas = [];
     static animIntervalId = -1; // アニメーション用インターバルID
     static posArray = [];
-    static settings = {
-
-    };
 
     static async init() {
         Model.blackBoardImg = await Utility.loadImage(Model.BLACK_BOARD_IMAGE_PATH);
@@ -31,9 +29,9 @@ class Model {
         const angle = -29;
         const radian = angle * Math.PI / 180;
         const rotate = Matrix.rotate(radian);
-        const trans = Matrix.translate(264, 252);
+        const trans = Matrix.translate(96, 118);
         const mat = Matrix.multiply(trans, rotate);
-        Eraser.init(mat, 82, 200, 4, Model.ERASER_IMAGE_PATH);
+        Eraser.init(mat, 82, 200, 10, Model.ERASER_IMAGE_PATH);
 
         Model.eraserImg = await Utility.loadImage(Model.ERASER_IMAGE_PATH);
 

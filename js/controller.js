@@ -1,6 +1,25 @@
 class Controller {
+    /**
+     * 初期化用メソッド
+     * @returns {void} なし
+     */
     static init() {
         Settings.attachEvents();  
+
+        // svg-checkbox 変更時の処理
+        document.querySelector('#svg-checkbox').addEventListener('change', e => {
+            Model.svgCheck = document.querySelector('#svg-checkbox').checked;
+            if(Model.svgCheck) {
+                document.querySelector('#textarea').value = vkbeautify.xml(Model.svgText);
+            } else {
+                document.querySelector('#textarea').value = Model.equation;
+            }
+        });
+
+        // edit-avg-button ボタン押下時の処理
+        document.querySelector('#edit-avg-button').addEventListener('click', async () => {
+            AppSvg.show();
+        });
 
         // テキストでCtrl + Sした時の処理
         document.querySelector('#textarea').addEventListener('keydown', async e => {
@@ -59,11 +78,12 @@ class Controller {
             const eraserCanvas = document.querySelector('#erase-canvas');
             const eraserCtx = eraserCanvas.getContext('2d');
             const indexes = Eraser.getFilledPixels(eraserCanvas);
-            const mat = Eraser.getLeftMatrix(indexes, eraserCanvas.width);
-            Eraser.draw(eraserCtx, mat);
-
             // eraserの回転行列を決める
-            // アスペクト比で多少閾値を持たせて回転角度を決めればよい
+            const mat = Eraser.getLeftMatrix(indexes, eraserCanvas.width);
+            
+            const points = Eraser.getRect(eraserCanvas.width, indexes, mat);
+            Eraser.draw(eraserCtx, mat);
+            Utility.strokePath(eraserCtx, points);
         });
     
         // save app svg ボタン押下時の処理

@@ -1,6 +1,7 @@
 class View {
     static init() {
         Settings.createHtml('#settings-wrapper');
+        document.querySelector('#svg-checkbox').checked = Model.svgCheck;
         document.querySelector('#textarea').value = Model.equation;
 
         const canvas = document.getElementById('canvas');
@@ -9,7 +10,7 @@ class View {
         ctx.drawImage(Model.blackBoardImg, 0, 0);
 
         View.drawPosArray(Model.posArray);
-        Eraser.draw(ctx);
+        //Eraser.draw(ctx);
     }
     static drawPosArray(posArray, drawEraser = false) {
         
