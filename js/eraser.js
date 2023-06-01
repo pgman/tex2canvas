@@ -129,12 +129,9 @@ class Eraser {
 
     static getRect(width, indexes, mat) {
         const rad = Matrix.getRotateAngle(mat);
-        console.log(Utility.rad2deg(rad));
 
         // 現在の黒板消しの角度を求める
         const baseRad = Matrix.getRotateAngle(Eraser.mat);
-
-        console.log(Utility.rad2deg(rad + baseRad));
 
         const rot = Matrix.rotate(-(rad + baseRad));
 
@@ -153,5 +150,36 @@ class Eraser {
         const inverted = points.map(p => Matrix.multiplyVec(invertRot, p));  
 
         return inverted;
+    }
+
+    static getStartMatrix(width, indexes, mat) {
+        const rad = Matrix.getRotateAngle(mat);
+
+        // 現在の黒板消しの角度を求める
+        const baseRad = Matrix.getRotateAngle(Eraser.mat);
+
+        const rot = Matrix.rotate(-(rad + baseRad));
+
+        MinMax.save();
+        MinMax.init();
+        for(let i = 0; i < indexes.length; i += 1) {
+            const x = indexes[i] % width;
+            const y = Math.floor(indexes[i] / width);
+            const rotated = Matrix.multiplyVec(rot, { x, y, });
+            MinMax.add(rotated);
+        }
+        const points = MinMax.getRectPoints();              
+        MinMax.restore();
+
+        const point = {
+            x: points[0].x - Eraser.radius,
+            y: points[0].y - Eraser.radius,
+        };
+        const invertRot = Matrix.rotate(rad + baseRad);
+        const inverted = Matrix.multiplyVec(invertRot, point);
+        
+        const buildMat = Matrix.multiply(mat, Eraser.mat);
+        const transformed = Matrix.multiplyVec(buildMat, { x: 0, y: 0, });
+        return Matrix.translate(inverted.x - transformed.x, inverted.y - transformed.y);
     }
 }
