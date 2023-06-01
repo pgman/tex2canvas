@@ -53,4 +53,17 @@ class Paint {
         ctx.fill();
         ctx.restore();
     }
+
+    /**
+     * 
+     * @param {{ x: number, y: number, }} start 始点
+     * @param {{ x: number, y: number, }} end 終点
+     * @param {number} width 幅
+     * @param {number} height 高さ
+     * @param {number} radius 半径
+     * @returns {void} なし
+     */
+    static moveRoundedRect(start, end, width, height, radius) {
+
+    }
 }
