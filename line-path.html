@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>line path sample</title>
+<script>
+/**
+ * 線分のパスを作成する
+ * @param {CanvasRenderingContext2D} ctx キャンバスのコンテキスト 
+ * @param { x: number, y: number, width: number, arc: boolean, }} start 始点
+ * @param { x: number, y: number, width: number, arc: boolean, }} end 終点 
+ * @returns {void} なし
+ */
+function createLinePath(ctx, start, end) {
+    const vec = { x: end.x - start.x, y: end.y - start.y, };  // 始点から終点へのベクトルを求める
+    const len = Math.sqrt(vec.x * vec.x + vec.y * vec.y);
+    const unit = { x: vec.x / len, y: vec.y / len, };  // 単位ベクトル化する
+    const nrm = { x: unit.y, y: -unit.x, }; // -90度回転する
+    // 角度を求める
+    const angle = Math.atan2(nrm.y, nrm.x);
+    // 点を求める
+    const posArray = [
+        {
+            x: start.x + nrm.x * start.width / 2,
+            y: start.y + nrm.y * start.width / 2,
+        },
+        {
+            x: end.x + nrm.x * end.width / 2,
+            y: end.y + nrm.y * end.width / 2,
+        },
+        {
+            x: end.x - nrm.x * end.width / 2,
+            y: end.y - nrm.y * end.width / 2,
+        },
+        {
+            x: start.x - nrm.x * start.width / 2,
+            y: start.y - nrm.y * start.width / 2,
+        },
+    ];
+
+    ctx.beginPath();
+    ctx.moveTo(posArray[0].x, posArray[0].y);
+    ctx.lineTo(posArray[1].x, posArray[1].y);
+    if(!end.arc) {// 終点を丸くする
+        ctx.lineTo(posArray[2].x, posArray[2].y);        
+    } else {
+        ctx.arc(end.x, end.y, end.width / 2, angle, angle + Math.PI);
+    }
+    ctx.lineTo(posArray[3].x, posArray[3].y);
+    if(!start.arc) {// 始点を丸くする
+        ctx.lineTo(posArray[0].x, posArray[0].y);   
+    } else {
+        ctx.arc(start.x, start.y, start.width / 2, angle + Math.PI, angle);
+    }
+    ctx.closePath();
+}
+document.addEventListener('DOMContentLoaded', e => {
+    const canvas = document.querySelector('#canvas');
+    const ctx = canvas.getContext('2d');
+    
+    ctx.save();
+    ctx.fillStyle = 'black';
+    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = 'yellow';
+    createLinePath(ctx, { x: 100, y: 100, width: 50, arc: true }, { x: 300, y: 300, width: 10, arc: true });
+    ctx.stroke();
+    ctx.restore();
+});
+</script>
+</head>
+<body>
+<canvas id="canvas" width="400" height="400"></canvas>
+</body>
+</html>
