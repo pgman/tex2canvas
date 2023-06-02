@@ -21,6 +21,7 @@ class Model {
     static animDatas = [];
     static animIntervalId = -1; // アニメーション用インターバルID
     static posArray = [];
+    static strokeArray = [];
 
     static async init() {
         Model.blackBoardImg = await Utility.loadImage(Model.BLACK_BOARD_IMAGE_PATH);
@@ -37,9 +38,9 @@ class Model {
 
         Model.avgData = Utility.loadFromLocalStorage('tex2canvas');
 
-        const json = localStorage.getItem('debug-erase');
+        const json = localStorage.getItem('debug-stroke');
         if(json) {
-            Model.posArray = JSON.parse(json);
+            Model.strokeArray = JSON.parse(json);
         }
 
         Settings.load('tex2canvas-settings');   

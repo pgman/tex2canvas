@@ -43,34 +43,40 @@ class Controller {
         // mouse ボタン押下時の処理
         document.querySelector('#mouse-button').addEventListener('click', async () => {
             let moveFlag = false;
+            let stroke = [];
             document.querySelector('#erase-canvas').addEventListener('mousedown', mousedown);
             document.addEventListener('mousemove', mousemove);
             document.addEventListener('mouseup', mouseup);
             function mousedown(e) {
                 if(moveFlag) { return; }
                 moveFlag = true;
-                Model.posArray = [];
-                Model.posArray.push({ x: e.offsetX, y: e.offsetY, });
+                stroke = [];
+                stroke.push({ x: e.offsetX, y: e.offsetY, });
             }
             function mousemove(e) {
                 if(!moveFlag) { return; }
-                Model.posArray.push({ x: e.offsetX, y: e.offsetY, });
-                View.drawPosArray(Model.posArray);
+                stroke.push({ x: e.offsetX, y: e.offsetY, });
+                Model.strokeArray.forEach(stroke => { View.drawPosArray(stroke); });
+                View.drawPosArray(stroke);
             }
             function mouseup(e) {
                 if(!moveFlag) { return; }
+                
+                Model.strokeArray.push(JSON.parse(JSON.stringify(stroke)));
                 document.querySelector('#erase-canvas').removeEventListener('mousedown', mousedown);
                 document.removeEventListener('mousemove', mousemove);
                 document.removeEventListener('mouseup', mouseup);
-                localStorage.setItem('debug-erase', JSON.stringify(Model.posArray));
+                localStorage.setItem('debug-stroke', JSON.stringify(Model.strokeArray));
             }
         });
 
         // clear ボタン押下時の処理
         document.querySelector('#clear-button').addEventListener('click', async () => {
-            Model.posArray = [];
-            View.drawPosArray(Model.posArray);
-            localStorage.setItem('debug-erase', JSON.stringify(Model.posArray));
+            const eraseCanvas = document.querySelector('#erase-canvas');
+            const eraseCtx = eraseCanvas.getContext('2d');
+            eraseCtx.reset();
+            Model.strokeArray = [];
+            localStorage.setItem('debug-stroke', JSON.stringify(Model.strokeArray));
         });
 
         // erase ボタン押下時の処理

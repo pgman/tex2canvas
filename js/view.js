@@ -9,14 +9,14 @@ class View {
         ctx.reset();
         ctx.drawImage(Model.blackBoardImg, 0, 0);
 
-        View.drawPosArray(Model.posArray);
+        Model.strokeArray.forEach(stroke => { View.drawPosArray(stroke); });
         //Eraser.draw(ctx);
     }
     static drawPosArray(posArray, drawEraser = false) {
         
         const eraseCanvas = document.querySelector('#erase-canvas');
         const eraseCtx = eraseCanvas.getContext('2d');
-        eraseCtx.reset();
+        //eraseCtx.reset();
         if(drawEraser) { Eraser.draw(eraseCtx); }
         
         eraseCtx.save();
