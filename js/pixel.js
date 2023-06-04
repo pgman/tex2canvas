@@ -126,7 +126,7 @@ class Pixel {
         // posArrayのmin/maxを取得する
         MinMax.save();
         MinMax.init();
-        option.posArray.forEach(pos => { MinMax.add(pos); });
+        option.posArray.forEach(pos => { MinMax.regist(pos); });
         const mm = MinMax.get();
         MinMax.restore();
         // minを切り捨てる maxを切り上げる
@@ -303,8 +303,8 @@ class Pixel {
                 endPos = pos;
             }
             tmpCtx.lineTo(endPos.x, endPos.y);    
-            MinMax.add(startPos);
-            MinMax.add(endPos);           
+            MinMax.regist(startPos);
+            MinMax.regist(endPos);           
         });
         tmpCtx.stroke();
         tmpCtx.restore();

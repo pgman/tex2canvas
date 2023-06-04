@@ -9,6 +9,8 @@ class Eraser {
     static radius = 5;
     static img = null;
 
+    static rectPoints = [];
+
     /**
      * 黒板消しを定義する
      * @param {Array<number>} mat 黒板消しの消える矩形用のアフィン変換行列
@@ -32,7 +34,7 @@ class Eraser {
         if(mat) {
             Matrix.setTransform(ctx, mat);
         }
-        ctx.drawImage(Model.eraserImg, 0, 0);
+        //ctx.drawImage(Model.eraserImg, 0, 0);
         ctx.restore();
 
         ctx.save();
@@ -86,7 +88,7 @@ class Eraser {
         indexes.forEach(i => {
             const x = i % width;
             const y = Math.floor(i / width);
-            MinMax.add({ x, y, });
+            MinMax.regist({ x, y, });
         });
         const mm = MinMax.get();
         const rect = MinMax.getRect();
@@ -128,11 +130,11 @@ class Eraser {
     }
 
     static getRect(width, indexes, mat) {
+        // 角度合わせした行列の角度
         const rad = Matrix.getRotateAngle(mat);
-
         // 現在の黒板消しの角度を求める
         const baseRad = Matrix.getRotateAngle(Eraser.mat);
-
+        // 逆回転行列を求める
         const rot = Matrix.rotate(-(rad + baseRad));
 
         MinMax.save();
@@ -141,32 +143,54 @@ class Eraser {
             const x = indexes[i] % width;
             const y = Math.floor(indexes[i] / width);
             const rotated = Matrix.multiplyVec(rot, { x, y, });
-            MinMax.add(rotated);
+            MinMax.regist(rotated);
         }
-        const points = MinMax.getRectPoints();              
+        Eraser.rectPoints = MinMax.getRectPoints();              
         MinMax.restore();
 
         const invertRot = Matrix.rotate(rad + baseRad);
-        const inverted = points.map(p => Matrix.multiplyVec(invertRot, p));  
+        const inverted = Eraser.rectPoints.map(p => Matrix.multiplyVec(invertRot, p));  
 
         return inverted;
     }
 
     static getStartMatrix(width, indexes, mat) {
+        // 角度合わせした行列の角度
         const rad = Matrix.getRotateAngle(mat);
-
         // 現在の黒板消しの角度を求める
         const baseRad = Matrix.getRotateAngle(Eraser.mat);
 
+        // 左上隅から半径分ずらす
+        const point = {
+            x: Eraser.rectPoints[0].x - Eraser.radius,
+            y: Eraser.rectPoints[0].y - Eraser.radius,
+        };
+        const invertRot = Matrix.rotate(rad + baseRad);
+        const inverted = Matrix.multiplyVec(invertRot, point);
+        
+        const buildMat = Matrix.multiply(mat, Eraser.mat);
+        const transformed = Matrix.multiplyVec(buildMat, { x: 0, y: 0, });
+        return Matrix.translate(inverted.x - transformed.x, inverted.y - transformed.y);
+    }
+
+    static getLeftTopMatrix(width, indexes, mat) {
+        // 角度合わせした行列の角度
+        const rad = Matrix.getRotateAngle(mat);
+        // 現在の黒板消しの角度を求める
+        const baseRad = Matrix.getRotateAngle(Eraser.mat);
+        // 逆回転行列を求める
         const rot = Matrix.rotate(-(rad + baseRad));
 
+        // 最初の行の左上隅の座標を求める
         MinMax.save();
         MinMax.init();
         for(let i = 0; i < indexes.length; i += 1) {
             const x = indexes[i] % width;
             const y = Math.floor(indexes[i] / width);
             const rotated = Matrix.multiplyVec(rot, { x, y, });
-            MinMax.add(rotated);
+            if(Eraser.rectPoints[0].y <= rotated.y && rotated.y <= Eraser.rectPoints[0].y + Eraser.height - Eraser.radius * 2) {
+                MinMax.regist(rotated);
+            }            
         }
         const points = MinMax.getRectPoints();              
         MinMax.restore();
@@ -176,8 +200,7 @@ class Eraser {
             y: points[0].y - Eraser.radius,
         };
         const invertRot = Matrix.rotate(rad + baseRad);
-        const inverted = Matrix.multiplyVec(invertRot, point);
-        
+        const inverted = Matrix.multiplyVec(invertRot, point);        
         const buildMat = Matrix.multiply(mat, Eraser.mat);
         const transformed = Matrix.multiplyVec(buildMat, { x: 0, y: 0, });
         return Matrix.translate(inverted.x - transformed.x, inverted.y - transformed.y);

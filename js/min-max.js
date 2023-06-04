@@ -5,6 +5,10 @@ class MinMax {
     static maxY = -Number.MAX_VALUE;
     static stack = []; // for save / restore
 
+    /**
+     * 現在の状態を保存する
+     * @returns {void} なし
+     */
     static save() {
         this.stack.push({
             minX: MinMax.minX,
@@ -14,6 +18,10 @@ class MinMax {
         });
     }
 
+    /**
+     * 状態を復元する
+     * @returns {void} なし
+     */
     static restore() {
         if(this.stack.length <= 0) {
             throw 'stack is empty.';
@@ -25,6 +33,10 @@ class MinMax {
         MinMax.maxY = popped.maxY;
     }
 
+    /**
+     * 初期化する
+     * @returns {void} なし
+     */
     static init() {
         MinMax.minX = Number.MAX_VALUE;
         MinMax.minY = Number.MAX_VALUE;
@@ -32,13 +44,22 @@ class MinMax {
         MinMax.maxY = -Number.MAX_VALUE;
     }
 
-    static add(p) {
+    /**
+     * 点を登録する
+     * @param {{ x: number, y: number, }} 点
+     * @returns {void} なし
+     */
+    static regist(p) {
         if(p.x < MinMax.minX) { MinMax.minX = p.x; }
         if(p.y < MinMax.minY) { MinMax.minY = p.y; }
         if(p.x > MinMax.maxX) { MinMax.maxX = p.x; }
         if(p.y > MinMax.maxY) { MinMax.maxY = p.y; }
     }
 
+    /**
+     * xとyの最小値/最大値を取得する
+     * @returns {{ minX: number, minY: number, maxX: number, maxY: number, }} xとyの最小値/最大値
+     */
     static get() {
         return { 
             minX: MinMax.minX,
@@ -48,6 +69,10 @@ class MinMax {
         };
     }
 
+    /**
+     * xとyの最小値/最大値を矩形として取得する
+     * @returns {{ x: number, y: number, width: number, height: number, }} 矩形
+     */
     static getRect() {
         return { 
             x: MinMax.minX,
@@ -57,6 +82,10 @@ class MinMax {
         };
     }
 
+    /**
+     * 矩形の4点として取得する
+     * @returns {Array<number>} 矩形の4点
+     */
     static getRectPoints() {
         return [
             { x: MinMax.minX, y: MinMax.minY, },

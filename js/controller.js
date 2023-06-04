@@ -91,8 +91,8 @@ class Controller {
             //Eraser.draw(eraserCtx, mat);
             
             
-            const startMat = Eraser.getStartMatrix(eraserCanvas.width, indexes, mat);
-            Eraser.draw(eraserCtx, Matrix.multiply(startMat, mat));
+            const leftTopMat = Eraser.getLeftTopMatrix(eraserCanvas.width, indexes, mat);
+            Eraser.draw(eraserCtx, Matrix.multiply(leftTopMat, mat));
             Utility.strokePath(eraserCtx, points);
         });
     

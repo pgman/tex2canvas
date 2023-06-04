@@ -167,8 +167,8 @@ function getCurvesArrayRect(curvesArray) {
     curvesArray.forEach(curves => {
         curves.forEach(curve => {
             const rect = curve.rect();
-            MinMax.add({ x: rect.x, y: rect.y, });
-            MinMax.add({ x: rect.x + rect.width, y: rect.y + rect.height, });
+            MinMax.regist({ x: rect.x, y: rect.y, });
+            MinMax.regist({ x: rect.x + rect.width, y: rect.y + rect.height, });
         });
     });      
     const rect = MinMax.getRect();
@@ -199,8 +199,8 @@ function getNewMatrix(screenRect, rect) {
 </script>
 <style>
 #textarea {
-	width: 600px;
-	height: 160px;
+	width: 500px;
+	height: 140px;
     font-size: 18px;
     tab-size: 2;    /* tab size */
 }
@@ -215,7 +215,7 @@ label {
 .draw-canvas {
     position: absolute;
     left: 8px;
-    top: 360px;
+    top: 320px;
 }
 </style>
 </head>
@@ -224,7 +224,7 @@ label {
         <input id="svg-checkbox" type="checkbox" /><label for="svg-checkbox">svg</label>
         &nbsp;
         <button id="edit-avg-button">edit AVG</button>
-        <br><br>
+        <br>
 	    <textarea id="textarea" wrap="off"></textarea>
     </div>
     <div class="mb-8">

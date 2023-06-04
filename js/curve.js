@@ -106,7 +106,7 @@ class Curve {
             for(let i = 0; i <= divLength; i += 1) {
                 const t = i / divLength;
                 const p = this.interpolate(t);
-                MinMax.add(p);
+                MinMax.regist(p);
             }
             const rect = MinMax.getRect();
             MinMax.restore();

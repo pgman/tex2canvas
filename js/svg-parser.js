@@ -161,8 +161,8 @@ class SvgParser {
         curvesArray.forEach(curves => {
             curves.forEach(curve => {
                 const rect = curve.rect();
-                MinMax.add({ x: rect.x, y: rect.y, });
-                MinMax.add({ x: rect.x + rect.width, y: rect.y + rect.height, });
+                MinMax.regist({ x: rect.x, y: rect.y, });
+                MinMax.regist({ x: rect.x + rect.width, y: rect.y + rect.height, });
             });
         });      
         const rect = MinMax.getRect();
@@ -271,8 +271,8 @@ class SvgParser {
         for(let i = 0; i < paths.length; i += 1) {
             const path = paths[i];
             const r = path.rect;
-            MinMax.add({ x: r.x, y: r.y, });
-            MinMax.add({ x: r.x + r.width, y: r.y + r.height, });
+            MinMax.regist({ x: r.x, y: r.y, });
+            MinMax.regist({ x: r.x + r.width, y: r.y + r.height, });
         }
         const rect = MinMax.getRect();
         MinMax.restore();
