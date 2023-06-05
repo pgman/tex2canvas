@@ -48,10 +48,11 @@ class Eraser {
         } else {
             Matrix.setTransform(ctx, Eraser.mat);
         }
-        
-        
-        ctx.beginPath();
-        ctx.roundRect(0, 0, Eraser.width, Eraser.height, Eraser.radius);
+        //ctx.beginPath();
+        //ctx.roundRect(0, 0, Eraser.width, Eraser.height, Eraser.radius);
+
+        Paint.createMovedRoundRectPath(ctx, { x: 0, y: 0, }, { x: 0, y: 0, }, 
+            Eraser.width, Eraser.height, Eraser.radius);
         ctx.stroke();
         ctx.restore();
     }
@@ -173,36 +174,93 @@ class Eraser {
         return Matrix.translate(inverted.x - transformed.x, inverted.y - transformed.y);
     }
 
-    static getLeftTopMatrix(width, indexes, mat) {
+    static getMatrices(width, indexes, mat) {
         // 角度合わせした行列の角度
         const rad = Matrix.getRotateAngle(mat);
         // 現在の黒板消しの角度を求める
         const baseRad = Matrix.getRotateAngle(Eraser.mat);
         // 逆回転行列を求める
         const rot = Matrix.rotate(-(rad + baseRad));
+        
+        let ret = [];
+        let dbgCnt = 0;
+        let minY = -Number.MAX_VALUE;
+        while(true) {
+            if(dbgCnt++ > 100) {
+                debugger;
+                break;
+            }
 
-        // 最初の行の左上隅の座標を求める
-        MinMax.save();
-        MinMax.init();
-        for(let i = 0; i < indexes.length; i += 1) {
-            const x = indexes[i] % width;
-            const y = Math.floor(indexes[i] / width);
-            const rotated = Matrix.multiplyVec(rot, { x, y, });
-            if(Eraser.rectPoints[0].y <= rotated.y && rotated.y <= Eraser.rectPoints[0].y + Eraser.height - Eraser.radius * 2) {
-                MinMax.regist(rotated);
-            }            
+            // 最小のYを見つける
+            MinMax.save();
+            MinMax.init();
+            for(let i = 0; i < indexes.length; i += 1) {
+                const x = indexes[i] % width;
+                const y = Math.floor(indexes[i] / width);
+                const rotated = Matrix.multiplyVec(rot, { x, y, });
+                if(minY < rotated.y) {                    
+                    MinMax.regist(rotated);
+                }                
+            }
+            const mm = MinMax.get();              
+            MinMax.restore();
+
+            if(mm.minY === Number.MAX_VALUE) {// 最小のYが見つからなかった
+                break; // 終了
+            }
+
+            // 行の左と右を求める
+            MinMax.save();
+            MinMax.init();
+            for(let i = 0; i < indexes.length; i += 1) {
+                const x = indexes[i] % width;
+                const y = Math.floor(indexes[i] / width);
+                const rotated = Matrix.multiplyVec(rot, { x, y, });
+                if(mm.minY <= rotated.y && rotated.y <= mm.minY + Eraser.height - Eraser.radius * 2) {
+                    MinMax.regist(rotated);
+                }            
+            }
+            const points = MinMax.getRectPoints();              
+            MinMax.restore();
+            
+            const startX = points[0].x - Eraser.radius;
+            const endX = points[1].x - Eraser.width + Eraser.radius;
+            const y = points[0].y - Eraser.radius;
+
+            if(ret.length !== 0) {
+                // 1つ前の点から現在の点までのアニメーションを作成する
+                const start = ret[ret.length - 1];
+                const endPos = { x: startX, y, };
+
+                let divided = Utility.divideLineSegment(start.pos, endPos, 50);
+                divided = divided.map(d => ({ mat: point2Mat(d), pos: d }));
+                ret = ret.concat(divided);
+            }
+
+            // ここから点の重複に気を付ける
+            ret.push({
+                mat: point2Mat({ x: startX, y, }),
+                pos: { x: startX, y, },
+            });
+
+            if(endX > startX) {
+                ret.push({
+                    mat: point2Mat({ x: endX, y, }),
+                    pos: { x: endX, y, },
+                });
+            }
+
+            minY = points[3].y;
         }
-        const points = MinMax.getRectPoints();              
-        MinMax.restore();
 
-        const point = {
-            x: points[0].x - Eraser.radius,
-            y: points[0].y - Eraser.radius,
-        };
-        const invertRot = Matrix.rotate(rad + baseRad);
-        const inverted = Matrix.multiplyVec(invertRot, point);        
-        const buildMat = Matrix.multiply(mat, Eraser.mat);
-        const transformed = Matrix.multiplyVec(buildMat, { x: 0, y: 0, });
-        return Matrix.translate(inverted.x - transformed.x, inverted.y - transformed.y);
+        return ret;
+
+        function point2Mat(point) {
+            const invertRot = Matrix.rotate(rad + baseRad);
+            const inverted = Matrix.multiplyVec(invertRot, point);        
+            const buildMat = Matrix.multiply(mat, Eraser.mat);
+            const transformed = Matrix.multiplyVec(buildMat, { x: 0, y: 0, });
+            return Matrix.translate(inverted.x - transformed.x, inverted.y - transformed.y);
+        }
     }
 }

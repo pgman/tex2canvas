@@ -95,9 +95,14 @@ class Utility {
 		ctx.stroke();
 	}	
 
+    /**
+     * パスをstrokeする
+     * @param {CanvasRenderingContext2D} ctx Canvasのコンテキスト
+     * @param {Array<{ x: number, y: number, }>} points 点群
+     * @param {boolean} close パスを閉じるかどうか 
+     */
     static strokePath(ctx, points, close = true) {
         ctx.save();
-        ctx.strokeStyle = 'green';
         ctx.beginPath();
         points.forEach((p, i) => {
             if(i === 0) {
@@ -147,11 +152,11 @@ class Utility {
     // mean 平均
 	// sd 標準僅差
 	static normalDistribution = (mean, sd) => {
-	    var x = Math.random();
-	    var y = Math.random();
+	    const x = Math.random();
+	    const y = Math.random();
 
-	    var z1 = Math.sqrt(-2*Math.log(x))*Math.cos(2 * Math.PI * y);
-	    var z2 = Math.sqrt(-2*Math.log(x))*Math.sin(2 * Math.PI * y);
+	    const z1 = Math.sqrt(-2 * Math.log(x)) * Math.cos(2 * Math.PI * y);
+	    const z2 = Math.sqrt(-2 * Math.log(x)) * Math.sin(2 * Math.PI * y);
 
 	    return {
 	    	z1: mean + z1 * sd,
@@ -265,16 +270,20 @@ class Utility {
         Utility.saveBlob(blob, fileName);
     }
 
+    /**
+     * .json をファイルダイアログを開いて読み込む
+     * @param {Blob} blob Blob
+     * @param {string} fileName ファイル名
+     * @returns {Object} オブジェクト(エラー発生時はnull) 
+     */
     static async loadJsonFile() {
         const fileoptions = {
             multiple : false, // 複数のファイルを選択しない
             excludeAcceptAllOption : false,  // 使い道が見いだせないのでとりあえず無視
             types : [// ファイルの種類のフィルター
                 {
-                    // ファイルの説明
-                    description : 'Application config file',  
-                    // MIME typeと対象の拡張子
-                    accept : {'application/json': ['.json']} 
+                    description : 'Application config file',  // ファイルの説明                    
+                    accept : { 'application/json': ['.json'], } // MIME typeと対象の拡張子                    
                 }
             ],
         };
@@ -295,24 +304,35 @@ class Utility {
         }
     }
 
+    /**
+     * Blob をファイルダイアログを開いて保存する
+     * @param {Blob} blob Blob
+     * @param {string} fileName ファイル名
+     * @returns {void} なし 
+     */
     static async saveBlob(blob, fileName) {
         try {
-            // ファイル保存ダイアログを表示して FileSystemFileHandle オブジェクトを取得
-            const fh = await window.showSaveFilePicker({ suggestedName: fileName });        
-            // FileSystemWritableFileStream オブジェクトを取得
-            const stream = await fh.createWritable();        
-            // テキストデータをファイルに書き込む
-            await stream.write(blob);        
-            // ファイルを閉じる
-            await stream.close();
-        } catch(e) {
-            // ファイル未選択
-            return;
+            const fh = await window.showSaveFilePicker({ suggestedName: fileName });   // ファイル保存ダイアログを表示して FileSystemFileHandle オブジェクトを取得
+            const stream = await fh.createWritable();        // FileSystemWritableFileStream オブジェクトを取得
+            await stream.write(blob);   // blob を書き込む
+            await stream.close();   // ファイルを閉じる
+        } catch(e) {            
+            return; // ファイル未選択
         }
     }
 
-    static downloadBlob() {
-
+    /**
+     * Blob をダウンロードする
+     * @param {Blob} blob Blob
+     * @param {string} fileName ファイル名
+     * @returns {void} なし 
+     */
+    static downloadBlob(blob, fileName) {
+        const link = document.createElement('a');
+        link.download = fileName; // ダウンロードファイル名称
+        link.href = URL.createObjectURL(blob); // オブジェクト URL を生成
+        link.click(); // クリックイベントを発生させる
+        URL.revokeObjectURL(link.href); // オブジェクト URL を解放
     }
 
     /**
@@ -393,6 +413,35 @@ class Utility {
      */
     static interpolation(start, end, rate) {
         return (end - start) * rate + start;
+    }
+
+    /**
+     * 線分を分割し、点群を発生させる
+     * @param {{ x: number, y: number, }} start 始点 
+     * @param {{ x: number, y: number, }} end 終点
+     * @param {number} length 分割する長さ
+     * @param {number} epsilon 最後に発生する微小線分の閾値(この値より小さい線分は存在しない)
+     * @returns {Array<{ x: number, y: number, }>} 点群
+     */
+    static divideLineSegment(start, end, length, epsilon = 1e-5) {
+        const vec = Vector.subtract(end, start);
+        const unit = Vector.unit(vec);
+        const dist = Vector.dist(start, end);
+        const n = Math.ceil(dist / length); // 切り上げ
+        const ret = [];
+                  
+        for(let i = 0; i <= n; i += 1) {
+            const scaledVec = Vector.scale(unit, length * i);  
+            const newPos = Vector.add(start, scaledVec);
+            ret.push(newPos);
+        }
+        if(ret.length >= 2) {
+            const lastDist = Vector.dist(ret[ret.length - 2], ret[ret.length - 1]);
+            if(lastDist < epsilon) {
+                ret.pop();
+            }
+        }
+        return ret;
     }
 }
 	

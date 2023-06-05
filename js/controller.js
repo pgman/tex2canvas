@@ -72,9 +72,9 @@ class Controller {
 
         // clear ボタン押下時の処理
         document.querySelector('#clear-button').addEventListener('click', async () => {
-            const eraseCanvas = document.querySelector('#erase-canvas');
-            const eraseCtx = eraseCanvas.getContext('2d');
-            eraseCtx.reset();
+            const eraserCanvas = document.querySelector('#erase-canvas');
+            const eraserCtx = eraserCanvas.getContext('2d');
+            eraserCtx.reset();
             Model.strokeArray = [];
             localStorage.setItem('debug-stroke', JSON.stringify(Model.strokeArray));
         });
@@ -84,16 +84,54 @@ class Controller {
             const eraserCanvas = document.querySelector('#erase-canvas');
             const eraserCtx = eraserCanvas.getContext('2d');
             const indexes = Eraser.getFilledPixels(eraserCanvas);
-            // eraserの回転行列を決める
+            // eraserの回転行列を決める(ここは手動で決めさせてもよい)
             const mat = Eraser.getLeftMatrix(indexes, eraserCanvas.width);
             
             const points = Eraser.getRect(eraserCanvas.width, indexes, mat);
-            //Eraser.draw(eraserCtx, mat);
-            
-            
-            const leftTopMat = Eraser.getLeftTopMatrix(eraserCanvas.width, indexes, mat);
-            Eraser.draw(eraserCtx, Matrix.multiply(leftTopMat, mat));
+                        
+            const ret = Eraser.getMatrices(eraserCanvas.width, indexes, mat);
+            ret.forEach((elm, i) => {
+                if(i > 0) {
+                    const preMat = Matrix.multiply(ret[i - 1].mat, Eraser.mat);
+                    let prePos = Matrix.multiplyVec(preMat, { x: 0, y: 0, });
+                    const curMat = Matrix.multiply(ret[i].mat, Eraser.mat);
+                    let curPos = Matrix.multiplyVec(curMat, { x: 0, y: 0, });
+
+                    // 角度合わせした行列の角度
+                    const rad = Matrix.getRotateAngle(mat);
+                    // 現在の黒板消しの角度を求める
+                    const baseRad = Matrix.getRotateAngle(Eraser.mat);
+                    // 逆回転行列を求める
+                    const rot = Matrix.rotate(-(rad + baseRad));
+                    
+                    prePos = Matrix.multiplyVec(rot, prePos);
+
+                    curPos = Matrix.multiplyVec(rot, curPos);
+                    const vec = Vector.subtract(curPos, prePos);
+                    
+                    const ctx = eraserCtx;
+                    eraserCtx.save();
+                    eraserCtx.strokeStyle = 'blue';
+                    eraserCtx.lineWidth = 10;
+                    eraserCtx.lineCap = 'round';
+                    eraserCtx.lineJoin = 'round';
+                    Matrix.setTransform(eraserCtx, Matrix.multiply(ret[i - 1].mat, mat));
+                    Matrix.transform(eraserCtx, Eraser.mat);
+                    // Paint.createMovedRoundRectPath(eraserCtx, { x: 0, y: 0, }, vec, 
+                    //     Eraser.width, Eraser.height, Eraser.radius);
+                    // eraserCtx.stroke();
+                    eraserCtx.restore();
+                }
+            });
+
+            ret.forEach((elm, i) => {
+                Eraser.draw(eraserCtx, Matrix.multiply(elm.mat, mat));
+            });
+
+            eraserCtx.save();
+            eraserCtx.strokeStyle = 'green';
             Utility.strokePath(eraserCtx, points);
+            eraserCtx.restore();
         });
     
         // save app svg ボタン押下時の処理
