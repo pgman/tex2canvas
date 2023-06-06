@@ -106,7 +106,6 @@ class Controller {
                     const rot = Matrix.rotate(-(rad + baseRad));
                     
                     prePos = Matrix.multiplyVec(rot, prePos);
-
                     curPos = Matrix.multiplyVec(rot, curPos);
                     const vec = Vector.subtract(curPos, prePos);
                     
