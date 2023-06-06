@@ -427,7 +427,7 @@ class Utility {
         const vec = Vector.subtract(end, start);
         const unit = Vector.unit(vec);
         const dist = Vector.dist(start, end);
-        const n = Math.ceil(dist / length); // 切り上げ
+        const n = Math.floor(dist / length); // 切り捨て
         const ret = [];
                   
         for(let i = 0; i <= n; i += 1) {
@@ -435,6 +435,7 @@ class Utility {
             const newPos = Vector.add(start, scaledVec);
             ret.push(newPos);
         }
+        ret.push(end);
         if(ret.length >= 2) {
             const lastDist = Vector.dist(ret[ret.length - 2], ret[ret.length - 1]);
             if(lastDist < epsilon) {
@@ -442,6 +443,24 @@ class Utility {
             }
         }
         return ret;
+    }
+
+    /**
+     * 塗られているピクセルのインデックスの配列を渡す
+     * @param {HTMLCanvasElement} canvas キャンバス
+     * @returns {Array<number>} インデックスの配列 
+     */
+    static getFilledPixels(canvas) {
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        const imageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
+        const data = imageData.data;
+        const indexes = [];
+        for(let i = 0; i < data.length / 4; i += 1) {
+            if(data[i * 4 + 3] !== 0) {// 塗られているとする
+                indexes.push(i);
+            }
+        }
+        return indexes;
     }
 }
 	

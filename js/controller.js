@@ -83,13 +83,14 @@ class Controller {
         document.querySelector('#erase-button').addEventListener('click', async () => {
             const eraserCanvas = document.querySelector('#erase-canvas');
             const eraserCtx = eraserCanvas.getContext('2d');
-            const indexes = Eraser.getFilledPixels(eraserCanvas);
+            const indexes = Utility.getFilledPixels(eraserCanvas);
             // eraserの回転行列を決める(ここは手動で決めさせてもよい)
             const mat = Eraser.getLeftMatrix(indexes, eraserCanvas.width);
-            
+            // debug用に矩形を求める
             const points = Eraser.getRect(eraserCanvas.width, indexes, mat);
-                        
+            // アニメーション用のフレーム情報を求める
             const ret = Eraser.getMatrices(eraserCanvas.width, indexes, mat);
+            console.log(ret.length);
             ret.forEach((elm, i) => {
                 if(i > 0) {
                     const preMat = Matrix.multiply(ret[i - 1].mat, Eraser.mat);

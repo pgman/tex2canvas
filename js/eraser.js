@@ -65,24 +65,6 @@ class Eraser {
         // 塗られているピクセルを黒板消しの座標系へ変換し、消すための初期位置を計算する
     }
 
-    /**
-     * 塗られているピクセルのインデックスの配列を渡す
-     * @param {HTMLCanvasElement} canvas キャンバス
-     * @returns {Array<number>} インデックスの配列 
-     */
-    static getFilledPixels(canvas) {
-        const ctx = canvas.getContext('2d', { willReadFrequently: true });
-        const imageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
-        const data = imageData.data;
-        const indexes = [];
-        for(let i = 0; i < data.length / 4; i += 1) {
-            if(data[i * 4 + 3] !== 0) {// 塗られているとする
-                indexes.push(i);
-            }
-        }
-        return indexes;
-    }
-
     static getLeftMatrix(indexes, width) {
         // x, y の min / max を求める
         MinMax.save();
@@ -155,25 +137,6 @@ class Eraser {
         return inverted;
     }
 
-    static getStartMatrix(width, indexes, mat) {
-        // 角度合わせした行列の角度
-        const rad = Matrix.getRotateAngle(mat);
-        // 現在の黒板消しの角度を求める
-        const baseRad = Matrix.getRotateAngle(Eraser.mat);
-
-        // 左上隅から半径分ずらす
-        const point = {
-            x: Eraser.rectPoints[0].x - Eraser.radius,
-            y: Eraser.rectPoints[0].y - Eraser.radius,
-        };
-        const invertRot = Matrix.rotate(rad + baseRad);
-        const inverted = Matrix.multiplyVec(invertRot, point);
-        
-        const buildMat = Matrix.multiply(mat, Eraser.mat);
-        const transformed = Matrix.multiplyVec(buildMat, { x: 0, y: 0, });
-        return Matrix.translate(inverted.x - transformed.x, inverted.y - transformed.y);
-    }
-
     static getMatrices(width, indexes, mat) {
         // 角度合わせした行列の角度
         const rad = Matrix.getRotateAngle(mat);
@@ -184,12 +147,9 @@ class Eraser {
         
         let ret = [];
         let dbgCnt = 0;
-        let minY = -Number.MAX_VALUE;
+        let minY = -10000000;
         while(true) {
-            if(dbgCnt++ > 100) {
-                debugger;
-                break;
-            }
+            if(dbgCnt++ > 100) { throw 'infinite loop.'; }
 
             // 最小のYを見つける
             MinMax.save();
@@ -206,7 +166,7 @@ class Eraser {
             MinMax.restore();
 
             if(mm.minY === Number.MAX_VALUE) {// 最小のYが見つからなかった
-                break; // 終了
+                break; // 正常終了
             }
 
             // 行の左と右を求める
@@ -220,40 +180,41 @@ class Eraser {
                     MinMax.regist(rotated);
                 }            
             }
-            const points = MinMax.getRectPoints();              
+            const rectPoints = MinMax.getRectPoints();              
             MinMax.restore();
             
-            const startX = points[0].x - Eraser.radius;
-            const endX = points[1].x - Eraser.width + Eraser.radius;
-            const y = points[0].y - Eraser.radius;
+            const speed = 300;
+            const y = rectPoints[0].y - Eraser.radius,  // 始点と終点の y
+                start = { x: rectPoints[0].x - Eraser.radius, y, }, // 始点
+                end = { x: rectPoints[1].x - Eraser.width + Eraser.radius, y, };    // 終点
 
-            if(ret.length !== 0) {
-                // 1つ前の点から現在の点までのアニメーションを作成する
-                const start = ret[ret.length - 1];
-                const endPos = { x: startX, y, };
+            // 1つ前の線分の終点から現在の始点までのアニメーション
+            if(ret.length === 0) {
+                ret.push({ mat: point2Mat(start), pos: start, });
+            } else {
+                ret = addPoints(ret, start, speed);
+            }         
 
-                let divided = Utility.divideLineSegment(start.pos, endPos, 50);
-                divided = divided.map(d => ({ mat: point2Mat(d), pos: d }));
-                ret = ret.concat(divided);
+            // 始点から終点までのアニメーション
+            if(end.x > start.x) {
+                ret = addPoints(ret, end, speed);
             }
 
-            // ここから点の重複に気を付ける
-            ret.push({
-                mat: point2Mat({ x: startX, y, }),
-                pos: { x: startX, y, },
-            });
-
-            if(endX > startX) {
-                ret.push({
-                    mat: point2Mat({ x: endX, y, }),
-                    pos: { x: endX, y, },
-                });
-            }
-
-            minY = points[3].y;
+            minY = rectPoints[3].y;
         }
 
         return ret;
+
+        function addPoints(points, end, speed) {
+            let popped = null;
+            if(points.length) { popped = points.pop(); }
+            if(!popped) { throw 'no pop error'; }
+            // 始点から終点までのアニメーションを作成する
+            const start = popped;
+            let divided = Utility.divideLineSegment(start.pos, end, speed);
+            divided = divided.map(d => ({ mat: point2Mat(d), pos: d }));
+            return points.concat(divided);
+        }
 
         function point2Mat(point) {
             const invertRot = Matrix.rotate(rad + baseRad);
