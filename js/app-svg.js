@@ -27,6 +27,7 @@ class AppSvg {
             <div style="margin-bottom: 8px;">
                 <input id="avg-text" type="text">
                 <button id="avg-search-button">search</button>
+                <select id="avg-path-select"></select>
             </div>
             <div style="margin-bottom: 8px;">
                 <button id="avg-interpolation-button">interpolation</button>
@@ -152,8 +153,9 @@ class AppSvg {
         });   
         
         document.querySelector('#avg-save-button').addEventListener('click', e => {
-            if(!AppSvg.currentCode) { return; }
-            Model.avgData[AppSvg.currentCode] = JSON.parse(JSON.stringify(AppSvg.curvesArray));
+            if(AppSvg.selectedPathIndex === -1) { return; }
+            const path = AppSvg.mvgData.paths[AppSvg.selectedPathIndex];
+            Model.avgData[path.c] = JSON.parse(JSON.stringify(AppSvg.curvesArray));
             Utility.saveToLocalStorage('tex2canvas', Model.avgData);
         });  
         
@@ -180,6 +182,9 @@ class AppSvg {
         });
 
         document.querySelector('#avg-search-button').addEventListener('click', AppSvg.onSearch);    
+
+        document.querySelector('#avg-path-select').addEventListener('change', AppSvg.onChange);   
+        
     }
 
     static DIALOG_WIDTH = 404;
@@ -189,10 +194,10 @@ class AppSvg {
     static MVG_PADDING = 20;
     static svgText = '';
     static svgData = null;
-    static currentCode = '';
     static mode = '';
     static curvesArray = [];
     static tempCurves = [];
+    static selectedPathIndex = -1;
 
     static onSearch() {
         const canvas = document.querySelector('#avg-char-canvas');
@@ -206,20 +211,25 @@ class AppSvg {
         AppSvg.mvgData = MathJaxSvg.parseMathJaxSvg(AppSvg.svgText);
 
         if(!AppSvg.mvgData || !AppSvg.mvgData.shapes || AppSvg.mvgData.shapes.length === 0) {
-            AppSvg.currentCode = '';
             console.error('error');
+            AppSvg.selectedPathIndex = -1;
+            document.querySelector('#avg-path-select').innerHTML = '';
             return;
         }
-        if(AppSvg.mvgData.shapes.length === 1) {
-            AppSvg.currentCode = AppSvg.mvgData.shapes[0].c;
-        } else {
-            AppSvg.currentCode = AppSvg.mvgData.shapes[1].c;
-        }
+
+        let html = '';
+        AppSvg.mvgData.paths.forEach((path, i) => {
+            html += `<option ${i === 0 ? 'selected' : ''} value='${path.c}'>${path.c}</option>`;
+        });
+        document.querySelector('#avg-path-select').innerHTML = html;
+        AppSvg.selectedPathIndex = 0;
+
         AppSvg.mode = '';
         AppSvg.curvesArray = [];
         AppSvg.tempCurves = [];
-        if(Model.avgData[AppSvg.currentCode]) {
-            AppSvg.curvesArray = Model.avgData[AppSvg.currentCode].map(curves => {
+        const currentPath = AppSvg.mvgData.paths[AppSvg.selectedPathIndex];
+        if(Model.avgData[currentPath.c]) {
+            AppSvg.curvesArray = Model.avgData[currentPath.c].map(curves => {
                 return curves.map(elm => new Curve(elm.points));
             });
         } 
@@ -228,6 +238,20 @@ class AppSvg {
         img.onload = e => { AppSvg.onDraw(); };
         img.src = 'data:image/svg+xml;base64,' + btoa('<?xml version="1.0" encoding="UTF-8" standalone="no" ?>\n' + AppSvg.svgText); 
     
+    }
+
+    static onChange() {
+        AppSvg.selectedPathIndex = document.querySelector('#avg-path-select').selectedIndex;
+        AppSvg.mode = '';
+        AppSvg.curvesArray = [];
+        AppSvg.tempCurves = [];
+        const currentPath = AppSvg.mvgData.paths[AppSvg.selectedPathIndex];
+        if(Model.avgData[currentPath.c]) {
+            AppSvg.curvesArray = Model.avgData[currentPath.c].map(curves => {
+                return curves.map(elm => new Curve(elm.points));
+            });
+        } 
+        AppSvg.onDraw();
     }
 
     static onDraw() {
@@ -278,9 +302,10 @@ class AppSvg {
         } else {
             shape = mvgData.shapes[1];
         }        
+        shape = mvgData.shapes[0];
 
         // 描画するpathを取得する
-        const path = mvgData.paths.find(p => p.c === shape.c);
+        const path = AppSvg.mvgData.paths[AppSvg.selectedPathIndex];
         if(!path) { return; } // continue;
 
         let mat = Matrix.multiply(mvgData.vpMat, shape.mat);

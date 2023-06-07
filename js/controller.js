@@ -87,51 +87,39 @@ class Controller {
             // eraserの回転行列を決める(ここは手動で決めさせてもよい)
             const mat = Eraser.getLeftMatrix(indexes, eraserCanvas.width);
             // debug用に矩形を求める
-            const points = Eraser.getRect(eraserCanvas.width, indexes, mat);
+            const rectPoints = Eraser.getRect(eraserCanvas.width, indexes, mat);
             // アニメーション用のフレーム情報を求める
-            const ret = Eraser.getMatrices(eraserCanvas.width, indexes, mat);
-            console.log(ret.length);
-            ret.forEach((elm, i) => {
-                if(i > 0) {
-                    const preMat = Matrix.multiply(ret[i - 1].mat, Eraser.mat);
-                    let prePos = Matrix.multiplyVec(preMat, { x: 0, y: 0, });
-                    const curMat = Matrix.multiply(ret[i].mat, Eraser.mat);
-                    let curPos = Matrix.multiplyVec(curMat, { x: 0, y: 0, });
+            const points = Eraser.getMatrices(indexes, mat, { width: eraserCanvas.width, height: eraserCanvas.height, });
+            console.log(points.length);
 
-                    // 角度合わせした行列の角度
-                    const rad = Matrix.getRotateAngle(mat);
-                    // 現在の黒板消しの角度を求める
-                    const baseRad = Matrix.getRotateAngle(Eraser.mat);
-                    // 逆回転行列を求める
-                    const rot = Matrix.rotate(-(rad + baseRad));
-                    
-                    prePos = Matrix.multiplyVec(rot, prePos);
-                    curPos = Matrix.multiplyVec(rot, curPos);
-                    const vec = Vector.subtract(curPos, prePos);
-                    
-                    const ctx = eraserCtx;
-                    eraserCtx.save();
-                    eraserCtx.strokeStyle = 'blue';
-                    eraserCtx.lineWidth = 10;
-                    eraserCtx.lineCap = 'round';
-                    eraserCtx.lineJoin = 'round';
-                    Matrix.setTransform(eraserCtx, Matrix.multiply(ret[i - 1].mat, mat));
-                    Matrix.transform(eraserCtx, Eraser.mat);
-                    // Paint.createMovedRoundRectPath(eraserCtx, { x: 0, y: 0, }, vec, 
-                    //     Eraser.width, Eraser.height, Eraser.radius);
-                    // eraserCtx.stroke();
-                    eraserCtx.restore();
-                }
-            });
+            // アニメーションを実装する
+            // canvasをコピーする
+            const imageData = eraserCtx.getImageData(0, 0, eraserCtx.canvas.width, eraserCtx.canvas.height);
+            const data = imageData.data;
 
-            ret.forEach((elm, i) => {
-                Eraser.draw(eraserCtx, Matrix.multiply(elm.mat, mat));
-            });
+            let animCnt = 0;
+            let intervalId = setInterval(() => {
+                const eraserCanvas = document.querySelector('#erase-canvas');
+                const eraserCtx = eraserCanvas.getContext('2d');
+                eraserCtx.reset();    
 
-            eraserCtx.save();
-            eraserCtx.strokeStyle = 'green';
-            Utility.strokePath(eraserCtx, points);
-            eraserCtx.restore();
+                const point = points[animCnt++];
+                point.indexes.forEach(i => {
+                    data[i * 4 + 3] = 0;
+                });
+                eraserCtx.putImageData(imageData, 0, 0);
+
+                Eraser.draw(eraserCtx, Matrix.multiply(point.mat, mat));
+
+                eraserCtx.save();
+                eraserCtx.strokeStyle = 'green';
+                Utility.strokePath(eraserCtx, rectPoints);
+                eraserCtx.restore();
+                if(animCnt >= points.length) {
+                    clearInterval(intervalId);
+                    intervalId = -1;
+                }                
+            }, 1000 / 60);
         });
     
         // save app svg ボタン押下時の処理

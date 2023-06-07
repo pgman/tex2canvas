@@ -34,7 +34,7 @@ class Eraser {
         if(mat) {
             Matrix.setTransform(ctx, mat);
         }
-        //ctx.drawImage(Model.eraserImg, 0, 0);
+        ctx.drawImage(Model.eraserImg, 0, 0);
         ctx.restore();
 
         ctx.save();
@@ -137,7 +137,12 @@ class Eraser {
         return inverted;
     }
 
-    static getMatrices(width, indexes, mat) {
+    static getMatrices(indexes, mat, size) {
+        const width = size.width;
+        const height = size.height;
+        const speed = 10;//Eraser.width - 2 * Eraser.radius;
+        console.log(`speed: ${speed}`);
+        
         // 角度合わせした行列の角度
         const rad = Matrix.getRotateAngle(mat);
         // 現在の黒板消しの角度を求める
@@ -145,7 +150,7 @@ class Eraser {
         // 逆回転行列を求める
         const rot = Matrix.rotate(-(rad + baseRad));
         
-        let ret = [];
+        let points = [];
         let dbgCnt = 0;
         let minY = -10000000;
         while(true) {
@@ -183,27 +188,97 @@ class Eraser {
             const rectPoints = MinMax.getRectPoints();              
             MinMax.restore();
             
-            const speed = 300;
             const y = rectPoints[0].y - Eraser.radius,  // 始点と終点の y
                 start = { x: rectPoints[0].x - Eraser.radius, y, }, // 始点
                 end = { x: rectPoints[1].x - Eraser.width + Eraser.radius, y, };    // 終点
 
             // 1つ前の線分の終点から現在の始点までのアニメーション
-            if(ret.length === 0) {
-                ret.push({ mat: point2Mat(start), pos: start, });
+            if(points.length === 0) {
+                points.push({ mat: point2Mat(start), pos: start, });
             } else {
-                ret = addPoints(ret, start, speed);
+                points = addPoints(points, start, speed);
             }         
 
             // 始点から終点までのアニメーション
             if(end.x > start.x) {
-                ret = addPoints(ret, end, speed);
+                points = addPoints(points, end, speed);
             }
 
             minY = rectPoints[3].y;
         }
 
-        return ret;
+        // アニメーションデータを作成する
+        // 戻り値は、行列と非表示にするインデックスの配列(なので空配列ももちろんある)
+
+        const tmpCanvas = Utility.createCanvas(width, height);
+        const tmpCtx = tmpCanvas.getContext('2d', { willReadFrequently: true });
+
+        if(points.length === 1) {
+            points.push(points[0]);
+        }
+        const erasedPoints = [];
+        points.forEach((point, i) => {
+            const prePoint = i !== 0 ? points[i - 1] : points[0];
+            const preMat = Matrix.multiply(prePoint.mat, Eraser.mat);
+            let prePos = Matrix.multiplyVec(preMat, { x: 0, y: 0, });
+            const curPoint = points[i];
+            const curMat = Matrix.multiply(curPoint.mat, Eraser.mat);
+            let curPos = Matrix.multiplyVec(curMat, { x: 0, y: 0, });
+
+            prePos = Matrix.multiplyVec(rot, prePos);
+            curPos = Matrix.multiplyVec(rot, curPos);
+            const vec = Vector.subtract(curPos, prePos);
+
+            tmpCtx.save();            
+            tmpCtx.reset();            
+            Matrix.setTransform(tmpCtx, prePoint.mat);
+            Matrix.transform(tmpCtx, mat);
+            Matrix.transform(tmpCtx, Eraser.mat);
+            Paint.createMovedRoundRectPath(tmpCtx, { x: 0, y: 0, }, vec, 
+                Eraser.width, Eraser.height, Eraser.radius);
+            tmpCtx.fill();
+            tmpCtx.restore();
+
+            let movedRectPoints = [
+                { x: 0, y: 0, }, { x: Eraser.width, y: 0, }, { x: Eraser.width, y: Eraser.height, }, { x: 0, y: Eraser.height, },
+            ];
+            movedRectPoints = movedRectPoints.concat(movedRectPoints.map(p => Vector.add(p, vec)));
+            // 行列をかける
+            let tmpMat = Matrix.multiply(mat, Eraser.mat);
+            tmpMat = Matrix.multiply(prePoint.mat, tmpMat);
+            movedRectPoints = movedRectPoints.map(p => Matrix.multiplyVec(tmpMat, p));
+            // 最大最小を取得する
+            MinMax.save();
+            MinMax.init();
+            movedRectPoints.forEach(p => { MinMax.regist(p); });
+            MinMax.truncate();  // 小数点切り捨て
+            MinMax.addMargin(2);    // マージン付与
+            const mm = MinMax.get();
+            MinMax.restore();   
+            // 最大と最小を制限する
+            Object.keys(mm).forEach(key => { 
+                mm[key] = Utility.limit(mm[key], 0, key.indexOf('X') >= 0 ? width : height); 
+            });
+
+            const imageData = tmpCtx.getImageData(0, 0, tmpCtx.canvas.width, tmpCtx.canvas.height);
+            const data = imageData.data;
+
+            curPoint.indexes = [];
+
+            for(let x = mm.minX; x <= mm.maxX; x += 1) {
+                for(let y = mm.minY; y <= mm.maxY; y += 1) {
+                    const index = x + y * width;
+                    if(data[index * 4 + 3] !== 0) { //} && indexes.includes(index) && !erasedPoints.includes(index)) {
+                        // 消す範囲に収まっている 且つ 描画されている 且つ 消されていない
+                        // 一旦、消す範囲に収まっているのみにする(それが一番早いので)
+                        curPoint.indexes.push(index);
+                        erasedPoints.push(index);
+                    }
+                }
+            }            
+        });
+
+        return points;
 
         function addPoints(points, end, speed) {
             let popped = null;

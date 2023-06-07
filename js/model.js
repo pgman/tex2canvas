@@ -145,7 +145,7 @@ class Model {
                     const ret = await SvgParser.loadSvg(code);
                     kvgData.push(ret);
                 } else {
-                    console.log(`${code} is not defined.`);
+                    console.log(`KVG ${code} is not defined.`);
                 }                
             } catch(e) {
                 console.log(`${code} is error.`);
@@ -183,7 +183,9 @@ class Model {
         mvgData.shapes.forEach(shape => {
             if(shape.tagName === 'use') {// <use>
                 // 描画するpathを取得する
-                const path = mvgData.paths.find(p => p.c === shape.c);
+                //const path = mvgData.paths.find(p => p.c === shape.c);
+                const path = mvgData.paths.find(p => p.id === shape.xlinkHref.replace('#', ''));
+                
                 if(!path) { return; } // continue;       
     
                 // MathJax のshape.rectをスクリーン座標系へ変換する

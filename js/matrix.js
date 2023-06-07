@@ -30,6 +30,9 @@ class Matrix {
      * @returns {{ x: number, y: number, }} ベクトル 
      */
     static multiplyVec(m, v) {
+        if(m.length !== 9) {
+            throw 'the arguments are invalid.'
+        }
         return {
             x: m[0] * v.x + m[1] * v.y + m[2],
             y: m[3] * v.x + m[4] * v.y + m[5],                

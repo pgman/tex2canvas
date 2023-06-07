@@ -57,6 +57,29 @@ class MinMax {
     }
 
     /**
+     * 小数点を切り捨てる(min を切り捨てる。max は切り上げる)
+     * @returns {void} なし
+     */
+    static truncate() {
+        MinMax.minX = Math.floor(MinMax.minX);
+        MinMax.minY = Math.floor(MinMax.minY);
+        MinMax.maxX = Math.ceil(MinMax.maxX);
+        MinMax.maxY = Math.ceil(MinMax.maxY);
+    }
+
+    /**
+     * マージンを付加する
+     * @param {number} margin マージン(正の数を想定)
+     * @returns {void} なし 
+     */
+    static addMargin(margin) {
+        MinMax.minX -= margin;
+        MinMax.minY -= margin;
+        MinMax.maxX += margin;
+        MinMax.maxY += margin;
+    }
+
+    /**
      * xとyの最小値/最大値を取得する
      * @returns {{ minX: number, minY: number, maxX: number, maxY: number, }} xとyの最小値/最大値
      */
