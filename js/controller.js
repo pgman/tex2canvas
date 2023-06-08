@@ -109,12 +109,14 @@ class Controller {
                 });
                 eraserCtx.putImageData(imageData, 0, 0);
 
+                // 黒板消しを描画
                 Eraser.draw(eraserCtx, Matrix.multiply(point.mat, mat));
 
-                eraserCtx.save();
-                eraserCtx.strokeStyle = 'green';
-                Utility.strokePath(eraserCtx, rectPoints);
-                eraserCtx.restore();
+                // デバッグ用最大最小描画
+                // eraserCtx.save();
+                // eraserCtx.strokeStyle = 'green';
+                // Utility.strokePath(eraserCtx, rectPoints);
+                // eraserCtx.restore();
                 if(animCnt >= points.length) {
                     clearInterval(intervalId);
                     intervalId = -1;

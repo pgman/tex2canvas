@@ -81,6 +81,12 @@ H-081: 括弧が大きくなるtexを探す https://takataninote.com/tex/bracket
 H-067: 大きい括弧調査 -> 大きい左括弧 MJX-3-TEX-S3-28, 小さい左括弧 
 H-081: 何文字目を編集するか選べるようにする
 
+2023/06/08:
+
+
+[静止画切り取り調査]
+https://rico-notes.com/design/bg-transparent/#toc7
+
 [動画作成調査]
 ・ffmpeg.wasmがよいらしい
 ・最悪デスクトップアプリケーションに録画させる(mediaRecorder?)
