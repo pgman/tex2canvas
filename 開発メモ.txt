@@ -82,7 +82,7 @@ H-067: 大きい括弧調査 -> 大きい左括弧 MJX-3-TEX-S3-28, 小さい左
 H-081: 何文字目を編集するか選べるようにする
 
 2023/06/08:
-
+H-083: 4行の行列で横線がずれる。これを調べる -> 少し動いた <svg>から辿れるようにする
 
 [静止画切り取り調査]
 https://rico-notes.com/design/bg-transparent/#toc7
@@ -95,9 +95,27 @@ https://rico-notes.com/design/bg-transparent/#toc7
 curves を stroke として定義したい
 curvesArray を strokeArray として定義したい
 
+[svgviewerなるものを見つけた]
+https://www.svgviewer.dev/
+
 [作業中]
 H-083: 4行の行列で横線がずれる。これを調べる
-svg in svg なので、まずはvpMatとshape.matを合体させる
+長い横線には独自で対応した方がよさそうだ
+読み込みを<svg>から辿れるようにする
+
+<svg
+	xmlns="http://www.w3.org/2000/svg" width="22.684ex" height="11.765ex" role="img" focusable="false" 
+    viewBox="0 -2850 10026.4 5200"
+	xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" style="vertical-align: -5.317ex;">
+	<defs>
+
+<svg width="875" height="1782" y="-641" x="0" viewBox="0 402.4 875 1782">
+    <use data-c="239C" xlink:href="#MJX-1-TEX-S4-239C" transform="scale(1,4.311)"></use>
+</svg>
+
+<svg width="875" height="1782" y="-641" x="0" viewBox="0 402.4 875 1782">
+    <use data-c="239F" xlink:href="#MJX-1-TEX-S4-239F" transform="scale(1,4.311)"></use>
+</svg>
 
 [優先度高め H-XXX]
 H-083: 4行の行列で横線がずれる。これを調べる
@@ -113,8 +131,6 @@ a_{41} & a_{42} & a_{43} & a_{44}\\
 
 H-082: 文字を何もなしで定義するとアニメーション中にエラーが発生する -> 多分easy
 H-080: texで書いたやつを実際に消してみる -> easy
-H-079: チョークのアニメーション作成時に前の線分の描画していないがそれでよいのか？
-H-078: チョークのアルゴリズムは見直さないといけない。チョークって思ったほどかすれない。かすれるのは終点の近くが圧倒的に多い
 H-005: 線の太さを考慮した矩形計算
 H-066: Settingsを削除したい
 H-012:日本語のMVG読み込み対応 - 日本語入力したときはpathが取れない -> なので矩形はfontSizeに比例すると予想
@@ -145,6 +161,8 @@ H-049: エラーが発生する
 H-047: そもそものtexによる色を変えた場合の対応
 
 [優先度普通 M-XXX]
+M-079: チョークのアニメーション作成時に前の線分の描画していないがそれでよいのか？
+M-078: チョークのアルゴリズムは見直さないといけない。チョークって思ったほどかすれない。かすれるのは終点の近くが圧倒的に多い
 M-046: 画間の移動時(やや移動距離が長いとき？)は、手をほんの少し大きくした方がよい
 M-014: 線の太さを変えるロジックを入れても面白いかもしれない
 M-073: ベジェ曲線を分割するところ割といい加減かもしれないので、チェックしたい

@@ -71,7 +71,7 @@ class Pixel {
         let curLength = 0;
         let dbgCnt = 0;
         while(true) {// このif文は残しておく
-            if(dbgCnt++ > 100000) {
+            if(dbgCnt++ > 1000) {
                 console.error('inifinity loop!!');
                 break;
             }

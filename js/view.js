@@ -33,6 +33,16 @@ class View {
         eraseCtx.restore();
     }
 
+    static drawMVG() {
+        const img = document.createElement('img');
+        img.onload = e => { 
+            const mvgCanvas = document.querySelector('#mvg-canvas');
+            const mvgCtx = mvgCanvas.getContext('2d');
+            View.drawSvg(mvgCtx, Model.mvgData, { fillChar: true, strokeRect: true, });
+        };
+        img.src = 'data:image/svg+xml;base64,' + btoa('<?xml version="1.0" encoding="UTF-8" standalone="no" ?>\n' + Model.svgText); 
+    }
+
     static drawDatas(datas) {
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
@@ -88,8 +98,6 @@ class View {
         Matrix.setTransform(ctx, transMat);
     
         Matrix.transform(ctx, scaleMat);
-    
-        Matrix.transform(ctx, mvgData.vpMat);
     
         mvgData.shapes.forEach(shape => {
             ctx.save();

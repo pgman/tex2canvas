@@ -32,7 +32,8 @@ class Controller {
         // tex2svg ボタン押下時の処理
         document.querySelector('#tex2svg-button').addEventListener('click', async () => {
             Settings.onChange();
-            Model.load();
+            await Model.load();
+            //View.drawMVG();
         });
 
         // play ボタン押下時の処理

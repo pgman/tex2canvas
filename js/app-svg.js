@@ -258,7 +258,7 @@ class AppSvg {
         const canvas = document.querySelector('#avg-char-canvas');
         const ctx = canvas.getContext('2d');
 
-        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        ctx.reset();
         AppSvg.drawSvg(ctx, AppSvg.mvgData, { fillChar: true, fillStyle: 'rgba(0, 255, 0, 0.2)', 
             strokeRect: true, strokeStyle: 'rgba(255, 0, 0, 0.2)', }); 
 
@@ -296,21 +296,13 @@ class AppSvg {
             return;
         }
 
-        let shape;
-        if(mvgData.shapes.length === 1) {
-            shape = mvgData.shapes[0];
-        } else {
-            shape = mvgData.shapes[1];
-        }        
-        shape = mvgData.shapes[0];
+        let shape = mvgData.shapes[0];
 
         // 描画するpathを取得する
         const path = AppSvg.mvgData.paths[AppSvg.selectedPathIndex];
         if(!path) { return; } // continue;
 
-        let mat = Matrix.multiply(mvgData.vpMat, shape.mat);
-
-        let screenRect = Matrix.multiplyRect(mat, path.rect);
+        let screenRect = Matrix.multiplyRect(shape.mat, path.rect);
 
         const transMat = Matrix.translate(-screenRect.x, -screenRect.y);
 
@@ -328,7 +320,7 @@ class AppSvg {
 
         const scaleMat = Matrix.scale(scale, scale);
         const revTransMat = Matrix.translate(revTransX, revTransY);
-        mat = Matrix.multiply(transMat, mat);
+        let mat = Matrix.multiply(transMat, shape.mat);
         mat = Matrix.multiply(scaleMat, mat);
         mat = Matrix.multiply(revTransMat, mat);
 

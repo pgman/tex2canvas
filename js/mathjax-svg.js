@@ -42,34 +42,13 @@ class MathJaxSvg {
         // パースする
         const domParser = new DOMParser();
         const parsedSvgDoc = domParser.parseFromString(svgText, 'image/svg+xml');
-        const parsedSvg = parsedSvgDoc.childNodes[0];
+        const parsedSvg = parsedSvgDoc.childNodes[0];        
 
         // MathJax(このバージョンの)が作成したsvgは<svg><defs>...</defs><g></g></svg>という構成なっているはずなので
         // 子要素の数が2のはずである。
         if(parsedSvg.childNodes.length !== 2) {
             throw 'svg child nodes length is not 2.'
         }
-        // ビューボリューム
-        const vv = parsedSvg.viewBox.baseVal;
-        if(vv.x === 0 && vv.y === 0 && vv.width === 0 && vv.height === 0) {
-            throw 'viewBox is not defined.'
-        }
-        // SVGの高さ (単位はex?)
-        const svgWidth = parsedSvg.width.baseVal.valueAsString;
-        const svgHeight = parsedSvg.height.baseVal.valueAsString;
-
-        // <svg>の矩形
-        // 単位がexになっているのでdivの子要素として、<svg>の矩形サイズをpx単位で取得する
-        const divElm = Utility.createElement('div', svgText, 
-            { position: 'absolute', left: '-10000px', top: '-10000px', visibility: 'hidden', });
-        document.body.appendChild(divElm);            
-        const svgRect = divElm.firstElementChild.getBoundingClientRect();
-        document.body.removeChild(divElm);
-
-        // ビューポート変換の定義
-        const transMat = Matrix.translate(-vv.x, -vv.y); // ビューボリュームの左上隅を原点へ移動する
-        const scaleMat = Matrix.scale(svgRect.width / vv.width, svgRect.height / vv.height);
-        const vpMat = Matrix.multiply(scaleMat, transMat);    // matがビューポート変換を実現する
 
         // <defs> を取得する
         let defs = null;
@@ -101,6 +80,7 @@ class MathJaxSvg {
                 }                
             }
         }
+        const vpMat = getSvgMatrix(parsedSvg); 
 
         // 図形(c, mat)
         let gElm;
@@ -118,11 +98,6 @@ class MathJaxSvg {
         
         return {
             parsedSvg,
-            vv,
-            svgWidth,
-            svgHeight,
-            svgRect,
-            vpMat,
             paths,
             shapes,
         };
@@ -187,16 +162,44 @@ class MathJaxSvg {
             return indexes;
         }
 
-        function traceGElm(g) {
-            if(loopCnt++ > 10000) {
-
+        function getSvgMatrix(svgElm, pxPerEx = 200.25 / 22.684) {
+            // ビューボリューム
+            const vb = svgElm.viewBox.baseVal;
+            if(vb.x === 0 && vb.y === 0 && vb.width === 0 && vb.height === 0) {
+                throw 'viewBox is not defined.'
             }
-            // 行列を取得する          
-            if(typeof g.getAttribute !== 'function') {
-                console.log('getAttribute is not a function.');
-                return;
-            }      
-            let tranformString = g.getAttribute('transform');
+            // SVGの高さ (単位はexか単位がない場合が多い)
+            const svgWidth = svgElm.width.baseVal.valueAsString;
+            const svgHeight = svgElm.height.baseVal.valueAsString;
+
+            // x, y
+            const svgX = svgElm.getAttribute('x');
+            const svgY = svgElm.getAttribute('y');
+
+            // ビューポート変換の定義
+            const transMat = Matrix.translate(-vb.x, -vb.y); // ビューボックスの左上隅を原点へ移動する
+            let svgWidthPx, svgHeightPx;
+            if(svgWidth.includes('ex')) {
+                svgWidthPx = parseFloat(svgWidth.replace('ex', '')) * pxPerEx;
+            } else {
+                svgWidthPx = parseFloat(svgWidth.replace('ex', ''));
+            }
+            if(svgHeight.includes('ex')) {
+                svgHeightPx = parseFloat(svgHeight.replace('ex', '')) * pxPerEx;
+            } else {
+                svgHeightPx = parseFloat(svgHeight.replace('ex', ''));
+            }
+            const scaleMat = Matrix.scale(svgWidthPx / vb.width, svgHeightPx / vb.height);
+            let vpMat = Matrix.multiply(scaleMat, transMat);    // matがビューポート変換を実現する    
+            if(svgX && svgY) {
+                const svgXYTransMat = Matrix.translate(parseFloat(svgX), parseFloat(svgY));
+                vpMat = Matrix.multiply(svgXYTransMat, vpMat);
+            }
+            return vpMat;
+        }
+
+        function getElmMatrix(elm) {
+            let tranformString = elm.getAttribute('transform');
             let mat = Matrix.identify();
             if(tranformString) {
                 const trans = getTransformValues(tranformString);
@@ -218,7 +221,25 @@ class MathJaxSvg {
                     mat = Matrix.multiply(mat, m);
                 });
             }
-            matStacks.push(mat);
+            return mat;
+        }
+
+        function traceGElm(g) {
+            if(loopCnt++ > 10000) {
+                throw 'inifinity loop!';
+            }
+            // 行列を取得する          
+            if(typeof g.getAttribute !== 'function') {
+                console.log('getAttribute is not a function.');
+                return;
+            }  
+            let mat;    
+            if(g.tagName === 'svg') {
+                mat = getSvgMatrix(g);
+            } else {
+                mat = getElmMatrix(g);
+            }
+            matStacks.push(mat);  
 
             if(!g.childNodes || g.childNodes.length === 0) {
                 // 今の所、<use>,<rect>のみを拾う
@@ -232,6 +253,7 @@ class MathJaxSvg {
                     for(let i = 0; i < matStacks.length; i += 1) {
                         curMat = Matrix.multiply(curMat, matStacks[i]);
                     }
+                    curMat = Matrix.multiply(vpMat, curMat);
                     shapes.push({ tagName: 'use', c, xlinkHref, mat: curMat });
                 } else if(g.nodeName === 'rect') {
                     const x = Number(g.getAttribute('x'));
@@ -243,6 +265,7 @@ class MathJaxSvg {
                     for(let i = 0; i < matStacks.length; i += 1) {
                         curMat = Matrix.multiply(curMat, matStacks[i]);
                     }
+                    curMat = Matrix.multiply(vpMat, curMat);
                     shapes.push({ tagName: 'rect', rect: {x, y, width, height }, mat: curMat });
                 } 
             } else if(g.nodeName === 'text') {// <text>
@@ -252,6 +275,7 @@ class MathJaxSvg {
                 for(let i = 0; i < matStacks.length; i += 1) {
                     curMat = Matrix.multiply(curMat, matStacks[i]);
                 }
+                curMat = Matrix.multiply(vpMat, curMat);
                 shapes.push({ tagName: 'text', text: g.innerHTML, fontSize: g.getAttribute('font-size'), mat: curMat, });
             } else {
                 for(let i = 0; i < g.childNodes.length; i += 1) {

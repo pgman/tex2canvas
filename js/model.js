@@ -73,6 +73,7 @@ class Model {
 
     static getAnimDatas(datas) {
         const ret = [];
+        let dbgCnt = 0;
         datas.forEach(data => {
             if(data.type === 'app') {
                 const strokeArray = [];
@@ -98,6 +99,8 @@ class Model {
                             posArray = posArray.concat(points);
                         }
                     });
+                    //console.log(dbgCnt++);
+                    //if(dbgCnt === 3) { debugger; }
                     const pixelData = Pixel.getAnimationPixelData({
                         posArray: posArray, 
                         lineWidth: Settings.lineWidth, 
@@ -188,9 +191,8 @@ class Model {
                 
                 if(!path) { return; } // continue;       
     
-                // MathJax のshape.rectをスクリーン座標系へ変換する
-                const mat = Matrix.multiply(mvgData.vpMat, shape.mat);                
-                const screenRect = Matrix.multiplyRect(mat, path.rect); // スクリーン座標系の矩形
+                // MathJax のshape.rectをスクリーン座標系へ変換する                
+                const screenRect = Matrix.multiplyRect(shape.mat, path.rect); // スクリーン座標系の矩形
     
                 const id = shape.xlinkHref.substring(1);
                 let kvgCode = SvgParser.toKanjiVGCodeById(id);
@@ -218,8 +220,7 @@ class Model {
                 }
             } else if(shape.tagName === 'rect') {
                 // MathJax のshape.rectをスクリーン座標系へ変換する
-                const mat = Matrix.multiply(mvgData.vpMat, shape.mat);                
-                const screenRect = Matrix.multiplyRect(mat, shape.rect); // スクリーン座標系の矩形
+                const screenRect = Matrix.multiplyRect(shape.mat, shape.rect); // スクリーン座標系の矩形
                 const curvesArray = [
                     [new Curve([{ x: 0, y: 0 }, { x: 30, y: 0 }, { x: 60, y: 0 }, { x: 90, y: 0 }]) ]
                 ];
@@ -231,8 +232,7 @@ class Model {
                 const fontSize = parseInt(shape.fontSize);
                 const rect = { x: 0, y: -fontSize, width: fontSize, height: fontSize };
                 // MathJax のshape.rectをスクリーン座標系へ変換する
-                const mat = Matrix.multiply(mvgData.vpMat, shape.mat);                
-                const screenRect = Matrix.multiplyRect(mat, rect); // スクリーン座標系の矩形      
+                const screenRect = Matrix.multiplyRect(shape.mat, rect); // スクリーン座標系の矩形      
                 
                 const kvgCode = Utility.getCodeByChar(shape.text);
 
