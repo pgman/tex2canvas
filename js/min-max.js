@@ -69,7 +69,7 @@ class MinMax {
 
     /**
      * マージンを付加する
-     * @param {number} margin マージン(正の数を想定)
+     * @param {number} margin マージン(正負どちらでもよい)
      * @returns {void} なし 
      */
     static addMargin(margin) {
@@ -106,7 +106,7 @@ class MinMax {
     }
 
     /**
-     * 矩形の4点として取得する
+     * 矩形の4点の座標を取得する
      * @returns {Array<number>} 矩形の4点
      */
     static getRectPoints() {

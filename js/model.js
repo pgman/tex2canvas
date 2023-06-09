@@ -21,7 +21,10 @@ class Model {
     static animDatas = [];
     static animIntervalId = -1; // アニメーション用インターバルID
     static posArray = [];
-    static strokeArray = [];
+    static mvgCheck = false;
+    static avgCheck = false;
+    static handCheck = true;
+    static chalkCheck = true;
 
     static async init() {
         Model.blackBoardImg = await Utility.loadImage(Model.BLACK_BOARD_IMAGE_PATH);
@@ -37,11 +40,6 @@ class Model {
         Model.eraserImg = await Utility.loadImage(Model.ERASER_IMAGE_PATH);
 
         Model.avgData = Utility.loadFromLocalStorage('tex2canvas');
-
-        const json = localStorage.getItem('debug-stroke');
-        if(json) {
-            Model.strokeArray = JSON.parse(json);
-        }
 
         Settings.load('tex2canvas-settings');   
 
@@ -75,7 +73,7 @@ class Model {
         const ret = [];
         let dbgCnt = 0;
         datas.forEach(data => {
-            if(data.type === 'app') {
+            if(data.type === 'avg') {
                 const strokeArray = [];
                 data.curvesArray.forEach((curves, i) => {
                     let posArray = [];
@@ -112,6 +110,45 @@ class Model {
                         removeType: 'zero', // 'zero' or 'random'
                     });
                     strokeArray.push(pixelData);
+                });
+                ret.push(strokeArray);
+            } else if(data.type === 'kvg') {
+                const strokeArray = [];
+                data.kvg.paths.forEach(path => {   
+                    path.curvesArray.forEach((curves, i) => {
+                        let posArray = [];
+                        curves.forEach((curve, j) => { 
+                            let points = curve.divide();
+                            const transMat = Matrix.translate(Settings.padding, Settings.padding);
+                            const scaleMat = Matrix.scale(Settings.scale, Settings.scale);
+                            let mat = Matrix.multiply(scaleMat, data.mat);
+                            mat = Matrix.multiply(transMat, mat);
+                            points = points.map(p => Matrix.multiplyVec(mat, p));
+                            if(posArray.length === 0) {
+                                posArray = posArray.concat(points);
+                            } else {// 既に登録されている場合
+                                // 前の最後の線分の終点と、今回の最初の線分の始点が一致する可能性がある
+                                const last = posArray[posArray.length - 1];
+                                const start = points[0];
+                                const equal = Vector.equals(last, start);
+                                if(equal) {
+                                    points.shift();
+                                } 
+                                posArray = posArray.concat(points);
+                            }
+                        });
+                        const pixelData = Pixel.getAnimationPixelData({
+                            posArray: posArray, 
+                            lineWidth: Settings.lineWidth, 
+                            strokeStyle: { r: Settings.color.r, g: Settings.color.g, b: Settings.color.b, a: Settings.color.a, }, 
+                            boundaryThreshold: Settings.boundaryThreshold,   
+                            internalThreshold: Settings.internalThreshold,
+                            sigma: Settings.sigma, 
+                            pps: Settings.pps,  
+                            removeType: 'zero', // 'zero' or 'random'
+                        });
+                        strokeArray.push(pixelData);
+                    });
                 });
                 ret.push(strokeArray);
             }
@@ -207,7 +244,7 @@ class Model {
                     });
                     const rect = getCurvesArrayRect(curvesArray);
                     // push data
-                    ret.push({ type: 'app', curvesArray, mat: getNewMatrix(screenRect, rect), });
+                    ret.push({ type: 'avg', curvesArray, mat: getNewMatrix(screenRect, rect), });
                 } else {
                     // get kvg paths
                     const data = kvgData.find(data => data.c === kvgCode); 
@@ -226,7 +263,7 @@ class Model {
                 ];
                 const rect = getCurvesArrayRect(curvesArray);
                     
-                ret.push({ type: 'app', curvesArray, mat: getNewMatrix(screenRect, rect), });
+                ret.push({ type: 'avg', curvesArray, mat: getNewMatrix(screenRect, rect), });
             } else if(shape.tagName === 'text') {// <text>    
                 // rect を適当に決めてみる(本当はfont-sizeから決めるべき？)
                 const fontSize = parseInt(shape.fontSize);
@@ -243,6 +280,7 @@ class Model {
                     return;
                 }
                 const tmpRect = { x: 0, y: 0, width: 119, height: 119, };
+                Rect.addMargin(tmpRect, -12);   // これ適当(kvgが矩形に対してやや小さく定義しているので、矩形を小さくする必要がある)
                 // push data
                 ret.push({ type: 'kvg', kvg: data, mat: getNewMatrix(screenRect, tmpRect), });
             }

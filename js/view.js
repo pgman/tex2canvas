@@ -4,21 +4,32 @@ class View {
         document.querySelector('#svg-checkbox').checked = Model.svgCheck;
         document.querySelector('#textarea').value = Model.equation;
 
-        const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
-        ctx.reset();
-        ctx.drawImage(Model.blackBoardImg, 0, 0);
+        // draw back-canvas
+        const backCanvas = document.querySelector('#back-canvas');
+        const backCtx = backCanvas.getContext('2d', { willReadFrequently: true });
+        View.drawBackCanvas(backCtx);
 
-        Model.strokeArray.forEach(stroke => { View.drawPosArray(stroke); });
-        //Eraser.draw(ctx);
+        // AVG checkbox
+        document.querySelector('#avg-check').checked = Model.avgCheck;
+        View.toggleElement(document.querySelector('#avg-canvas'), Model.avgCheck, 'inline');
+
+        // MVG checkbox
+        document.querySelector('#mvg-check').checked = Model.mvgCheck;
+        View.toggleElement(document.querySelector('#mvg-canvas'), Model.mvgCheck, 'inline');
+
+        // Hand checkbox
+        document.querySelector('#hand-check').checked = Model.handCheck;
+        View.toggleElement(document.querySelector('#hand-canvas'), Model.handCheck, 'inline');
+
+        // Chalk checkbox
+        document.querySelector('#chalk-check').checked = Model.chalkCheck;
+        View.toggleElement(document.querySelector('#chalk-canvas'), Model.chalkCheck, 'inline');
     }
-    static drawPosArray(posArray, drawEraser = false) {
+    static drawPosArray(posArray) {
         
         const eraseCanvas = document.querySelector('#erase-canvas');
         const eraseCtx = eraseCanvas.getContext('2d');
-        //eraseCtx.reset();
-        if(drawEraser) { Eraser.draw(eraseCtx); }
-        
+                
         eraseCtx.save();
         eraseCtx.strokeStyle = 'white';
         eraseCtx.lineWidth = 6;
@@ -33,21 +44,27 @@ class View {
         eraseCtx.restore();
     }
 
+    static drawBackCanvas(ctx) {
+        ctx.reset();
+        ctx.drawImage(Model.blackBoardImg, 0, 0);
+    }
+
     static drawMVG() {
-        const img = document.createElement('img');
-        img.onload = e => { 
-            const mvgCanvas = document.querySelector('#mvg-canvas');
-            const mvgCtx = mvgCanvas.getContext('2d');
-            View.drawSvg(mvgCtx, Model.mvgData, { fillChar: true, strokeRect: true, });
-        };
-        img.src = 'data:image/svg+xml;base64,' + btoa('<?xml version="1.0" encoding="UTF-8" standalone="no" ?>\n' + Model.svgText); 
+        const [ mvgCanvas, mvgCtx ] = Utility.getCanvasContextById('mvg-canvas');
+        View.drawSvg(mvgCtx, Model.mvgData, { fillChar: true, strokeRect: true, });
+        // const img = document.createElement('img');
+        // img.onload = e => { 
+        //     const mvgCanvas = document.querySelector('#mvg-canvas');
+        //     const mvgCtx = mvgCanvas.getContext('2d');
+        //     View.drawSvg(mvgCtx, Model.mvgData, { fillChar: true, strokeRect: true, });
+        // };
+        // img.src = 'data:image/svg+xml;base64,' + btoa('<?xml version="1.0" encoding="UTF-8" standalone="no" ?>\n' + Model.svgText); 
     }
 
     static drawDatas(datas) {
-        const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
+        const canvas = document.getElementById('avg-canvas');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
         ctx.reset();
-        ctx.drawImage(Model.blackBoardImg, 0, 0);    
         datas.forEach(data => { View.drawData(ctx, data); });
     }
 
@@ -65,7 +82,7 @@ class View {
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
         ctx.lineWidth = Settings.lineWidth / mat[0];
-        if(data.type === 'app') {
+        if(data.type === 'avg') {
             ctx.beginPath();
             data.curvesArray.forEach((curves, i) => {
                 curves.forEach((curve, j) => { 
@@ -131,5 +148,13 @@ class View {
         });
     
         ctx.restore();
+    }
+
+    static toggleElement(elm, flag, showType = 'block') {
+        if(flag) {
+            elm.style.display = showType;
+        } else {
+            elm.style.display = 'none';
+        }
     }
 }

@@ -18,7 +18,7 @@ class Controller {
 
         // edit-avg-button ボタン押下時の処理
         document.querySelector('#edit-avg-button').addEventListener('click', async () => {
-            AppSvg.show();
+            AppSvg.show(Model.mvgData);
         });
 
         // テキストでCtrl + Sした時の処理
@@ -33,91 +33,47 @@ class Controller {
         document.querySelector('#tex2svg-button').addEventListener('click', async () => {
             Settings.onChange();
             await Model.load();
-            //View.drawMVG();
+            View.drawMVG();
         });
 
         // play ボタン押下時の処理
         document.querySelector('#play-button').addEventListener('click', async () => {
             play();
         });
-        
-        // mouse ボタン押下時の処理
-        document.querySelector('#mouse-button').addEventListener('click', async () => {
-            let moveFlag = false;
-            let stroke = [];
-            document.querySelector('#erase-canvas').addEventListener('mousedown', mousedown);
-            document.addEventListener('mousemove', mousemove);
-            document.addEventListener('mouseup', mouseup);
-            function mousedown(e) {
-                if(moveFlag) { return; }
-                moveFlag = true;
-                stroke = [];
-                stroke.push({ x: e.offsetX, y: e.offsetY, });
-            }
-            function mousemove(e) {
-                if(!moveFlag) { return; }
-                stroke.push({ x: e.offsetX, y: e.offsetY, });
-                Model.strokeArray.forEach(stroke => { View.drawPosArray(stroke); });
-                View.drawPosArray(stroke);
-            }
-            function mouseup(e) {
-                if(!moveFlag) { return; }
-                
-                Model.strokeArray.push(JSON.parse(JSON.stringify(stroke)));
-                document.querySelector('#erase-canvas').removeEventListener('mousedown', mousedown);
-                document.removeEventListener('mousemove', mousemove);
-                document.removeEventListener('mouseup', mouseup);
-                localStorage.setItem('debug-stroke', JSON.stringify(Model.strokeArray));
-            }
-        });
-
-        // clear ボタン押下時の処理
-        document.querySelector('#clear-button').addEventListener('click', async () => {
-            const eraserCanvas = document.querySelector('#erase-canvas');
-            const eraserCtx = eraserCanvas.getContext('2d');
-            eraserCtx.reset();
-            Model.strokeArray = [];
-            localStorage.setItem('debug-stroke', JSON.stringify(Model.strokeArray));
-        });
 
         // erase ボタン押下時の処理
-        document.querySelector('#erase-button').addEventListener('click', async () => {
-            const eraserCanvas = document.querySelector('#erase-canvas');
-            const eraserCtx = eraserCanvas.getContext('2d');
-            const indexes = Utility.getFilledPixels(eraserCanvas);
-            // eraserの回転行列を決める(ここは手動で決めさせてもよい)
-            const mat = Eraser.getLeftMatrix(indexes, eraserCanvas.width);
-            // debug用に矩形を求める
-            const rectPoints = Eraser.getRect(eraserCanvas.width, indexes, mat);
-            // アニメーション用のフレーム情報を求める
-            const points = Eraser.getMatrices(indexes, mat, { width: eraserCanvas.width, height: eraserCanvas.height, });
-            console.log(points.length);
+        document.querySelector('#erase-button').addEventListener('click', async () => {            
+            const [ chalkCanvas, chalkCtx ] = Utility.getCanvasContextById('chalk-canvas');
+            const size = { width: chalkCanvas.width, height: chalkCanvas.height, };
+            
+            // 塗られているピクセルのインデックスを取得
+            const indexes = Utility.getFilledPixels(chalkCanvas);
+            if(indexes.length === 0) { return; }    // 塗られていなければ何もしない
 
-            // アニメーションを実装する
-            // canvasをコピーする
-            const imageData = eraserCtx.getImageData(0, 0, eraserCtx.canvas.width, eraserCtx.canvas.height);
+            // 黒板消しの回転行列を決める(ここは手動で決めさせてもよい)
+            const rotMat = Eraser.getRotateMatrixByIndexes(indexes, size);
+            // アニメーション用のフレーム情報を求める
+            const points = Eraser.getMatrices(indexes, size, rotMat);
+
+            // 現在のイメージデータを取得する
+            const imageData = chalkCtx.getImageData(0, 0, chalkCtx.canvas.width, chalkCtx.canvas.height);
             const data = imageData.data;
 
             let animCnt = 0;
             let intervalId = setInterval(() => {
-                const eraserCanvas = document.querySelector('#erase-canvas');
-                const eraserCtx = eraserCanvas.getContext('2d');
-                eraserCtx.reset();    
-
-                const point = points[animCnt++];
+                chalkCtx.reset();    
+                // チョークを消す
+                const point = points[animCnt];
                 point.indexes.forEach(i => {
                     data[i * 4 + 3] = 0;
                 });
-                eraserCtx.putImageData(imageData, 0, 0);
+                // 消されたチョークを描画
+                chalkCtx.putImageData(imageData, 0, 0);
 
                 // 黒板消しを描画
-                Eraser.draw(eraserCtx, Matrix.multiply(point.mat, mat));
+                Eraser.draw(chalkCtx, Matrix.multiply(point.mat, rotMat));
 
-                // デバッグ用最大最小描画
-                // eraserCtx.save();
-                // eraserCtx.strokeStyle = 'green';
-                // Utility.strokePath(eraserCtx, rectPoints);
-                // eraserCtx.restore();
+                animCnt += 1;
                 if(animCnt >= points.length) {
                     clearInterval(intervalId);
                     intervalId = -1;
@@ -150,5 +106,29 @@ class Controller {
                 console.log('cancelされた');
             }
         });
+
+        // MVG のチェックボックスが変更されたときの処理
+        document.querySelector('#mvg-check').addEventListener('change', () => {
+            Model.mvgCheck = document.querySelector('#mvg-check').checked;
+            View.toggleElement(document.querySelector('#mvg-canvas'), Model.mvgCheck, 'inline');
+        });        
+
+        // AVG のチェックボックスが変更されたときの処理
+        document.querySelector('#avg-check').addEventListener('change', () => {
+            Model.avgCheck = document.querySelector('#avg-check').checked;
+            View.toggleElement(document.querySelector('#avg-canvas'), Model.avgCheck, 'inline');
+        });    
+
+        // Hand のチェックボックスが変更されたときの処理
+        document.querySelector('#hand-check').addEventListener('change', () => {
+            Model.handCheck = document.querySelector('#hand-check').checked;
+            View.toggleElement(document.querySelector('#hand-canvas'), Model.handCheck, 'inline');
+        });   
+        
+        // Chalk のチェックボックスが変更されたときの処理
+        document.querySelector('#chalk-check').addEventListener('change', () => {
+            Model.chalkCheck = document.querySelector('#chalk-check').checked;
+            View.toggleElement(document.querySelector('#chalk-canvas'), Model.chalkCheck, 'inline');
+        });   
     }
 }

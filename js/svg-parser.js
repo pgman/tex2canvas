@@ -57,8 +57,10 @@ class SvgParser {
                     { x: curPos.x + values[4], y: curPos.y + values[5], },
                 ]));
             } else if(type === 'S') {// S x2 y2, x y
+                console.log(`d of path is ${type}. this ,is not supported.`);
                 throw '未実装';
             } else if(type === 's') {// s dx2 dy2, dx dy
+                console.log(`d of path is ${type}. this ,is not supported.`);
                 throw '未実装';
             } else if(type === 'Q') {// Q x1 y1, x y
                 datas[datas.length - 1].push(new Curve([
@@ -94,6 +96,7 @@ class SvgParser {
                     { x: values[2], y: values[3], },
                 ]));
             } else if(type === 't') {// t dx dy
+                console.log(`d of path is ${type}. this ,is not supported.`);
                 throw '未実装';
             } else if(type === 'Z') {
 
@@ -155,7 +158,6 @@ class SvgParser {
      * @returns {{x: number, y: number, }} 
      */
     static getCurvesArrayRect(curvesArray) {
-        // ca : [ [curve, curve, ...], [curve, curve, ...], ... ]
         MinMax.save();
         MinMax.init();    
         curvesArray.forEach(curves => {
@@ -247,12 +249,21 @@ class SvgParser {
             throw 'path is not found.'
         }
 
-        const id = pathArray[0].parentElement.getAttribute('id');
+        // id と c を取得する
+        let id = pathArray[0].parentElement.getAttribute('id');
         const splits = id.split(':');
         if(splits.length !== 2) {
             throw 'id is invalid.';
         }
-        const c = splits[1];
+        let c = splits[1];
+        if(c.includes('-') && pathArray[0].parentElement.parentElement) {// 1回だけさかのぼってみる
+            id = pathArray[0].parentElement.parentElement.getAttribute('id');
+            const splits = id.split(':');
+            if(splits.length !== 2) {
+                throw 'id is invalid.';
+            }
+            c = splits[1];
+        }
 
         // <path>でループ
         // pathArray を列挙する

@@ -1,6 +1,6 @@
 class AppSvg {
 
-    static show() {
+    static show(mvgData) {
         const layerElm = document.createElement('div');
         layerElm.id = 'avg-layer';
         layerElm.style.backgroundColor = '#888888';
@@ -25,8 +25,6 @@ class AppSvg {
         document.body.appendChild(divElm);
         divElm.innerHTML = `
             <div style="margin-bottom: 8px;">
-                <input id="avg-text" type="text">
-                <button id="avg-search-button">search</button>
                 <select id="avg-path-select"></select>
             </div>
             <div style="margin-bottom: 8px;">
@@ -49,6 +47,8 @@ class AppSvg {
         charCanvas.style.display = 'inline';
         
         AppSvg.attachEvent();
+
+        AppSvg.onInit(mvgData);
     }
 
     static attachEvent() {
@@ -165,23 +165,6 @@ class AppSvg {
             AppSvg.tempCurves = [];
             AppSvg.onDraw();
         });  
-    
-
-        document.querySelector('#avg-text').addEventListener('keypress', e => {
-            if(e.keyCode === 13) {
-                AppSvg.onSearch();
-            }
-        });
-    
-        // テキストでCtrl + Sした時の処理
-        document.querySelector('#avg-text').addEventListener('keydown', e => {
-            if(e.ctrlKey && e.key === 's') {
-                e.preventDefault(); // Prevent the Save dialog to open
-                AppSvg.onSearch();
-            }
-        });
-
-        document.querySelector('#avg-search-button').addEventListener('click', AppSvg.onSearch);    
 
         document.querySelector('#avg-path-select').addEventListener('change', AppSvg.onChange);   
         
@@ -192,23 +175,15 @@ class AppSvg {
     static VIEWBOX_SIZE = 119;
     static CANVAS_SIZE = 400;
     static MVG_PADDING = 20;
-    static svgText = '';
-    static svgData = null;
+    static mvgData = null;
     static mode = '';
     static curvesArray = [];
     static tempCurves = [];
     static selectedPathIndex = -1;
 
-    static onSearch() {
-        const canvas = document.querySelector('#avg-char-canvas');
-        const ctx = canvas.getContext('2d');
-
-        // 数式(MathJax用)
-        const equation = document.querySelector('#avg-text').value;
-        // svgに変換
-        AppSvg.svgText = MathJaxSvg.getMathJaxSvgText(equation, true);
-        // パースする
-        AppSvg.mvgData = MathJaxSvg.parseMathJaxSvg(AppSvg.svgText);
+    static onInit(mvgData) {
+        // コピーする
+        AppSvg.mvgData = mvgData;
 
         if(!AppSvg.mvgData || !AppSvg.mvgData.shapes || AppSvg.mvgData.shapes.length === 0) {
             console.error('error');
@@ -234,9 +209,11 @@ class AppSvg {
             });
         } 
 
-        const img = document.createElement('img');
-        img.onload = e => { AppSvg.onDraw(); };
-        img.src = 'data:image/svg+xml;base64,' + btoa('<?xml version="1.0" encoding="UTF-8" standalone="no" ?>\n' + AppSvg.svgText); 
+        AppSvg.onDraw(); 
+
+        // const img = document.createElement('img');
+        // img.onload = e => { AppSvg.onDraw(); };
+        //img.src = 'data:image/svg+xml;base64,' + btoa('<?xml version="1.0" encoding="UTF-8" standalone="no" ?>\n' + AppSvg.svgText); 
     
     }
 

@@ -22,6 +22,7 @@
 <script src="js/eraser.js"></script>
 <script src="js/vkbeautify.js"></script>
 <script src="js/app-svg.js"></script>
+<script src="js/rect.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', async () => {
     await Model.init();
@@ -64,10 +65,8 @@ function play() {
     }
     
     Model.animIntervalId = setInterval(() => {
-        const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
+        const [ canvas, ctx ] = Utility.getCanvasContextById('chalk-canvas');
         ctx.reset();
-        ctx.drawImage(Model.blackBoardImg, 0, 0);
         if(moveCount > 0) {
             const moveVec = Vector.subtract(moveEndPos, moveStartPos);
             const rate = (moveMaxCount - moveCount) / moveMaxCount;
@@ -81,7 +80,9 @@ function play() {
                 ctx.drawImage(animCanvas, 0, 0);
                 ctx.restore();
             }
-            ctx.drawImage(Model.chalkImg, chalkPos.x - chalkAnchorPos.x, chalkPos.y - chalkAnchorPos.y);
+            const [ handCanvas, handCtx ] = Utility.getCanvasContextById('hand-canvas');
+            handCtx.reset();
+            handCtx.drawImage(Model.chalkImg, chalkPos.x - chalkAnchorPos.x, chalkPos.y - chalkAnchorPos.y);
             moveCount -= 1;
             if(moveCount <= 0 && moveLastFlag) {
                 clearInterval(Model.animIntervalId);
@@ -159,7 +160,9 @@ function play() {
             ctx.restore();
         }
         // chalk        
-        ctx.drawImage(Model.chalkImg, chalkPos.x - chalkAnchorPos.x, chalkPos.y - chalkAnchorPos.y); // 101, 26
+        const [ handCanvas, handCtx ] = Utility.getCanvasContextById('hand-canvas');
+        handCtx.reset();
+        handCtx.drawImage(Model.chalkImg, chalkPos.x - chalkAnchorPos.x, chalkPos.y - chalkAnchorPos.y);
     }, 1000 / Settings.fps);
 }
 function getCurvesArrayRect(curvesArray) {
@@ -234,10 +237,6 @@ label {
         &nbsp;&nbsp;
         <button id="play-button">play</button>
         &nbsp;&nbsp;
-        <button id="mouse-button">mouse</button>
-        &nbsp;&nbsp;
-        <button id="clear-button">clear</button>
-        &nbsp;&nbsp;
         <button id="erase-button">erase</button>
         &nbsp;&nbsp;
         <button id="save-app-svg-button">save app svg</button>
@@ -254,28 +253,25 @@ label {
         <label for="mvg-check">
             <input type="checkbox" id="mvg-check" />MVG
         </label>
-        <label for="kvg-check">
-            <input type="checkbox" id="kvg-check" />KVG
-        </label>
-        <label for="kvg-rect-check">
-            <input type="checkbox" id="kvg-rect-check" />KVG-Rect
-        </label>
         <label for="avg-check">
             <input type="checkbox" id="avg-check" />AVG
         </label>
-        <label for="avg-rect-check">
-            <input type="checkbox" id="avg-rect-check" />AVG-Rect
+        <label for="hand-check">
+            <input type="checkbox" id="hand-check" />Hand
+        </label>
+        <label for="chalk-check">
+            <input type="checkbox" id="chalk-check" />Chalk
         </label>
     </div>
     <div id="canvas-area">
         <!-- 黒板用canvas -->
         <canvas id="back-canvas" class="draw-canvas" width="1024" height="576"></canvas>
-        <!-- アニメーション用canvas -->
-        <canvas id="canvas" class="draw-canvas" width="1024" height="576"></canvas>
+        <!-- チョーク用canvas -->
+        <canvas id="chalk-canvas" class="draw-canvas" width="1024" height="576"></canvas>
+        <!-- 手(チョークを持った手、黒板消しを持った手)用canvas -->
+        <canvas id="hand-canvas" class="draw-canvas" width="1024" height="576"></canvas>
         <!-- avg -->
         <canvas id="avg-canvas" class="draw-canvas" width="1024" height="576"></canvas>
-        <!-- kvg -->
-        <canvas id="kvg-canvas" class="draw-canvas" width="1024" height="576"></canvas>
         <!-- mvg -->
         <canvas id="mvg-canvas" class="draw-canvas" width="1024" height="576"></canvas>
         <!-- erase -->

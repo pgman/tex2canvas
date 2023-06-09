@@ -26,7 +26,7 @@ class Utility {
 	/**
 	 * 数値かどうか
 	 * @param {string} s 文字列
-	 * @returns {boolean} 0123456789-.のいづれかか？
+	 * @returns {boolean} 0123456789+-.のいづれかか？
 	 */
 	static isNumeric(s) {
 		return '0123456789+-.'.indexOf(s) >= 0;
@@ -84,8 +84,8 @@ class Utility {
     /**
 	 * 線分を描画する
 	 * @param {CanvasRenderingContext2D} ctx Canvasのコンテキスト
-	 * @param {{ x:number, y: number }} pos0 線分の始点座標
-	 * @param {{ x:number, y: number }} pos1 線分の終点座標
+	 * @param {{ x: number, y: number }} pos0 線分の始点座標
+	 * @param {{ x: number, y: number }} pos1 線分の終点座標
 	 * @return {void} なし
 	 */
 	static drawLine(ctx, pos0, pos1) {
@@ -140,7 +140,7 @@ class Utility {
      * @param {{ x: number, y: number, width: number, height: number}} rect 矩形 
      * @returns {boolean} 点が矩形内に存在するか
      */
-    static isPosInRect = (pos, rect) => {
+    static isPosInRect(pos, rect) {
 		if(rect.x <= pos.x && pos.x <= rect.x + rect.width
 		&& rect.y <= pos.y && pos.y <= rect.y + rect.height) {
 			return true;
@@ -151,7 +151,7 @@ class Utility {
 
     // mean 平均
 	// sd 標準僅差
-	static normalDistribution = (mean, sd) => {
+	static normalDistribution(mean, sd) {
 	    const x = Math.random();
 	    const y = Math.random();
 
@@ -274,7 +274,7 @@ class Utility {
      * .json をファイルダイアログを開いて読み込む
      * @param {Blob} blob Blob
      * @param {string} fileName ファイル名
-     * @returns {Object} オブジェクト(エラー発生時はnull) 
+     * @returns {Promise<Object>} オブジェクト(エラー発生時はnull) 
      */
     static async loadJsonFile() {
         const fileoptions = {
@@ -352,9 +352,9 @@ class Utility {
 
     /**
      * 使える声の配列を得る(※非同期で読み込まれて且つそのloadイベントが存在しないため、タイマーで監視する)
-     * @returns {Array<Object>} 使える声の配列
+     * @returns {Promise<Array<Object>>} 使える声の配列
      */
-    static async getVoices() {
+    static getVoices() {
         return new Promise(resolve => {
             const intervalId = setInterval(() => {
                 const voices = speechSynthesis.getVoices();
@@ -474,6 +474,17 @@ class Utility {
         if(value < min) { return min; }
         else if(max < value) { return max; }
         else { return value; }
+    }
+
+    /**
+     * キャンバスとコンテキストを取得する
+     * @param {string} id ID
+     * @returns {Array<Object>} キャンバスとコンテキストの配列
+     */
+    static getCanvasContextById(id) {
+        const canvas = document.getElementById(id);
+        const ctx = canvas.getContext('2d');
+        return [canvas, ctx];
     }
 }
 	

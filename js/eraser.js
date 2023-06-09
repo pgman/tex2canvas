@@ -3,13 +3,11 @@
  */
 class Eraser {
 
-    static mat = [1, 0, 0, 0, 1, 0, 0, 0, 1];
-    static width = 100;
-    static height = 100;
-    static radius = 5;
-    static img = null;
-
-    static rectPoints = [];
+    static mat = [1, 0, 0, 0, 1, 0, 0, 0, 1];   // 黒板消しの矩形を画像にフィットさせるための行列(この行列はUIを使ってユーザーに決定させる)
+    static width = 100;     // 黒板消しの矩形の幅
+    static height = 100;    // 黒板消しの矩形の高さ
+    static radius = 5;      // 黒板消しの矩形の角丸の半径
+    static img = null;      // 黒板消しの画像
 
     /**
      * 黒板消しを定義する
@@ -28,29 +26,28 @@ class Eraser {
         Eraser.img = await Utility.loadImage(filePath);
     }
 
-    static draw(ctx, mat) {
-        //ctx.reset();
+    /**
+     * 黒板消しを描画する
+     * @param {CanvasRenderingContext2D} ctx キャンバスのコンテキスト
+     * @param {Array<number>} mat 行列 
+     * @param {boolean} drawRect 矩形を表示するか(省略可。デフォルト値はfalse)
+     * @returns {void} なし
+     */
+    static draw(ctx, mat, drawRect = false) {
+        // 黒板消しの画像を描画
         ctx.save();
-        if(mat) {
-            Matrix.setTransform(ctx, mat);
-        }
+        Matrix.setTransform(ctx, mat);
         ctx.drawImage(Model.eraserImg, 0, 0);
         ctx.restore();
-
+        // 黒板消しの角丸矩形(事前に定義しておくもの)を描画(デバッグ用)
+        if(!drawRect) { return; }
         ctx.save();
         ctx.strokeStyle = 'red';
         ctx.lineWidth = 4;
         ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        if(mat) {
-            Matrix.setTransform(ctx, mat);
-            Matrix.transform(ctx, Eraser.mat);
-        } else {
-            Matrix.setTransform(ctx, Eraser.mat);
-        }
-        //ctx.beginPath();
-        //ctx.roundRect(0, 0, Eraser.width, Eraser.height, Eraser.radius);
-
+        ctx.lineJoin = 'round';        
+        Matrix.setTransform(ctx, mat);
+        Matrix.transform(ctx, Eraser.mat);
         Paint.createMovedRoundRectPath(ctx, { x: 0, y: 0, }, { x: 0, y: 0, }, 
             Eraser.width, Eraser.height, Eraser.radius);
         ctx.stroke();
@@ -58,14 +55,13 @@ class Eraser {
     }
 
     /**
-     * 塗られているピクセルのインデックスからアニメーションの初期化を行う
-     * @param {Array<number>} indexes 塗られているピクセル
+     * 回転行列を描画内容から取得する
+     * @param {Array<number>} indexes 描画されているインデックスの配列 
+     * @param {{ width: number, height: number, }} size サイズ 
+     * @returns {Array<number>} 回転行列
      */
-    static setPixels(indexes) {
-        // 塗られているピクセルを黒板消しの座標系へ変換し、消すための初期位置を計算する
-    }
-
-    static getLeftMatrix(indexes, width) {
+    static getRotateMatrixByIndexes(indexes, size) {
+        const width = size.width;
         // x, y の min / max を求める
         MinMax.save();
         indexes.forEach(i => {
@@ -84,6 +80,7 @@ class Eraser {
         const aspect = rect.width / rect.height;
         const threshhold = 2;
         
+        // 角度をアスペクト比で決める
         let deg;
         if(aspect > threshhold) {// 結構横長
             deg = 0;
@@ -98,23 +95,21 @@ class Eraser {
         const rad = Utility.deg2rad(deg);
         
         // 実際に回す角度を計算する
-        // 行列を左からかける
-        // T'RT・M の T'RT を求める
-        // 回転中心座標に現在の行列を当てる
-        const center = { x: Eraser.width / 2, y: Eraser.height / 2, };
-        const movedCenter = Matrix.multiplyVec(Eraser.mat, center);
-        const trans = Matrix.translate(-movedCenter.x, -movedCenter.y);
-        const rotate = Matrix.rotate(rad - baseRad);
-        const revTrans = Matrix.translate(movedCenter.x, movedCenter.y);
-        let mat = Matrix.multiply(rotate, trans);
-        mat = Matrix.multiply(revTrans, mat);
-
-        return mat;
+        return Matrix.rotate(rad - baseRad);
     }
 
-    static getRect(width, indexes, mat) {
+    /**
+     * 
+     * ※本関数の戻り値は、Utility.strokePath(eraserCtx, rectPoints); で描画できる
+     * @param {Array<number>} indexes 描画されているインデックスの配列 
+     * @param {{ width: number, height: number, }} size サイズ 
+     * @param {Array<number>} rotMat 回転行列
+     * @returns 逆回転した座標系における最大最小の点(4つ)
+     */
+    static getRectPointsForDebug(indexes, size, rotMat) {
+        const width = size.width;
         // 角度合わせした行列の角度
-        const rad = Matrix.getRotateAngle(mat);
+        const rad = Matrix.getRotateAngle(rotMat);
         // 現在の黒板消しの角度を求める
         const baseRad = Matrix.getRotateAngle(Eraser.mat);
         // 逆回転行列を求める
@@ -128,23 +123,22 @@ class Eraser {
             const rotated = Matrix.multiplyVec(rot, { x, y, });
             MinMax.regist(rotated);
         }
-        Eraser.rectPoints = MinMax.getRectPoints();              
+        const rectPoints = MinMax.getRectPoints();              
         MinMax.restore();
 
         const invertRot = Matrix.rotate(rad + baseRad);
-        const inverted = Eraser.rectPoints.map(p => Matrix.multiplyVec(invertRot, p));  
+        const inverted = rectPoints.map(p => Matrix.multiplyVec(invertRot, p));  
 
         return inverted;
     }
 
-    static getMatrices(indexes, mat, size) {
+    static getMatrices(indexes, size, rotMat) {
         const width = size.width;
         const height = size.height;
         const speed = 10;//Eraser.width - 2 * Eraser.radius;
-        console.log(`speed: ${speed}`);
         
         // 角度合わせした行列の角度
-        const rad = Matrix.getRotateAngle(mat);
+        const rad = Matrix.getRotateAngle(rotMat);
         // 現在の黒板消しの角度を求める
         const baseRad = Matrix.getRotateAngle(Eraser.mat);
         // 逆回転行列を求める
@@ -232,7 +226,7 @@ class Eraser {
             tmpCtx.save();            
             tmpCtx.reset();            
             Matrix.setTransform(tmpCtx, prePoint.mat);
-            Matrix.transform(tmpCtx, mat);
+            Matrix.transform(tmpCtx, rotMat);
             Matrix.transform(tmpCtx, Eraser.mat);
             Paint.createMovedRoundRectPath(tmpCtx, { x: 0, y: 0, }, vec, 
                 Eraser.width, Eraser.height, Eraser.radius);
@@ -244,7 +238,7 @@ class Eraser {
             ];
             movedRectPoints = movedRectPoints.concat(movedRectPoints.map(p => Vector.add(p, vec)));
             // 行列をかける
-            let tmpMat = Matrix.multiply(mat, Eraser.mat);
+            let tmpMat = Matrix.multiply(rotMat, Eraser.mat);
             tmpMat = Matrix.multiply(prePoint.mat, tmpMat);
             movedRectPoints = movedRectPoints.map(p => Matrix.multiplyVec(tmpMat, p));
             // 最大最小を取得する
@@ -294,7 +288,7 @@ class Eraser {
         function point2Mat(point) {
             const invertRot = Matrix.rotate(rad + baseRad);
             const inverted = Matrix.multiplyVec(invertRot, point);        
-            const buildMat = Matrix.multiply(mat, Eraser.mat);
+            const buildMat = Matrix.multiply(rotMat, Eraser.mat);
             const transformed = Matrix.multiplyVec(buildMat, { x: 0, y: 0, });
             return Matrix.translate(inverted.x - transformed.x, inverted.y - transformed.y);
         }
