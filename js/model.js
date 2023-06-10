@@ -228,8 +228,25 @@ class Model {
                 
                 if(!path) { return; } // continue;       
     
-                // MathJax のshape.rectをスクリーン座標系へ変換する                
-                const screenRect = Matrix.multiplyRect(shape.mat, path.rect); // スクリーン座標系の矩形
+                // MathJax のshape.rectをスクリーン座標系へ変換する
+                let screenRect;
+                if(shape.parentSvg && shape.parentSvg.mat && shape.parentSvg.width && shape.parentSvg.height) {
+                    const mat = Matrix.multiply(shape.parentSvg.mat, shape.originalMat);
+                    const inv = Matrix.inverse(mat);
+                    const tempRect = Matrix.multiplyRect(mat, path.rect);
+                    const size = {};
+                    if(tempRect.width >= shape.parentSvg.width) {
+                        size.width = shape.parentSvg.width;
+                    }
+                    if(tempRect.height >= shape.parentSvg.height) {
+                        size.height = shape.parentSvg.height;
+                    }
+                    Rect.changeSize(tempRect, size, true);
+                    const rect = Matrix.multiplyRect(inv, tempRect);
+                    screenRect = Matrix.multiplyRect(shape.mat, rect);
+                } else {
+                    screenRect = Matrix.multiplyRect(shape.mat, path.rect); // スクリーン座標系の矩形
+                }
     
                 const id = shape.xlinkHref.substring(1);
                 let kvgCode = SvgParser.toKanjiVGCodeById(id);

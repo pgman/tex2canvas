@@ -80,21 +80,11 @@ class MathJaxSvg {
                 }                
             }
         }
-
-        // 図形(c, mat)
-        let gElm;
-        if(parsedSvg.childNodes[1].tagName === 'g') {
-            gElm = parsedSvg.childNodes[1];
-        } else {
-            throw 'parse error: g is not found.';
-        }
         const shapes = [];
         let loopCnt = 0;
         const matStacks = [];
-
-        // ツリー構造をたどる
-        //traceGElm(gElm);
-        traceGElm(parsedSvg);
+        // ツリー構造をたどる(基本的に<g>を辿って<use>等を取得する)
+        traceElm(parsedSvg);
         
         return {
             parsedSvg,
@@ -162,11 +152,19 @@ class MathJaxSvg {
             return indexes;
         }
 
+        /**
+         * <svg> タグの行列を取得する
+         * @param {SVGElement} svgElm svg要素
+         * @param {number} pxPerEx 1exが何pxか
+         * @returns {Array<number>} 行列
+         */
         function getSvgMatrix(svgElm, pxPerEx = 200.25 / 22.684) {
             // ビューボリューム
             const vb = svgElm.viewBox.baseVal;
             if(vb.x === 0 && vb.y === 0 && vb.width === 0 && vb.height === 0) {
-                throw 'viewBox is not defined.'
+                //throw 'viewBox is not defined.'
+                console.log('viewBox is not defined.');
+                return Matrix.identify();
             }
             // SVGの高さ (単位はexか単位がない場合が多い)
             const svgWidth = svgElm.width.baseVal.valueAsString;
@@ -198,6 +196,11 @@ class MathJaxSvg {
             return vpMat;
         }
 
+        /**
+         * タグの行列を取得する
+         * @param {Element} elm 要素
+         * @returns {Array<number>} 行列
+         */
         function getElmMatrix(elm) {
             let tranformString = elm.getAttribute('transform');
             let mat = Matrix.identify();
@@ -224,41 +227,54 @@ class MathJaxSvg {
             return mat;
         }
 
-        function traceGElm(g) {
+        function traceElm(elm) {
             if(loopCnt++ > 10000) {
                 throw 'inifinity loop!';
             }
             // 行列を取得する          
-            if(typeof g.getAttribute !== 'function') {
+            if(typeof elm.getAttribute !== 'function') {
                 console.log('getAttribute is not a function.');
                 return;
             }  
             let mat;    
-            if(g.tagName === 'svg') {
-                mat = getSvgMatrix(g);
+            if(elm.tagName === 'svg') {
+                mat = getSvgMatrix(elm);
             } else {
-                mat = getElmMatrix(g);
+                mat = getElmMatrix(elm);
             }
             matStacks.push(mat);  
 
-            if(!g.childNodes || g.childNodes.length === 0) {
+            if(!elm.childNodes || elm.childNodes.length === 0) {
                 // 今の所、<use>,<rect>のみを拾う
-                if(g.nodeName === 'use') {
+                if(elm.nodeName === 'use') {
                     // cを取得する
-                    const c = g.getAttribute('data-c');
+                    const c = elm.getAttribute('data-c');
                     // xlink:hrefを取得する
-                    const xlinkHref = g.getAttribute('xlink:href');
+                    const xlinkHref = elm.getAttribute('xlink:href');
                     // 現在の行列を求める
                     let curMat = Matrix.identify();
                     for(let i = 0; i < matStacks.length; i += 1) {
                         curMat = Matrix.multiply(curMat, matStacks[i]);
                     }
-                    shapes.push({ tagName: 'use', c, xlinkHref, mat: curMat });
-                } else if(g.nodeName === 'rect') {
-                    const x = Number(g.getAttribute('x'));
-                    const y = Number(g.getAttribute('y'));
-                    const width = Number(g.getAttribute('width'));
-                    const height = Number(g.getAttribute('height'));
+                    let parentSvg = {
+                        mat: null,
+                        width: 0, height: 0,
+                    };
+                    if(elm.parentNode && elm.parentNode.nodeName === 'svg') {// 親要素がsvg
+                        parentSvg.mat = getSvgMatrix(elm.parentNode);
+                        if(elm.parentNode.getAttribute('width')) {
+                            parentSvg.width = Number(elm.parentNode.getAttribute('width'));
+                        }
+                        if(elm.parentNode.getAttribute('height')) {
+                            parentSvg.height = Number(elm.parentNode.getAttribute('height'));
+                        }
+                    }
+                    shapes.push({ tagName: 'use', c, xlinkHref, mat: curMat, parentSvg, originalMat: mat, });
+                } else if(elm.nodeName === 'rect') {
+                    const x = Number(elm.getAttribute('x'));
+                    const y = Number(elm.getAttribute('y'));
+                    const width = Number(elm.getAttribute('width'));
+                    const height = Number(elm.getAttribute('height'));
                     // 現在の行列を求める
                     let curMat = Matrix.identify();
                     for(let i = 0; i < matStacks.length; i += 1) {
@@ -266,17 +282,17 @@ class MathJaxSvg {
                     }
                     shapes.push({ tagName: 'rect', rect: {x, y, width, height }, mat: curMat });
                 } 
-            } else if(g.nodeName === 'text') {// <text>
+            } else if(elm.nodeName === 'text') {// <text>
                 // <text data-variant="normal" transform="scale(1,-1)" font-size="884px" font-family="serif">お</text>
                 // 現在の行列を求める
                 let curMat = Matrix.identify();
                 for(let i = 0; i < matStacks.length; i += 1) {
                     curMat = Matrix.multiply(curMat, matStacks[i]);
                 }
-                shapes.push({ tagName: 'text', text: g.innerHTML, fontSize: g.getAttribute('font-size'), mat: curMat, });
+                shapes.push({ tagName: 'text', text: elm.innerHTML, fontSize: elm.getAttribute('font-size'), mat: curMat, });
             } else {
-                for(let i = 0; i < g.childNodes.length; i += 1) {
-                    traceGElm(g.childNodes[i]);
+                for(let i = 0; i < elm.childNodes.length; i += 1) {
+                    traceElm(elm.childNodes[i]);
                 }
             }
             matStacks.pop();

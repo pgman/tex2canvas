@@ -106,6 +106,29 @@ L-018: 昔のアプリで出ていた不具合 - kvg読み込みを修正した�
    -> m(小文字)の処理がうまくできていない感じがする
 H-089: svg viewerへのリンクを作る
 H-090: 近いという字の読み込みがおかしい
+H-088: |がなんかおかしい -> svgが入れ子になった時がまだおかしかったのが原因
+-> svg でクリップしている感じがするので、クリップしてみる
+\begin{eqnarray}
+\left|
+\begin{pmatrix}
+a_{11} & a_{12} & a_{13} & a_{14}\\
+a_{21} & a_{22} & a_{23} & a_{24}\\
+a_{21} & a_{22} & a_{23} & a_{24}\\
+\end{pmatrix}
+\right|
+\end{eqnarray}
+H-084: 括弧のつなぎ箇所が大きい気がする気のせいかな？
+    アスペクト比のところの計算を見直してみる必要がある -> 恐らく<svg>のw,hでクリップする必要がある
+H-083: 4行の行列で横線がずれる。これを調べる
+-> \begin{eqnarray}
+\begin{pmatrix}
+a_{11} & a_{12} & a_{13} & a_{14}\\
+a_{21} & a_{22} & a_{23} & a_{24}\\
+a_{31} & a_{32} & a_{33} & a_{34}\\
+a_{41} & a_{42} & a_{43} & a_{44}\\
+\end{pmatrix}
+\end{eqnarray}
+で調査。svgが入れ子になっており、再度viewboxが定義されている
 
 [静止画切り取り調査]
 https://rico-notes.com/design/bg-transparent/#toc7
@@ -122,40 +145,16 @@ curvesArray を strokeArray として定義したい
 https://www.svgviewer.dev/
 
 [作業中]
-H-083: 4行の行列で横線がずれる。これを調べる
-長い横線には独自で対応した方がよさそうだ
-読み込みを<svg>から辿れるようにする
 
 [優先度高め H-XXX]
+H-085: 括弧のつなぎは独自オブジェクトを作成したほうがよいような気がする
 H-065: exToPxメソッドを作りたい https://viereck.ch/latex-to-svg/
 H-088: <rect> を横長前提に作ってしまっているので、修正する必要がある
-H-083: 4行の行列で横線がずれる。これを調べる
--> \begin{eqnarray}
-\begin{pmatrix}
-a_{11} & a_{12} & a_{13} & a_{14}\\
-a_{21} & a_{22} & a_{23} & a_{24}\\
-a_{31} & a_{32} & a_{33} & a_{34}\\
-a_{41} & a_{42} & a_{43} & a_{44}\\
-\end{pmatrix}
+H-089: \begin{eqnarray}
+x & = & \sin \left( \frac{\pi}{2} \right)
 \end{eqnarray}
-で調査。svgが入れ子になっており、再度viewboxが定義されている
-
-H-088: |がなんかおかしい -> svgが入れ子になった時がまだおかしかったのが原因
-\begin{eqnarray}
-\left|
-\begin{pmatrix}
-a_{11} & a_{12} & a_{13} & a_{14}\\
-a_{21} & a_{22} & a_{23} & a_{24}\\
-a_{21} & a_{22} & a_{23} & a_{24}\\
-\end{pmatrix}
-\right|
-\end{eqnarray}
-
-H-084: 括弧のつなぎ箇所が大きい気がする気のせいかな？
-    アスペクト比のところの計算を見直してみる必要がある
-
-H-085: 括弧のつなぎは独自オブジェクトを作成したほうがよいような気がする
-
+でMVGでsinの中身が表示できない。でもAVGでは表示できる。調べる。
+H-064: eqnarrayとか文字列をくくることができる https://viereck.ch/latex-to-svg/
 H-049: エラーが発生する
 \begin{eqnarray}
 )\tag{2}
@@ -163,11 +162,15 @@ H-049: エラーが発生する
 -> <svg>タグがあるのと今までmatrixを呼んでいなかった
 -> svgの子孫要素としてsvgがあり、それにはviewBoxが定義されているが、親のsvgにはviewBoxが定義されていない
 -> 改修に時間がかかりそうなのでいったん保留
+-> なんだろう。svg viewerでも表示できないし、もうええかなって感じもする。
+<svg
+	xmlns="http://www.w3.org/2000/svg" width="100%" height="2.262ex" role="img" focusable="false"
+	xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" style="vertical-align: -0.566ex; min-width: 10.283ex;">
+という感じでスタイルが一応あるので、うーん考えてみようかなー
 
 H-087: アニメーションはコントローラで定義しないといけない
 H-005: 線の太さを考慮した矩形計算 -> 対応必要
 H-066: Settingsを削除したい
-H-064: eqnarrayとか文字列をくくることができる https://viereck.ch/latex-to-svg/
 H-058: 録画のテスト
 H-053: 文字にランダムにアフィン変換をかます
 H-047: そもそものtexによる色を変えた場合の対応
