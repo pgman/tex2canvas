@@ -17,7 +17,7 @@ class SvgParser {
         separated.forEach(elm => {
             // 'Q186 568 160 563' => [186, 568, 160, 563]
             const type = elm[0];
-            const values = getValues(elm.replaceAll('-',',-'));
+            let values = getValues(elm.replaceAll('-',',-'));
             
             if(type === 'M' || type === 'm') {
                 datas.push([]);
@@ -57,11 +57,49 @@ class SvgParser {
                     { x: curPos.x + values[4], y: curPos.y + values[5], },
                 ]));
             } else if(type === 'S') {// S x2 y2, x y
-                console.log(`d of path is ${type}. this ,is not supported.`);
-                throw '未実装';
+                if(!preValues) {
+                    throw 'error preValues length.';
+                }
+                let dx, dy;
+                if(preValues.length < 4) {
+                    dx = 0;
+                    dy = 0;
+                } else {
+                    dx = preValues[preValues.length - 2] - preValues[preValues.length - 4];
+                    dy = preValues[preValues.length - 1] - preValues[preValues.length - 3];
+                }
+                const x1 = preValues[preValues.length - 2] + dx;
+                const y1 = preValues[preValues.length - 1] + dy;
+                values.unshift(y1);
+                values.unshift(x1);
+                datas[datas.length - 1].push(new Curve([
+                    { x: curPos.x, y: curPos.y, },
+                    { x: values[0], y: values[1], },
+                    { x: values[2], y: values[3], },
+                    { x: values[4], y: values[5], },
+                ]));
             } else if(type === 's') {// s dx2 dy2, dx dy
-                console.log(`d of path is ${type}. this ,is not supported.`);
-                throw '未実装';
+                if(!preValues) {
+                    throw 'error preValues length.';
+                }
+                let dx, dy;
+                if(preValues.length < 4) {
+                    dx = 0;
+                    dy = 0;
+                } else {
+                    dx = preValues[preValues.length - 2] - preValues[preValues.length - 4];
+                    dy = preValues[preValues.length - 1] - preValues[preValues.length - 3];
+                }
+                const x1 = dx;
+                const y1 = dy;
+                values.unshift(y1);
+                values.unshift(x1);
+                datas[datas.length - 1].push(new Curve([
+                    { x: curPos.x, y: curPos.y, },
+                    { x: curPos.x + values[0], y: curPos.y + values[1], },
+                    { x: curPos.x + values[2], y: curPos.y + values[3], },
+                    { x: curPos.x + values[4], y: curPos.y + values[5], },
+                ]));
             } else if(type === 'Q') {// Q x1 y1, x y
                 datas[datas.length - 1].push(new Curve([
                     { x: curPos.x, y: curPos.y, },
@@ -96,7 +134,7 @@ class SvgParser {
                     { x: values[2], y: values[3], },
                 ]));
             } else if(type === 't') {// t dx dy
-                console.log(`d of path is ${type}. this ,is not supported.`);
+                console.log(`d of path is ${type}. this is not supported.`);
                 throw '未実装';
             } else if(type === 'Z') {
 
@@ -104,16 +142,20 @@ class SvgParser {
                 console.log('type is not defined. ', type);
             }
 
-            if(type.toUpperCase() === type) {
+            if(type.toUpperCase() === type) {// 大文字は絶対座標
                 if(values.length >= 2) {                    
                     curPos.x = values[values.length - 2];
                     curPos.y = values[values.length - 1];
                 }
-            } else {
+            } else {// 小文字は相対座標
                 if(values.length >= 2) {   
                     curPos.x += values[values.length - 2];
                     curPos.y += values[values.length - 1];
                 }
+                values = values.map((value, i) => {
+                    if(i % 2 === 0) { return value + curPos.x; }
+                    else { return value + curPos.y; }
+                });
             }
             preValues = JSON.parse(JSON.stringify(values));
         });

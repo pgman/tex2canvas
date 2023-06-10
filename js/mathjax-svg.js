@@ -80,7 +80,6 @@ class MathJaxSvg {
                 }                
             }
         }
-        const vpMat = getSvgMatrix(parsedSvg); 
 
         // 図形(c, mat)
         let gElm;
@@ -94,7 +93,8 @@ class MathJaxSvg {
         const matStacks = [];
 
         // ツリー構造をたどる
-        traceGElm(gElm);
+        //traceGElm(gElm);
+        traceGElm(parsedSvg);
         
         return {
             parsedSvg,
@@ -253,7 +253,6 @@ class MathJaxSvg {
                     for(let i = 0; i < matStacks.length; i += 1) {
                         curMat = Matrix.multiply(curMat, matStacks[i]);
                     }
-                    curMat = Matrix.multiply(vpMat, curMat);
                     shapes.push({ tagName: 'use', c, xlinkHref, mat: curMat });
                 } else if(g.nodeName === 'rect') {
                     const x = Number(g.getAttribute('x'));
@@ -265,7 +264,6 @@ class MathJaxSvg {
                     for(let i = 0; i < matStacks.length; i += 1) {
                         curMat = Matrix.multiply(curMat, matStacks[i]);
                     }
-                    curMat = Matrix.multiply(vpMat, curMat);
                     shapes.push({ tagName: 'rect', rect: {x, y, width, height }, mat: curMat });
                 } 
             } else if(g.nodeName === 'text') {// <text>
@@ -275,7 +273,6 @@ class MathJaxSvg {
                 for(let i = 0; i < matStacks.length; i += 1) {
                     curMat = Matrix.multiply(curMat, matStacks[i]);
                 }
-                curMat = Matrix.multiply(vpMat, curMat);
                 shapes.push({ tagName: 'text', text: g.innerHTML, fontSize: g.getAttribute('font-size'), mat: curMat, });
             } else {
                 for(let i = 0; i < g.childNodes.length; i += 1) {

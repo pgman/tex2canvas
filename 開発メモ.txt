@@ -97,6 +97,16 @@ H-012: 日本語のMVG読み込み対応 - 日本語入力したときはpathが
 H-069: ちなみにmathjaxが吐いたsvgの文字ごとの間隔寄せは非常に難しい。
     latexにはその設定があるようなのでそれを使った方がいいんじゃないかな？ -> いけた
 
+2023/06/10:
+H-087: 。で不具合が出る -> svgのS,sを対応すればよい
+L-018: 昔のアプリで出ていた不具合 - kvg読み込みを修正したのできっと直っている
+  "備"がエラーが出てしまう 
+   -> プロパティ内に半角スペースがあるのが原因かな？
+   -> 半角スペースを削除したがダメ
+   -> m(小文字)の処理がうまくできていない感じがする
+H-089: svg viewerへのリンクを作る
+H-090: 近いという字の読み込みがおかしい
+
 [静止画切り取り調査]
 https://rico-notes.com/design/bg-transparent/#toc7
 
@@ -116,22 +126,7 @@ H-083: 4行の行列で横線がずれる。これを調べる
 長い横線には独自で対応した方がよさそうだ
 読み込みを<svg>から辿れるようにする
 
-<svg
-	xmlns="http://www.w3.org/2000/svg" width="22.684ex" height="11.765ex" role="img" focusable="false" 
-    viewBox="0 -2850 10026.4 5200"
-	xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" style="vertical-align: -5.317ex;">
-	<defs>
-
-<svg width="875" height="1782" y="-641" x="0" viewBox="0 402.4 875 1782">
-    <use data-c="239C" xlink:href="#MJX-1-TEX-S4-239C" transform="scale(1,4.311)"></use>
-</svg>
-
-<svg width="875" height="1782" y="-641" x="0" viewBox="0 402.4 875 1782">
-    <use data-c="239F" xlink:href="#MJX-1-TEX-S4-239F" transform="scale(1,4.311)"></use>
-</svg>
-
 [優先度高め H-XXX]
-H-087: 。で不具合が出る
 H-065: exToPxメソッドを作りたい https://viereck.ch/latex-to-svg/
 H-088: <rect> を横長前提に作ってしまっているので、修正する必要がある
 H-083: 4行の行列で横線がずれる。これを調べる
@@ -144,6 +139,17 @@ a_{41} & a_{42} & a_{43} & a_{44}\\
 \end{pmatrix}
 \end{eqnarray}
 で調査。svgが入れ子になっており、再度viewboxが定義されている
+
+H-088: |がなんかおかしい -> svgが入れ子になった時がまだおかしかったのが原因
+\begin{eqnarray}
+\left|
+\begin{pmatrix}
+a_{11} & a_{12} & a_{13} & a_{14}\\
+a_{21} & a_{22} & a_{23} & a_{24}\\
+a_{21} & a_{22} & a_{23} & a_{24}\\
+\end{pmatrix}
+\right|
+\end{eqnarray}
 
 H-084: 括弧のつなぎ箇所が大きい気がする気のせいかな？
     アスペクト比のところの計算を見直してみる必要がある
@@ -196,11 +202,6 @@ L-016:
   -> Bufferが使えるのはNodeのみなので、おそらくArrayBufferを使う
 L-023
 ・Pixel.getAnimationPixelData で indexesArray を作成しないフラグを設けてもよいかもしれない -> フラグを設ける
-L-018: 昔のアプリで出ていた不具合 - kvg読み込みを修正したのできっと直っている
-  "備"がエラーが出てしまう 
-   -> プロパティ内に半角スペースがあるのが原因かな？
-   -> 半角スペースを削除したがダメ
-   -> m(小文字)の処理がうまくできていない感じがする
 L-001
 図形のtexはいけない
 以下がいけない。texclipではいける。うーん問題だね -> mathjaxは対応していないので、問題ではない
