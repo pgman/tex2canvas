@@ -86,12 +86,21 @@ class Matrix {
     /**
      * 回転行列作成
      * @param {number} theta 回転角度(ラジアン)
+     * @param {{ x: number, y: number, }} 回転中心(省略可能)
      * @returns {Array<number>} 行列
      */
-    static rotate(theta) {
-        const cos = Math.cos(theta),
-            sin = Math.sin(theta);
-        return [cos, -sin, 0, sin, cos, 0, 0, 0, 1];
+    static rotate(theta, center = null) {
+        if(center) {
+            const trans = Matrix.translate(-center.x, -center.y);
+            const rot = Matrix.rotate(theta);
+            const invTrans = Matrix.translate(center.x, center.y);
+            let mat = Matrix.multiply(rot, trans);
+            return Matrix.multiply(invTrans, mat);
+        } else {
+            const cos = Math.cos(theta),
+                sin = Math.sin(theta);
+            return [cos, -sin, 0, sin, cos, 0, 0, 0, 1];
+        }        
     }
 
     /**

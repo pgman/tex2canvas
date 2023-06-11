@@ -28,7 +28,7 @@ class View {
     static drawPosArray(posArray) {
         
         const eraseCanvas = document.querySelector('#erase-canvas');
-        const eraseCtx = eraseCanvas.getContext('2d');
+        const eraseCtx = eraseCanvas.getContext('2d', { willReadFrequently: true });
                 
         eraseCtx.save();
         eraseCtx.strokeStyle = 'white';

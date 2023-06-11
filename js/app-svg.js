@@ -233,7 +233,7 @@ class AppSvg {
 
     static onDraw() {
         const canvas = document.querySelector('#avg-char-canvas');
-        const ctx = canvas.getContext('2d');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
         ctx.reset();
         AppSvg.drawSvg(ctx, AppSvg.mvgData, { fillChar: true, fillStyle: 'rgba(0, 255, 0, 0.2)', 

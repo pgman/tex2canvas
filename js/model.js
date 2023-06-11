@@ -218,9 +218,14 @@ class Model {
 
     static getDatas(mvgData, kvgData) {
         const ret = [];
+        let skipFlag = false;
     
         // ret に kvgDataのインデックスと変換行列を格納していく
-        mvgData.shapes.forEach(shape => {
+        mvgData.shapes.forEach((shape, i) => {
+            if(skipFlag) {
+                skipFlag = false;
+                return;
+            }
             if(shape.tagName === 'use') {// <use>
                 // 描画するpathを取得する
                 //const path = mvgData.paths.find(p => p.c === shape.c);
@@ -231,6 +236,7 @@ class Model {
                 // MathJax のshape.rectをスクリーン座標系へ変換する
                 let screenRect;
                 if(shape.parentSvg && shape.parentSvg.mat && shape.parentSvg.width && shape.parentSvg.height) {
+                    // 簡易クリッピング(どうも<svg>でクリップする必要があるっぽい)
                     const mat = Matrix.multiply(shape.parentSvg.mat, shape.originalMat);
                     const inv = Matrix.inverse(mat);
                     const tempRect = Matrix.multiplyRect(mat, path.rect);
@@ -248,11 +254,8 @@ class Model {
                     screenRect = Matrix.multiplyRect(shape.mat, path.rect); // スクリーン座標系の矩形
                 }
     
-                const id = shape.xlinkHref.substring(1);
-                let kvgCode = SvgParser.toKanjiVGCodeById(id);
-                kvgCode = Utility.zeroPadding(kvgCode, Define.SVG_FILE_NAME_LENGTH);
-                let splits = id.split('-');
-                const avgCode = splits[4]; 
+                // コードを取得する
+                const [avgCode, kvgCode] = getCodes(shape);
     
                 if(Model.avgData[avgCode]) {
                     // calc rect
@@ -262,6 +265,43 @@ class Model {
                     const rect = getCurvesArrayRect(curvesArray);
                     // push data
                     ret.push({ type: 'avg', curvesArray, mat: getNewMatrix(screenRect, rect), });
+                    if((avgCode === '239D' || avgCode === '23A0')) {
+                        if(i - 1 < 0) { return; }
+                        if(i + 1 >= mvgData.shapes.length) { return; }
+                        const preShape = mvgData.shapes[i - 1];
+                        const nextShape = mvgData.shapes[i + 1];
+                        const [preAvgCode] = getCodes(preShape);
+                        const [nextAvgCode] = getCodes(nextShape);
+                        if(!(preAvgCode === '239B' && avgCode === '239D' && nextAvgCode === '239C')
+                        && !(preAvgCode === '239E' && avgCode === '23A0' && nextAvgCode === '239F')) {
+                            return;
+                        }
+                        const preData = ret[ret.length - 2];
+                        const curData = ret[ret.length - 1];
+                        
+                        const preLastCurves = preData.curvesArray[preData.curvesArray.length - 1];
+                        const preLastCurve = preLastCurves[preLastCurves.length - 1];
+                        const preLastPoint = preLastCurve.points[preLastCurve.points.length - 1];
+                        
+                        const curFirstCurves = curData.curvesArray[0];
+                        const curFirstCurve = curFirstCurves[0];
+                        const curFirstPoint = curFirstCurve.points[0];
+
+                        const insertedStart = Matrix.multiplyVec(preData.mat, preLastPoint);
+                        const insertedEnd = Matrix.multiplyVec(curData.mat, curFirstPoint);
+
+                        const curvesArray = [
+                            [new Curve([insertedStart, 
+                                        Utility.linearInterpolation(insertedStart, insertedEnd, 1 / 3),
+                                        Utility.linearInterpolation(insertedStart, insertedEnd, 2 / 3), 
+                                        insertedEnd]) ]
+                        ];
+                        
+                        const popped = ret.pop();
+                        ret.push({ type: 'avg', curvesArray, mat: Matrix.identify(), });
+                        ret.push(popped);
+                        skipFlag = true;
+                    }                        
                 } else {
                     // get kvg paths
                     const data = kvgData.find(data => data.c === kvgCode); 
@@ -304,5 +344,14 @@ class Model {
         });
     
         return ret;
+
+        function getCodes(shape) {
+            const id = shape.xlinkHref.substring(1);
+            let kvgCode = SvgParser.toKanjiVGCodeById(id);
+            kvgCode = Utility.zeroPadding(kvgCode, Define.SVG_FILE_NAME_LENGTH);
+            const splits = id.split('-');
+            const avgCode = splits[4]; 
+            return [avgCode, kvgCode];
+        }
     }
 }

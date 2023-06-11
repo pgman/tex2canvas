@@ -18,7 +18,7 @@ function chalkboard(){
 	canvas.width = $(window).width();
 	canvas.height = $(window).height();
 
-	var ctx = canvas.getContext("2d");
+	var ctx = canvas.getContext("2d", { willReadFrequently: true });
 
 	var width = canvas.width;
 	var height = canvas.height;

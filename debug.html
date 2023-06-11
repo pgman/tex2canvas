@@ -126,7 +126,7 @@ function animSkew(deltaX, deltaY) {
 async function drawImage(func) {
     const img = await Utility.loadImage('images/Lenna.bmp');
     const canvas = document.querySelector('#my-canvas');
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
     ctx.save();
     ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
     if(func) {

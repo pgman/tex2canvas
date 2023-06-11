@@ -40,7 +40,7 @@ function play() {
     Model.animDatas.forEach(datas => {
         datas.forEach(data => {
             const animCanvas = Utility.createCanvas(data.rect.width, data.rect.height);
-            const animCtx = animCanvas.getContext('2d');
+            const animCtx = animCanvas.getContext('2d', { willReadFrequently: true });
             const animImageData = animCtx.getImageData(0, 0, animCtx.canvas.width, animCtx.canvas.height);
             
             animCanvasArray.push(animCanvas);

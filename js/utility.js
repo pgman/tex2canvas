@@ -345,7 +345,7 @@ class Utility {
         const canvas = document.createElement('canvas');
         canvas.width = width;
         canvas.height = height;
-        const ctx = canvas.getContext('2d');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
         const imageData = ctx.createImageData(width, height);
         return imageData;
     }
@@ -483,7 +483,7 @@ class Utility {
      */
     static getCanvasContextById(id) {
         const canvas = document.getElementById(id);
-        const ctx = canvas.getContext('2d');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
         return [canvas, ctx];
     }
 }

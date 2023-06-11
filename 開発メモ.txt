@@ -130,24 +130,16 @@ a_{41} & a_{42} & a_{43} & a_{44}\\
 \end{eqnarray}
 で調査。svgが入れ子になっており、再度viewboxが定義されている
 
-[静止画切り取り調査]
-https://rico-notes.com/design/bg-transparent/#toc7
-
-[動画作成調査]
-・ffmpeg.wasmがよいらしい
-・最悪デスクトップアプリケーションに録画させる(mediaRecorder?)
+2023/06/11:
+H-085: 括弧のつなぎは独自オブジェクトを作成したほうがよいような気がする
 
 [アイデア]
 curves を stroke として定義したい
 curvesArray を strokeArray として定義したい
 
-[svgviewerなるものを見つけた]
-https://www.svgviewer.dev/
-
 [作業中]
 
 [優先度高め H-XXX]
-H-085: 括弧のつなぎは独自オブジェクトを作成したほうがよいような気がする
 H-065: exToPxメソッドを作りたい https://viereck.ch/latex-to-svg/
 H-088: <rect> を横長前提に作ってしまっているので、修正する必要がある
 H-089: \begin{eqnarray}
@@ -213,6 +205,13 @@ L-001
   \put(-20,-20){\framebox(40,40){}}% 外見の領域全体を囲む枠
   \put(0,0){\circle*{4}}% 原点の位置
 \end{picture}
+
+[静止画切り取り調査]
+https://rico-notes.com/design/bg-transparent/#toc7
+
+[動画作成調査]
+・ffmpeg.wasmがよいらしい
+・最悪デスクトップアプリケーションに録画させる(mediaRecorder?)
 
 [memo]
 MathJax v3: TeX to SVG 正規のサンプルコード
