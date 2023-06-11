@@ -298,4 +298,22 @@ class MathJaxSvg {
             matStacks.pop();
         }
     }
+
+    static getCodeType(code) {
+        
+        if('30' <= code && code <= '39') {// N-30 ～ N-39: 0 ～ 9
+            return 'number';
+        } else if('1D44E' <= code && code <= '1D467') {// I-1D44E ～ I-1D467: a ～ z
+            return 'character';
+        } else if('1D434' <= code && code <= '1D44D') {// I-1D434 ～ I-1D44D: A ～ Z
+            return 'character';
+        } else if('1D41A' <= code && code <= '1D433') {// B-1D41A ～ B-1D433: {\bf a} ～ {\bf z}
+            return 'character';
+        } else if('1D400' <= code && code <= '1D419') {// B-1D400 ～ B-1D419: {\bf A} ～ {\bf Z}
+            return 'character';
+        } else {
+            return 'symbol';
+        }
+        
+    }
 }

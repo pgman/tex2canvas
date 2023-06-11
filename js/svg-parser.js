@@ -292,20 +292,27 @@ class SvgParser {
         }
 
         // id と c を取得する
-        let id = pathArray[0].parentElement.getAttribute('id');
+        // let id = pathArray[0].parentElement.getAttribute('id');
+        // const splits = id.split(':');
+        // if(splits.length !== 2) {
+        //     throw 'id is invalid.';
+        // }
+        // let c = splits[1];
+        // if(c.includes('-') && pathArray[0].parentElement.parentElement) {// 1回だけさかのぼってみる
+        //     id = pathArray[0].parentElement.parentElement.getAttribute('id');
+        //     const splits = id.split(':');
+        //     if(splits.length !== 2) {
+        //         throw 'id is invalid.';
+        //     }
+        //     c = splits[1];
+        // }        
+
+        let id = doc.children[0].children[0].children[0].id;
         const splits = id.split(':');
         if(splits.length !== 2) {
             throw 'id is invalid.';
         }
         let c = splits[1];
-        if(c.includes('-') && pathArray[0].parentElement.parentElement) {// 1回だけさかのぼってみる
-            id = pathArray[0].parentElement.parentElement.getAttribute('id');
-            const splits = id.split(':');
-            if(splits.length !== 2) {
-                throw 'id is invalid.';
-            }
-            c = splits[1];
-        }
 
         // <path>でループ
         // pathArray を列挙する

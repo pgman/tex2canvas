@@ -149,19 +149,18 @@ class Utility {
 		}
 	}
 
-    // mean 平均
-	// sd 標準僅差
-	static normalDistribution(mean, sd) {
+    /**
+     * 正規分布に従う乱数を生成する(ボックスミューラー法)
+     * @param {number} mean 平均 
+     * @param {number} sigma 標準偏差 
+     * @returns {number} 乱数
+     */
+	static normalDistribution(mean, sigma) {
 	    const x = Math.random();
 	    const y = Math.random();
-
 	    const z1 = Math.sqrt(-2 * Math.log(x)) * Math.cos(2 * Math.PI * y);
 	    const z2 = Math.sqrt(-2 * Math.log(x)) * Math.sin(2 * Math.PI * y);
-
-	    return {
-	    	z1: mean + z1 * sd,
-	    	z2: mean + z2 * sd
-	    };
+	    return [ mean + z1 * sigma, mean + z2 * sigma ];
 	}
 
 	/**
@@ -485,6 +484,33 @@ class Utility {
         const canvas = document.getElementById(id);
         const ctx = canvas.getContext('2d', { willReadFrequently: true });
         return [canvas, ctx];
+    }
+
+    /**
+     * 一様分布に従う乱数を生成する
+     * @param {number} min 最小値 
+     * @param {number} max 最大値 
+     * @returns {number} 乱数
+     */
+    static randomUniform(min, max) {
+        return min + (max - min) * Math.random();
+    }
+
+    /**
+     * 正規分布に従う乱数を生成する
+     * @param {number} mean 平均
+     * @param {number} sigma 標準偏差
+     * @param {number} range 標準偏差のn倍まで有効範囲とする(有効範囲を無効にするなら10程度にしておくとよい。デフォルト値は2)
+     */
+    static randomNormal(mean, sigma, range = 2) {
+        if(range < 1) { throw 'range must be over 1.'; }
+        while(true) {
+            const [rand] = Utility.normalDistribution(mean, sigma);
+            const diff = Math.abs(rand - mean);
+            if(diff <= sigma * range) {
+                return rand;
+            } 
+        } 
     }
 }
 	

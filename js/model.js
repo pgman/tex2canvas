@@ -74,14 +74,33 @@ class Model {
         let dbgCnt = 0;
         datas.forEach(data => {
             if(data.type === 'avg') {
+                const codeType = MathJaxSvg.getCodeType(data.code);
+                let affine;
+                if(codeType === 'number' || codeType === 'character') {
+                    const center = { x: 119 / 2, y: 119 / 2, }; 
+                    const angle = Utility.randomNormal(0, Math.PI / 180 * 5);
+                    const rotMat = Matrix.rotate(angle, center);
+                    const scale = Utility.randomNormal(1, 0.05);
+                    const scaleMat = Matrix.scale(scale, scale, center);
+                    const angleX = Utility.randomNormal(0, Math.PI / 180 * 5);
+                    const angleY = Utility.randomNormal(0, Math.PI / 180 * 5);
+                    const skewMat = Matrix.skew(angleX, angleY, center);
+                    affine = Matrix.multiply(rotMat, scaleMat);    
+                    affine = Matrix.multiply(skewMat, affine);    
+                } else {
+                    affine = Matrix.identify();
+                }
+                
                 const strokeArray = [];
                 data.curvesArray.forEach((curves, i) => {
                     let posArray = [];
                     curves.forEach((curve, j) => { 
                         let points = curve.divide();
                         const transMat = Matrix.translate(Settings.padding, Settings.padding);
-                        const scaleMat = Matrix.scale(Settings.scale, Settings.scale);
-                        let mat = Matrix.multiply(scaleMat, data.mat);
+                        const scaleMat = Matrix.scale(Settings.scale, Settings.scale);                        
+                        
+                        let mat = Matrix.multiply(data.mat, affine);
+                        mat = Matrix.multiply(scaleMat, mat);
                         mat = Matrix.multiply(transMat, mat);
                         points = points.map(p => Matrix.multiplyVec(mat, p));
                         if(posArray.length === 0) {
@@ -264,16 +283,19 @@ class Model {
                     });
                     const rect = getCurvesArrayRect(curvesArray);
                     // push data
-                    ret.push({ type: 'avg', curvesArray, mat: getNewMatrix(screenRect, rect), });
-                    if((avgCode === '239D' || avgCode === '23A0')) {
-                        if(i - 1 < 0) { return; }
-                        if(i + 1 >= mvgData.shapes.length) { return; }
+                    ret.push({ type: 'avg', code: avgCode, curvesArray, mat: getNewMatrix(screenRect, rect), });
+
+                    // 縦線用データを作成する
+                    if(avgCode === '239D' || avgCode === '23A0' || avgCode === '23A3' || avgCode === '23A6') {
+                        if(i - 1 < 0 || i + 1 >= mvgData.shapes.length) { return; }
                         const preShape = mvgData.shapes[i - 1];
                         const nextShape = mvgData.shapes[i + 1];
                         const [preAvgCode] = getCodes(preShape);
                         const [nextAvgCode] = getCodes(nextShape);
                         if(!(preAvgCode === '239B' && avgCode === '239D' && nextAvgCode === '239C')
-                        && !(preAvgCode === '239E' && avgCode === '23A0' && nextAvgCode === '239F')) {
+                        && !(preAvgCode === '239E' && avgCode === '23A0' && nextAvgCode === '239F')
+                        && !(preAvgCode === '23A1' && avgCode === '23A3' && nextAvgCode === '23A2')
+                        && !(preAvgCode === '23A4' && avgCode === '23A6' && nextAvgCode === '23A5')) {
                             return;
                         }
                         const preData = ret[ret.length - 2];
@@ -298,7 +320,7 @@ class Model {
                         ];
                         
                         const popped = ret.pop();
-                        ret.push({ type: 'avg', curvesArray, mat: Matrix.identify(), });
+                        ret.push({ type: 'avg', code: 'original', curvesArray, mat: Matrix.identify(), });
                         ret.push(popped);
                         skipFlag = true;
                     }                        
@@ -310,7 +332,7 @@ class Model {
                         return;
                     }
                     // push data
-                    ret.push({ type: 'kvg', kvg: data, mat: getNewMatrix(screenRect, data.rect), });
+                    ret.push({ type: 'kvg', code: kvgCode, kvg: data, mat: getNewMatrix(screenRect, data.rect), });
                 }
             } else if(shape.tagName === 'rect') {
                 // MathJax のshape.rectをスクリーン座標系へ変換する
@@ -320,7 +342,7 @@ class Model {
                 ];
                 const rect = getCurvesArrayRect(curvesArray);
                     
-                ret.push({ type: 'avg', curvesArray, mat: getNewMatrix(screenRect, rect), });
+                ret.push({ type: 'avg', code: 'rect', curvesArray, mat: getNewMatrix(screenRect, rect), });
             } else if(shape.tagName === 'text') {// <text>    
                 // rect を適当に決めてみる(本当はfont-sizeから決めるべき？)
                 const fontSize = parseInt(shape.fontSize);
@@ -339,7 +361,7 @@ class Model {
                 const tmpRect = { x: 0, y: 0, width: 119, height: 119, };
                 Rect.addMargin(tmpRect, -12);   // これ適当(kvgが矩形に対してやや小さく定義しているので、矩形を小さくする必要がある)
                 // push data
-                ret.push({ type: 'kvg', kvg: data, mat: getNewMatrix(screenRect, tmpRect), });
+                ret.push({ type: 'kvg', code: 'text', kvg: data, mat: getNewMatrix(screenRect, tmpRect), });
             }
         });
     

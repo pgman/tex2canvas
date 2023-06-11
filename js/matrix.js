@@ -77,10 +77,19 @@ class Matrix {
      * 拡大縮小行列作成
      * @param {number} x x方向の拡大率
      * @param {number} y y方向の拡大率
+     * @param {{ x: number, y: number, }} 拡大中心(省略可能)
      * @returns {Array<number>} 行列
      */
-    static scale(x, y) {
-        return [x, 0, 0, 0, y, 0, 0, 0, 1];
+    static scale(x, y, center = null) {
+        if(center) {
+            const trans = Matrix.translate(-center.x, -center.y);
+            const scale = Matrix.scale(x, y);
+            const invTrans = Matrix.translate(center.x, center.y);
+            const mat = Matrix.multiply(scale, trans);
+            return Matrix.multiply(invTrans, mat);
+        } else {
+            return [x, 0, 0, 0, y, 0, 0, 0, 1];
+        }
     }
     
     /**
@@ -94,7 +103,7 @@ class Matrix {
             const trans = Matrix.translate(-center.x, -center.y);
             const rot = Matrix.rotate(theta);
             const invTrans = Matrix.translate(center.x, center.y);
-            let mat = Matrix.multiply(rot, trans);
+            const mat = Matrix.multiply(rot, trans);
             return Matrix.multiply(invTrans, mat);
         } else {
             const cos = Math.cos(theta),
@@ -106,13 +115,22 @@ class Matrix {
     /**
      * スキュー行列作成
      * @param {number} thetaX 回転角度(ラジアン)
-     * @param {number} thetaY 回転角度(ラジアン)
+     * @param {number} thetaY 回転角度(ラジアン)  
+     * @param {{ x: number, y: number, }} center せん断中心(省略可能)
      * @returns {Array<number>} 行列
      */
-    static skew(thetaX, thetaY) {
-        const tanX = Math.tan(thetaX), 
-            tanY = Math.tan(thetaY);
-        return [ 1, tanX, 0, tanY, 1, 0, 0, 0, 1 ];
+    static skew(thetaX, thetaY, center = null) {
+        if(center) {
+            const trans = Matrix.translate(-center.x, -center.y);
+            const skew = Matrix.skew(thetaX, thetaY);
+            const invTrans = Matrix.translate(center.x, center.y);
+            const mat = Matrix.multiply(skew, trans);
+            return Matrix.multiply(invTrans, mat);
+        } else {
+            const tanX = Math.tan(thetaX), 
+                tanY = Math.tan(thetaY);
+            return [ 1, tanX, 0, tanY, 1, 0, 0, 0, 1 ];
+        }
     }
 
     /**
