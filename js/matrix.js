@@ -24,6 +24,18 @@ class Matrix {
     }
 
     /**
+     * 行列の積を計算する
+     * @param {Array<Array<number>>} mArray 行列の配列(インデックスの小さい方から右かけていく。引数が[M0, M1, M2]のとき、 戻り値はM0 * M1 * M2)
+     * @returns {Array<number>} 行列
+     */
+    static multiplyArray(mArray) {
+        if(!Array.isArray(mArray) || mArray.length < 1) {
+            throw 'the argument is invalid.';
+        }
+        return mArray.reduce((p, c) => Matrix.multiply(p, c), Matrix.identify());
+    }
+
+    /**
      * ベクトルに行列を掛ける
      * @param {Array<number>} m 行列
      * @param {{ x: number, y: number, }} v ベクトル 

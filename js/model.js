@@ -25,7 +25,29 @@ class Model {
     static avgCheck = false;
     static handCheck = true;
     static chalkCheck = true;
+    static fitRectCheck = false;
+    // アフィン変換用定数
+    static avgAffine = true;   // アフィン変換を実施するかのフラグ
+    static avgRotationAngleMean = 0;
+    static avgRotationAngleSigma = Math.PI / 180 * 5;    // 回転角度の標準偏差
+    static avgScaleMean = 1;
+    static avgScaleSigma = 0.05;    // 拡大率の標準偏差
+    static avgSkewXMean = 0;
+    static avgSkewXSigma = Math.PI / 180 * 2;    // skewXの標準偏差
+    static avgSkewYMean = 0;
+    static avgSkewYSigma = Math.PI / 180 * 2;    // skewYの標準偏差
+    static avgTranslateXSigma = 2;    // x方向の移動量の標準偏差
+    static avgTranslateYSigma = 2;    // y方向の移動量の標準偏差
+    // 漢字
+    static kvgKanjiScaleSigma = 0.025;
+    static kvgKanjiScaleMean = 1.15;
+    static kvgNoKanjiScaleSigma = 0.025;
+    static kvgNoKanjiScaleMean = 0.95;
 
+    /**
+     * 初期化
+     * @returns {Promise<void>} なし
+     */
     static async init() {
         Model.blackBoardImg = await Utility.loadImage(Model.BLACK_BOARD_IMAGE_PATH);
         Model.chalkImg = await Utility.loadImage(Model.CHALK_IMAGE_PATH);
@@ -71,37 +93,18 @@ class Model {
 
     static getAnimDatas(datas) {
         const ret = [];
-        let dbgCnt = 0;
         datas.forEach(data => {
             if(data.type === 'avg') {
                 const codeType = MathJaxSvg.getCodeType(data.code);
-                let affine;
-                if(codeType === 'number' || codeType === 'character') {
-                    const center = { x: 119 / 2, y: 119 / 2, }; 
-                    const angle = Utility.randomNormal(0, Math.PI / 180 * 5);
-                    const rotMat = Matrix.rotate(angle, center);
-                    const scale = Utility.randomNormal(1, 0.05);
-                    const scaleMat = Matrix.scale(scale, scale, center);
-                    const angleX = Utility.randomNormal(0, Math.PI / 180 * 5);
-                    const angleY = Utility.randomNormal(0, Math.PI / 180 * 5);
-                    const skewMat = Matrix.skew(angleX, angleY, center);
-                    affine = Matrix.multiply(rotMat, scaleMat);    
-                    affine = Matrix.multiply(skewMat, affine);    
-                } else {
-                    affine = Matrix.identify();
-                }
-                
+                const affine = getAvgAffineMatrix(codeType);                
                 const strokeArray = [];
                 data.curvesArray.forEach((curves, i) => {
                     let posArray = [];
                     curves.forEach((curve, j) => { 
                         let points = curve.divide();
                         const transMat = Matrix.translate(Settings.padding, Settings.padding);
-                        const scaleMat = Matrix.scale(Settings.scale, Settings.scale);                        
-                        
-                        let mat = Matrix.multiply(data.mat, affine);
-                        mat = Matrix.multiply(scaleMat, mat);
-                        mat = Matrix.multiply(transMat, mat);
+                        const scaleMat = Matrix.scale(Settings.scale, Settings.scale);
+                        const mat = Matrix.multiplyArray([transMat, scaleMat, data.mat, affine]);
                         points = points.map(p => Matrix.multiplyVec(mat, p));
                         if(posArray.length === 0) {
                             posArray = posArray.concat(points);
@@ -116,23 +119,13 @@ class Model {
                             posArray = posArray.concat(points);
                         }
                     });
-                    //console.log(dbgCnt++);
-                    //if(dbgCnt === 3) { debugger; }
-                    const pixelData = Pixel.getAnimationPixelData({
-                        posArray: posArray, 
-                        lineWidth: Settings.lineWidth, 
-                        strokeStyle: { r: Settings.color.r, g: Settings.color.g, b: Settings.color.b, a: Settings.color.a, }, 
-                        boundaryThreshold: Settings.boundaryThreshold,   
-                        internalThreshold: Settings.internalThreshold,
-                        sigma: Settings.sigma, 
-                        pps: Settings.pps,  
-                        removeType: 'zero', // 'zero' or 'random'
-                    });
+                    const pixelData = getAnimationPixelData(posArray);
                     strokeArray.push(pixelData);
                 });
                 ret.push(strokeArray);
             } else if(data.type === 'kvg') {
                 const strokeArray = [];
+                const affine = getKvgAffineMatrix(data.text);
                 data.kvg.paths.forEach(path => {   
                     path.curvesArray.forEach((curves, i) => {
                         let posArray = [];
@@ -140,8 +133,7 @@ class Model {
                             let points = curve.divide();
                             const transMat = Matrix.translate(Settings.padding, Settings.padding);
                             const scaleMat = Matrix.scale(Settings.scale, Settings.scale);
-                            let mat = Matrix.multiply(scaleMat, data.mat);
-                            mat = Matrix.multiply(transMat, mat);
+                            const mat = Matrix.multiplyArray([transMat, scaleMat, data.mat, affine]);
                             points = points.map(p => Matrix.multiplyVec(mat, p));
                             if(posArray.length === 0) {
                                 posArray = posArray.concat(points);
@@ -156,16 +148,7 @@ class Model {
                                 posArray = posArray.concat(points);
                             }
                         });
-                        const pixelData = Pixel.getAnimationPixelData({
-                            posArray: posArray, 
-                            lineWidth: Settings.lineWidth, 
-                            strokeStyle: { r: Settings.color.r, g: Settings.color.g, b: Settings.color.b, a: Settings.color.a, }, 
-                            boundaryThreshold: Settings.boundaryThreshold,   
-                            internalThreshold: Settings.internalThreshold,
-                            sigma: Settings.sigma, 
-                            pps: Settings.pps,  
-                            removeType: 'zero', // 'zero' or 'random'
-                        });
+                        const pixelData = getAnimationPixelData(posArray);
                         strokeArray.push(pixelData);
                     });
                 });
@@ -173,6 +156,73 @@ class Model {
             }
         });
         return ret;
+
+        /**
+         * KVG用アフィン変換行列を取得する
+         * @param {string} text 文字列 
+         * @returns {Array<number>} 行列
+         */
+        function getKvgAffineMatrix(text) {
+            let affine;
+            const center = { x: 119 / 2, y: 119 / 2, }; 
+            if(Utility.isKanji(text)) {// 漢字
+                const scale = Utility.randomNormal(Model.kvgKanjiScaleMean, Model.kvgKanjiScaleSigma);
+                const scaleMat = Matrix.scale(scale, scale, center);
+                affine = Matrix.multiplyArray([scaleMat]); 
+            } else if(Utility.isHiragana(text) || Utility.isKatakana(text)) {// 平仮名 or カタカナ
+                const scale = Utility.randomNormal(Model.kvgNoKanjiScaleMean, Model.kvgNoKanjiScaleSigma);
+                const scaleMat = Matrix.scale(scale, scale, center);
+                affine = Matrix.multiplyArray([scaleMat]); 
+            } else {// 漢字でも平仮名でもカタカナでもない
+                affine = Matrix.identify();
+            }
+            return affine;
+        }
+
+        /**
+         * AVG用アフィン変換行列を取得する
+         * @param {string} codeType コードの種別 
+         * @returns {Array<number>} 行列
+         */
+        function getAvgAffineMatrix(codeType) {
+            let affine;
+            if(Model.avgAffine && (codeType === 'number' || codeType === 'character')) {
+                const center = { x: 119 / 2, y: 119 / 2, }; 
+                const angle = Utility.randomNormal(Model.avgRotationAngleMean, Model.avgRotationAngleSigma);
+                const rotMat = Matrix.rotate(angle, center);
+                const scale = Utility.randomNormal(Model.avgScaleMean, Model.avgScaleSigma);
+                const scaleMat = Matrix.scale(scale, scale, center);
+                const angleX = Utility.randomNormal(Model.avgSkewXMean, Model.avgSkewXSigma);
+                const angleY = Utility.randomNormal(Model.avgSkewYMean, Model.avgSkewYSigma);
+                const skewMat = Matrix.skew(angleX, angleY, center);
+                const translateX = Utility.randomNormal(0, Model.avgTranslateXSigma);
+                const translateY = Utility.randomNormal(0, Model.avgTranslateYSigma);
+                const translateMat = Matrix.translate(translateX, translateY);
+                affine = Matrix.multiplyArray([translateMat, skewMat, rotMat, scaleMat]); 
+            } else {
+                affine = Matrix.identify();
+            }
+            return affine;
+        }
+
+        /**
+         * アニメーション用のデータを作成する
+         * @param {Array<{ x: number, y: number, }} posArray 点配列 
+         * @returns {Object} アニメーション用データ
+         */
+        function getAnimationPixelData(posArray) {
+            const pixelData = Pixel.getAnimationPixelData({
+                posArray: posArray, 
+                lineWidth: Settings.lineWidth, 
+                strokeStyle: { r: Settings.color.r, g: Settings.color.g, b: Settings.color.b, a: Settings.color.a, }, 
+                boundaryThreshold: Settings.boundaryThreshold,   
+                internalThreshold: Settings.internalThreshold,
+                sigma: Settings.sigma, 
+                pps: Settings.pps,  
+                removeType: 'zero', // 'zero' or 'random'
+            });
+            return pixelData;
+        }
     }
 
     static async loadDatas() {
@@ -272,6 +322,7 @@ class Model {
                 } else {
                     screenRect = Matrix.multiplyRect(shape.mat, path.rect); // スクリーン座標系の矩形
                 }
+                screenRect = refineScreenRect(screenRect);
     
                 // コードを取得する
                 const [avgCode, kvgCode] = getCodes(shape);
@@ -332,11 +383,12 @@ class Model {
                         return;
                     }
                     // push data
-                    ret.push({ type: 'kvg', code: kvgCode, kvg: data, mat: getNewMatrix(screenRect, data.rect), });
+                    ret.push({ type: 'kvg', code: kvgCode, text: '', kvg: data, mat: getNewMatrix(screenRect, data.rect), });
                 }
             } else if(shape.tagName === 'rect') {
                 // MathJax のshape.rectをスクリーン座標系へ変換する
-                const screenRect = Matrix.multiplyRect(shape.mat, shape.rect); // スクリーン座標系の矩形
+                let screenRect = Matrix.multiplyRect(shape.mat, shape.rect); // スクリーン座標系の矩形
+                screenRect = refineScreenRect(screenRect);
                 const curvesArray = [
                     [new Curve([{ x: 0, y: 0 }, { x: 30, y: 0 }, { x: 60, y: 0 }, { x: 90, y: 0 }]) ]
                 ];
@@ -348,8 +400,8 @@ class Model {
                 const fontSize = parseInt(shape.fontSize);
                 const rect = { x: 0, y: -fontSize, width: fontSize, height: fontSize };
                 // MathJax のshape.rectをスクリーン座標系へ変換する
-                const screenRect = Matrix.multiplyRect(shape.mat, rect); // スクリーン座標系の矩形      
-                
+                let screenRect = Matrix.multiplyRect(shape.mat, rect); // スクリーン座標系の矩形      
+                screenRect = refineScreenRect(screenRect);
                 const kvgCode = Utility.getCodeByChar(shape.text);
 
                 // get kvg paths
@@ -360,12 +412,27 @@ class Model {
                 }
                 const tmpRect = { x: 0, y: 0, width: 119, height: 119, };
                 Rect.addMargin(tmpRect, -12);   // これ適当(kvgが矩形に対してやや小さく定義しているので、矩形を小さくする必要がある)
+                const textMat = getNewMatrix(screenRect, tmpRect);
+                const transMat = Matrix.translate(0, 12);
                 // push data
-                ret.push({ type: 'kvg', code: 'text', kvg: data, mat: getNewMatrix(screenRect, tmpRect), });
+                ret.push({ type: 'kvg', code: 'text', text: shape.text, kvg: data, mat: Matrix.multiply(textMat, transMat), });
             }
         });
     
         return ret;
+
+        /**
+         * 画面用矩形を修正する
+         * @param {{ x: number, y: number, width: number, height: number, }} argScreenRect 矩形
+         * @returns {{ x: number, y: number, width: number, height: number, }} 矩形
+         */
+        function refineScreenRect(argScreenRect) {
+            const screenRect = JSON.parse(JSON.stringify(argScreenRect));
+            if(Model.fitRectCheck) {// 矩形内に収まるようにする
+                Rect.addMargin(screenRect, -Settings.lineWidth / 2 / Settings.scale);
+            }
+            return screenRect;
+        }
 
         function getCodes(shape) {
             const id = shape.xlinkHref.substring(1);

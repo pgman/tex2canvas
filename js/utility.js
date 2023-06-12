@@ -512,6 +512,38 @@ class Utility {
             } 
         } 
     }
+
+    /**
+     * 漢字のみか判定する
+     * @param {string} text 文字列 
+     * @returns {boolean} 漢字のみかどうか(true: 漢字のみで構成されている, false: 漢字以外のものが含まれている)
+     */
+    static isKanji(text) {
+        const regexp = /^([\u{3005}\u{3007}\u{303b}\u{3400}-\u{9FFF}\u{F900}-\u{FAFF}\u{20000}-\u{2FFFF}][\u{E0100}-\u{E01EF}\u{FE00}-\u{FE02}]?)+$/mu;
+        return regexp.test(text);
+    }
+
+    /**
+     * 平仮名のみか判定する
+     * @param {string} text 文字列 
+     * @returns {boolean} 平仮名のみかどうか(true: 平仮名のみで構成されている, false: 平仮名以外のものが含まれている)
+     */
+    static isHiragana(text) {
+        const regexp = /^[\u{3000}-\u{301C}\u{3041}-\u{3093}\u{309B}-\u{309E}]+$/mu;
+        return regexp.test(text);
+    }
+
+    /**
+     * カタカナのみか判定する
+     * @param {string} text 文字列 
+     * @returns {boolean} カタカナのみかどうか(true: カタカナのみで構成されている, false: カタカナ以外のものが含まれている)
+     */
+    static isKatakana(text) {
+        const regexp = /^[\u{3000}-\u{301C}\u{30A1}-\u{30F6}\u{30FB}-\u{30FE}]+$/mu;
+        return regexp.test(text);
+    }
+
+    
 }
 	
 

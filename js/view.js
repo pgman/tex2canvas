@@ -51,6 +51,7 @@ class View {
 
     static drawMVG() {
         const [ mvgCanvas, mvgCtx ] = Utility.getCanvasContextById('mvg-canvas');
+        mvgCtx.reset();
         View.drawSvg(mvgCtx, Model.mvgData, { fillChar: true, strokeRect: true, });
         // const img = document.createElement('img');
         // img.onload = e => { 
@@ -112,8 +113,7 @@ class View {
         const scaleMat = Matrix.scale(Settings.scale, Settings.scale);
     
         // ビューポート変換行列
-        Matrix.setTransform(ctx, transMat);
-    
+        Matrix.setTransform(ctx, transMat);    
         Matrix.transform(ctx, scaleMat);
     
         mvgData.shapes.forEach(shape => {
@@ -123,7 +123,10 @@ class View {
     
             // 描画するpathを取得する
             const path = mvgData.paths.find(p => p.c === shape.c);
-            if(!path) { return; } // continue;
+            if(!path) { 
+                ctx.restore();
+                return; 
+            } // continue;
             
             if(options.fillChar) {// 文字を塗る
                 ctx.fillStyle = options.fillStyle ? options.fillStyle : 'green';
