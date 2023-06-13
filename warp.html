@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Tex To Canvas</title>
+<script id="MathJax-script" async src="js/tex-svg-full.js"></script>
+<script src="js/define.js"></script>
+<script src="js/matrix.js"></script>
+<script src="js/svg-parser.js"></script>
+<script src="js/curve.js"></script>
+<script src="js/utility.js"></script>
+<script src="js/min-max.js"></script>
+<script src="js/pixel.js"></script>
+<script src="js/vector.js"></script>
+<script src="js/seedrandom.min.js"></script>
+<script src="js/app-svg.js"></script>
+<script src="js/settings.js"></script>
+<script src="js/paint.js"></script>
+<script>
+// model
+let redCheck = true;
+
+document.addEventListener('DOMContentLoaded', async () => {
+    onInit();
+    attachEvents();
+    onDraw();
+});
+
+function onInit() {
+    const redCheckbox = document.querySelector('#red-checkbox');
+    redCheckbox.checked = redCheck;
+}
+
+// controller
+function attachEvents() {
+    document.querySelector('#red-checkbox').addEventListener('change', e => {
+        redCheck = e.target.checked;
+        onDraw();
+    });
+}
+
+function onDraw() {
+    const points = [
+        { x: 195, y: 100, },
+        { x: 200, y: 100, },
+        { x: 200, y: 105, },
+    ];
+    const lineWidth = 50;
+
+    const canvas = document.querySelector('#my-canvas');
+    const ctx = canvas.getContext('2d');
+    ctx.save();
+    ctx.reset();
+    ctx.lineWidth = lineWidth;
+    ctx.strokeStyle = 'blue';
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, points[0].y);
+    ctx.lineTo(points[1].x, points[1].y);
+    ctx.stroke();
+    ctx.strokeStyle = 'green';
+    ctx.beginPath();
+    ctx.moveTo(points[1].x, points[1].y);
+    ctx.lineTo(points[2].x, points[2].y);
+    ctx.stroke();
+
+    const nrm = getNrm(points[0], points[1]);
+    startAngle = Math.atan2(nrm.y, nrm.x);
+    console.log('startAngle', startAngle);
+    const nrm2 = getNrm(points[1], points[2]);
+    endAngle = Math.atan2(nrm2.y, nrm2.x);
+    console.log('endAngle', endAngle);
+    const centerAngle = (startAngle + endAngle) / 2;
+    const boundaryAngle = centerAngle + Math.PI;
+    
+    const rotMat = Matrix.rotate(boundaryAngle);
+    const rotatedPoint = Matrix.multiplyVec(rotMat, { x: lineWidth / 2, y: 0, });
+    const boundaryPoint = Vector.add(rotatedPoint, points[1]);
+    ctx.fillStyle = 'red';
+    Utility.fillCircle(ctx, boundaryPoint, 3);
+
+    if(redCheck) {
+        ctx.fillStyle = 'red';
+        ctx.beginPath();
+        ctx.moveTo(points[1].x, points[1].y);
+        ctx.arc(points[1].x, points[1].y, lineWidth / 2, startAngle, endAngle);
+        ctx.closePath();
+        ctx.fill();    
+    }    
+
+    ctx.restore();
+
+    function getNrm(start, end) {
+        const vec = Vector.subtract(end, start);
+        const unit = Vector.unit(vec);
+        const nrm = { x: unit.y, y: -unit.x };
+        return nrm;
+    }
+}
+
+</script>
+</head>
+<body>
+    <canvas id="my-canvas" width="800" height = "600"></canvas>
+    <br><br>
+    <label for="red-checkbox">
+        <input type="checkbox" id="red-checkbox" />赤色を塗る
+    </label>
+</body>
+</html>
