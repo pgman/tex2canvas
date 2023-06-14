@@ -2,108 +2,244 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Tex To Canvas</title>
-<script id="MathJax-script" async src="js/tex-svg-full.js"></script>
-<script src="js/define.js"></script>
-<script src="js/matrix.js"></script>
-<script src="js/svg-parser.js"></script>
-<script src="js/curve.js"></script>
-<script src="js/utility.js"></script>
-<script src="js/min-max.js"></script>
-<script src="js/pixel.js"></script>
-<script src="js/vector.js"></script>
-<script src="js/seedrandom.min.js"></script>
-<script src="js/app-svg.js"></script>
-<script src="js/settings.js"></script>
-<script src="js/paint.js"></script>
+<title>bezier image</title>
 <script>
-// model
-let redCheck = true;
-
-document.addEventListener('DOMContentLoaded', async () => {
-    onInit();
-    attachEvents();
-    onDraw();
+document.addEventListener('DOMContentLoaded', () => {
+    const canvas = document.querySelector('#my-canvas');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    const points = [
+        { x: 100, y: 600, },
+        { x: 200, y: 100, },
+        { x: 300, y: 100, },
+        { x: 400, y: 600, },
+    ];
+    const startLineWidth = 60;
+    const endLineWidth = 100;
+    const img = new Image();
+	img.onload = () => { bezierImage(ctx, img, points, startLineWidth, endLineWidth); };
+	img.src = 'images/america.png';
 });
 
-function onInit() {
-    const redCheckbox = document.querySelector('#red-checkbox');
-    redCheckbox.checked = redCheck;
-}
+/**
+ * ベジェ曲線に沿って画像を描画する
+ * @param {CanvasRenderingContext2D} ctx キャンバスのコンテキスト
+ * @param {Image} img 画像
+ * @param {Araay<{ x: number, y: number}>} 制御点の配列
+ * @param {number} startLineWidth 始点の線の幅
+ * @param {number} endLineWidth 終点の線の幅
+ * @returns {void} なし
+ */
+function bezierImage(ctx, img, points, startLineWidth, endLineWidth) {
+    const imgCanvas = document.createElement('canvas');
+    imgCanvas.width = img.width;
+    imgCanvas.height = img.height;
+    const imgCtx = imgCanvas.getContext('2d', { willReadFrequently: true });
+    imgCtx.drawImage(img, 0, 0);
+    const imgImageData = imgCtx.getImageData(0, 0, imgCtx.canvas.width, imgCtx.canvas.height);
 
-// controller
-function attachEvents() {
-    document.querySelector('#red-checkbox').addEventListener('change', e => {
-        redCheck = e.target.checked;
-        onDraw();
-    });
-}
+    // ベクトルを求める
+    const vectors = getVectors(points);
 
-function onDraw() {
-    const points = [
-        { x: 195, y: 100, },
-        { x: 200, y: 100, },
-        { x: 200, y: 105, },
-    ];
-    const lineWidth = 50;
+    // 全体の長さを求める
+    const wholeLength = getWholeLength(points, 1000);
+    const div = Math.round(wholeLength * 4);
 
-    const canvas = document.querySelector('#my-canvas');
-    const ctx = canvas.getContext('2d');
-    ctx.save();
     ctx.reset();
-    ctx.lineWidth = lineWidth;
-    ctx.strokeStyle = 'blue';
-    ctx.beginPath();
-    ctx.moveTo(points[0].x, points[0].y);
-    ctx.lineTo(points[1].x, points[1].y);
-    ctx.stroke();
-    ctx.strokeStyle = 'green';
-    ctx.beginPath();
-    ctx.moveTo(points[1].x, points[1].y);
-    ctx.lineTo(points[2].x, points[2].y);
-    ctx.stroke();
 
-    const nrm = getNrm(points[0], points[1]);
-    startAngle = Math.atan2(nrm.y, nrm.x);
-    console.log('startAngle', startAngle);
-    const nrm2 = getNrm(points[1], points[2]);
-    endAngle = Math.atan2(nrm2.y, nrm2.x);
-    console.log('endAngle', endAngle);
-    const centerAngle = (startAngle + endAngle) / 2;
-    const boundaryAngle = centerAngle + Math.PI;
+    let curLength = 0;
+    for(let i = 0; i <= div; i += 1) {
+        const t = i / div;        
+        const pos = {
+            x: getBezierPoint(points, t, 'x'),
+            y: getBezierPoint(points, t, 'y'),
+        };
+        if(i > 0) {
+            const preT = (i - 1) / div;
+            const prePos = {
+                x: getBezierPoint(points, preT, 'x'),
+                y: getBezierPoint(points, preT, 'y'),
+            };
+            const dist = distance(pos, prePos);
+            curLength += dist;
+        }
+
+        // 接線のベクトルを求める
+        let vector = {
+            x: getFirstDerivative(vectors, t, 'x'),
+            y: getFirstDerivative(vectors, t, 'y'),
+        };
+        // 単位ベクトル化する
+        vector = unit(vector);
+        // -90度回す
+        const nrm = getNrm(vector);
+        const curLineWidth = startLineWidth + (endLineWidth - startLineWidth) * curLength / wholeLength;
+        const top = {
+            x: pos.x + curLineWidth * nrm.x,
+            y: pos.y + curLineWidth * nrm.y,
+        };
+        const bottom = {
+            x: pos.x + curLineWidth * (-nrm.x),
+            y: pos.y + curLineWidth * (-nrm.y),
+        };
+
+        ctx.save();    
+        const yDiv = Math.round(curLineWidth * 4);
+        for(let j = 0; j <= yDiv; j += 1) {
+            const rate = j / yDiv;
+            // intPosの色を画像から取得する
+            const intPos = linearInterpolation(top, bottom, rate);
+            const xRate = curLength / wholeLength;
+            const yRate = rate;
+            const color = getImageColor(imgImageData, xRate, yRate);
+            ctx.fillStyle = `rgba(${color.r},${color.g},${color.b},${color.a / 255})`;
+            ctx.fillRect(intPos.x, intPos.y, 1, 1);
+        }
+        ctx.restore();
+    }  
     
-    const rotMat = Matrix.rotate(boundaryAngle);
-    const rotatedPoint = Matrix.multiplyVec(rotMat, { x: lineWidth / 2, y: 0, });
-    const boundaryPoint = Vector.add(rotatedPoint, points[1]);
-    ctx.fillStyle = 'red';
-    Utility.fillCircle(ctx, boundaryPoint, 3);
+    /**
+     * 画像の色を取得する
+     * @param {ImageData} imageData イメージデータ
+     * @param {number} xRate xの割合
+     * @param {number} yRate yの割合
+     * @returns {{ r: number, g: number, b: number, a: number }} 色
+     */
+    function getImageColor(imageData, xRate, yRate) {
+        const data = imageData.data;
+        const width = imageData.width;
+        const height = imageData.height;
+        let x = Math.round(xRate * imageData.width);
+        if(x < 0) { x = 0; }
+        if(x >= width) { x = width - 1; }
+        let y = Math.round(yRate * imageData.height);
+        if(y < 0) { y = 0; }
+        if(y >= height) { y = height - 1; }
+        const i = y * width + x;
+        return {
+            r: data[i * 4 + 0],
+            g: data[i * 4 + 1],
+            b: data[i * 4 + 2],
+            a: data[i * 4 + 3],
+        };
+    }
 
-    if(redCheck) {
-        ctx.fillStyle = 'red';
-        ctx.beginPath();
-        ctx.moveTo(points[1].x, points[1].y);
-        ctx.arc(points[1].x, points[1].y, lineWidth / 2, startAngle, endAngle);
-        ctx.closePath();
-        ctx.fill();    
+    /**
+     * ベジェ曲線の長さを取得する
+     * @param {Array<{ x: number, y: number }>} points 制御点の配列
+     * @param {number} div 分割数
+     * @returns {number} 長さ
+     */
+    function getWholeLength(points, div) {
+        let wholeLength = 0;
+        for(let i = 0; i < div; i += 1) {
+            const t = i / div;
+            const nextT = (i + 1) / div;
+            const pos = {
+                x: getBezierPoint(points, t, 'x'),
+                y: getBezierPoint(points, t, 'y'),
+            };
+            const nextPos = {
+                x: getBezierPoint(points, nextT, 'x'),
+                y: getBezierPoint(points, nextT, 'y'),
+            };
+            const dist = distance(pos, nextPos);
+            wholeLength += dist;
+        }
+        return wholeLength;
     }    
 
-    ctx.restore();
-
-    function getNrm(start, end) {
-        const vec = Vector.subtract(end, start);
-        const unit = Vector.unit(vec);
-        const nrm = { x: unit.y, y: -unit.x };
-        return nrm;
+    /**
+     * 制御点からベクトルを求める(単位ベクトル化される)
+     * @param {Array<{ x: number, y: number }>} points 制御点の配列
+     * @returns {Array<{ x: number, y: number }>} ベクトルの配列
+     */
+    function getVectors(points) {
+        const vectors = [];
+        for(let i = 0; i < points.length; i += 1) {
+            if(i + 1 >= points.length) { continue; }
+            const vector = { x: points[i + 1].x - points[i].x, y: points[i + 1].y - points[i].y, };
+            vectors.push(unit(vector));
+        }
+        return vectors;
     }
+
+    /**
+     * ベジェ曲線の点を求める
+     * @param {Array<{ x: number, y: number }>} points 制御点の配列
+     * @param {number} t パラメータ
+     * @param {string} prop プロパティ名
+     * @returns {{ x: number, y: number, }} 点
+     */
+    function getBezierPoint(points, t, prop) {
+        return (1 - t) ** 3 * points[0][prop] 
+                + 3 * t * (1 - t) ** 2 * points[1][prop] 
+                + 3 * t ** 2 * (1 - t) * points[2][prop] 
+                + t ** 3 * points[3][prop];
+    }
+
+    /**
+     * ベジェ曲線の1階微分を求める
+     * @param {Array<{ x: number, y: number }>} vectors ベクトルの配列
+     * @param {number} t パラメータ
+     * @param {string} prop プロパティ名
+     * @returns {{ x: number, y: number, }} 1階微分
+     */
+    function getFirstDerivative(vectors, t, prop) {
+        const dr = (1 - t) ** 2 * vectors[0][prop]
+                + 2 * t * (1 - t) * vectors[1][prop]
+                + t ** 2 * vectors[2][prop];
+        return dr * 3;
+    }
+
+    /**
+     * 法線ベクトルを求める
+     * @param {{ x: number, y: number, }} vec ベクトル
+     * @returns {{ x: number, y: number, }} 法線ベクトル 
+     */
+    function getNrm(vec) {
+        const unitVec = unit(vec);
+        return { x: unitVec.y, y: -unitVec.x };
+    }
+
+    /**
+     * 単位ベクトル化する
+     * @param {{ x: number, y: number, }} vec ベクトル
+     * @returns {{ x: number, y: number, }} 単位ベクトル 
+     */
+    function unit(vec) {
+        const len = Math.sqrt(vec.x ** 2 + vec.y ** 2);
+        return { x: vec.x / len, y: vec.y / len, };
+    }
+
+    /**
+     * 位置ベクトルの距離を求める
+     * @param {{ x: number, y: number, }} vec0 ベクトル
+     * @param {{ x: number, y: number, }} vec1 ベクトル
+     * @returns {number} 距離
+     */
+    function distance(vec0, vec1) {
+        return Math.sqrt((vec0.x - vec1.x) ** 2 + (vec0.y - vec1.y) ** 2);
+    }
+
+    /**
+	 * 線形補間する
+	 * @param {{ x:number, y: number }} pos0 線分の始点
+	 * @param {{ x:number, y: number }} pos1 線分の終点
+	 * @param {number} t 補間パラメータ
+	 * @return {{ x:number, y: number }} 線形補間された座標を返す
+	 */
+	function linearInterpolation(pos0, pos1, t) {
+		return { 
+			x: (1 - t) * pos0.x + t * pos1.x,
+			y: (1 - t) * pos0.y + t * pos1.y
+		};
+	}
 }
 
 </script>
 </head>
 <body>
-    <canvas id="my-canvas" width="800" height = "600"></canvas>
+    <canvas id="my-canvas" width="800" height = "800"></canvas>
     <br><br>
-    <label for="red-checkbox">
-        <input type="checkbox" id="red-checkbox" />赤色を塗る
-    </label>
 </body>
 </html>

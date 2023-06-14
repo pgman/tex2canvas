@@ -345,7 +345,7 @@ class Utility {
         canvas.width = width;
         canvas.height = height;
         const ctx = canvas.getContext('2d', { willReadFrequently: true });
-        const imageData = ctx.createImageData(width, height);
+        const imageData = ctx.getImageData(0, 0, width, height);
         return imageData;
     }
 
