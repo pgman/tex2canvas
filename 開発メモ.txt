@@ -1,20 +1,8 @@
 [作業履歴] 過去の履歴は作業履歴.txtに移した
 
-2023/06/11:
-H-085: 括弧のつなぎは独自オブジェクトを作成したほうがよいような気がする
-H-090: bmatrix対応
-H-053: 文字にランダムにアフィン変換をかます
-H-091: 題と感が表示されない -> idの取得が間違っていた
-
-2023/06/12:
-H-093: アフィン変換で平行移動もやる
-H-094: 日本語と数字混ぜると数字がずれる
-H-092: 漢字を大きく、漢字以外を小さく表示する
-H-089: \begin{eqnarray}あa\end{eqnarray} でMVGでsinの中身が表示できない。でもAVGでは表示できる。調べる。
-H-093: displayフラグ効いてない？ -> いや効いている
-
-2023/06/13:
+2023/06/14:
 H-094: 元のチョーク画像を曲げてみたい -> 一応できたが遅すぎる
+H-095: 画像を曲げるプログラムをメソッド化する
 
 [こちらのチョーク画像の方がすごい]
 https://www.ac-illust.com/main/profile.php?id=kWHdUmkj&area=1&page=2#comment-section
@@ -23,10 +11,8 @@ https://www.ac-illust.com/main/profile.php?id=kWHdUmkj&area=1&page=2#comment-sec
 https://www.photo-ac.com/main/search?q=%E3%83%81%E3%83%A7%E3%83%BC%E3%82%AF&%3Bpp=40&%3Bsrt=dlrank&%3Bp=406&pp=70&qt=&pt=B&p=1&sizesec=psd&srt=dlrank
 
 [作業中]
-H-095: 画像を曲げるプログラムをメソッド化する
 
 [優先度高め H-XXX]
-H-095: 画像を曲げるプログラムをメソッド化する
 H-065: exToPxメソッドを作りたい https://viereck.ch/latex-to-svg/
 H-088: <rect> を横長前提に作ってしまっているので、修正する必要がある
 H-049: エラーが発生する
