@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<script src="js/vector.js"></script>
+<script src="js/utility.js"></script>
+<title>bezier image</title>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+});
+
+/**
+ * 画像ファイルをファイルダイアログを開いて読み込む
+ * @returns {Promise<Object>} オブジェクト(エラー発生時はnull) 
+ */
+async function loadImageFile() {
+    const fileoptions = {
+        multiple : false, // 複数のファイルを選択しない
+        excludeAcceptAllOption : false,  // 使い道が見いだせないのでとりあえず無視
+        types : [// ファイルの種類のフィルター
+            {
+                description : 'Application config file',  // ファイルの説明                    
+                accept : { 'application/json': ['.json'], } // MIME typeと対象の拡張子                    
+            }
+        ],
+    };
+    try {
+        const fileHandles = await window.showOpenFilePicker(fileoptions);
+        if(fileHandles.length !== 1) {
+            throw 'file count is not one.'
+        }
+        const file = await fileHandles[0].getFile();
+        const text = await file.text();
+        if(text) {
+            return JSON.parse(text);
+        } else {
+            return null;
+        }
+    } catch(e) {// ファイル未選択            
+        return null;
+    }
+}
+</script>
+</head>
+<body>
+    <button id="load-button">load</button><br>
+    <canvas id="my-canvas" width="300" height = "150"></canvas>
+</body>
+</html>

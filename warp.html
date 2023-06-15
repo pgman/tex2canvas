@@ -2,6 +2,8 @@
 <html>
 <head>
 <meta charset="UTF-8">
+<script src="js/vector.js"></script>
+<script src="js/utility.js"></script>
 <title>bezier image</title>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
@@ -41,7 +43,7 @@ function bezierImage(ctx, img, points, startLineWidth, endLineWidth) {
     const vectors = getVectors(points);
 
     // 全体の長さを求める
-    const wholeLength = getWholeLength(points, 1000);
+    const [wholeLength, steps] = getWholeLength(points, 1000);
     const div = Math.round(wholeLength * 4);
 
     ctx.reset();
@@ -59,7 +61,7 @@ function bezierImage(ctx, img, points, startLineWidth, endLineWidth) {
                 x: getBezierPoint(points, preT, 'x'),
                 y: getBezierPoint(points, preT, 'y'),
             };
-            const dist = distance(pos, prePos);
+            const dist = Vector.dist(pos, prePos);
             curLength += dist;
         }
 
@@ -69,7 +71,7 @@ function bezierImage(ctx, img, points, startLineWidth, endLineWidth) {
             y: getFirstDerivative(vectors, t, 'y'),
         };
         // 単位ベクトル化する
-        vector = unit(vector);
+        vector = Vector.unit(vector);
         // -90度回す
         const nrm = getNrm(vector);
         const curLineWidth = startLineWidth + (endLineWidth - startLineWidth) * curLength / wholeLength;
@@ -87,7 +89,7 @@ function bezierImage(ctx, img, points, startLineWidth, endLineWidth) {
         for(let j = 0; j <= yDiv; j += 1) {
             const rate = j / yDiv;
             // intPosの色を画像から取得する
-            const intPos = linearInterpolation(top, bottom, rate);
+            const intPos = Utility.linearInterpolation(top, bottom, rate);
             const xRate = curLength / wholeLength;
             const yRate = rate;
             const color = getImageColor(imgImageData, xRate, yRate);
@@ -131,6 +133,7 @@ function bezierImage(ctx, img, points, startLineWidth, endLineWidth) {
      */
     function getWholeLength(points, div) {
         let wholeLength = 0;
+        const steps = [{ t: 0, dist: 0, }];
         for(let i = 0; i < div; i += 1) {
             const t = i / div;
             const nextT = (i + 1) / div;
@@ -142,10 +145,11 @@ function bezierImage(ctx, img, points, startLineWidth, endLineWidth) {
                 x: getBezierPoint(points, nextT, 'x'),
                 y: getBezierPoint(points, nextT, 'y'),
             };
-            const dist = distance(pos, nextPos);
+            const dist = Vector.dist(pos, nextPos);
             wholeLength += dist;
+            steps.push({ t: nextT, dist });
         }
-        return wholeLength;
+        return [wholeLength, steps];
     }    
 
     /**
@@ -158,7 +162,7 @@ function bezierImage(ctx, img, points, startLineWidth, endLineWidth) {
         for(let i = 0; i < points.length; i += 1) {
             if(i + 1 >= points.length) { continue; }
             const vector = { x: points[i + 1].x - points[i].x, y: points[i + 1].y - points[i].y, };
-            vectors.push(unit(vector));
+            vectors.push(Vector.unit(vector));
         }
         return vectors;
     }
@@ -197,43 +201,9 @@ function bezierImage(ctx, img, points, startLineWidth, endLineWidth) {
      * @returns {{ x: number, y: number, }} 法線ベクトル 
      */
     function getNrm(vec) {
-        const unitVec = unit(vec);
+        const unitVec = Vector.unit(vec);
         return { x: unitVec.y, y: -unitVec.x };
     }
-
-    /**
-     * 単位ベクトル化する
-     * @param {{ x: number, y: number, }} vec ベクトル
-     * @returns {{ x: number, y: number, }} 単位ベクトル 
-     */
-    function unit(vec) {
-        const len = Math.sqrt(vec.x ** 2 + vec.y ** 2);
-        return { x: vec.x / len, y: vec.y / len, };
-    }
-
-    /**
-     * 位置ベクトルの距離を求める
-     * @param {{ x: number, y: number, }} vec0 ベクトル
-     * @param {{ x: number, y: number, }} vec1 ベクトル
-     * @returns {number} 距離
-     */
-    function distance(vec0, vec1) {
-        return Math.sqrt((vec0.x - vec1.x) ** 2 + (vec0.y - vec1.y) ** 2);
-    }
-
-    /**
-	 * 線形補間する
-	 * @param {{ x:number, y: number }} pos0 線分の始点
-	 * @param {{ x:number, y: number }} pos1 線分の終点
-	 * @param {number} t 補間パラメータ
-	 * @return {{ x:number, y: number }} 線形補間された座標を返す
-	 */
-	function linearInterpolation(pos0, pos1, t) {
-		return { 
-			x: (1 - t) * pos0.x + t * pos1.x,
-			y: (1 - t) * pos0.y + t * pos1.y
-		};
-	}
 }
 
 </script>

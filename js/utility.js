@@ -271,8 +271,6 @@ class Utility {
 
     /**
      * .json をファイルダイアログを開いて読み込む
-     * @param {Blob} blob Blob
-     * @param {string} fileName ファイル名
      * @returns {Promise<Object>} オブジェクト(エラー発生時はnull) 
      */
     static async loadJsonFile() {
