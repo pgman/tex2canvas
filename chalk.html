@@ -7,39 +7,29 @@
 <title>bezier image</title>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
+    document.querySelector('#load-button').addEventListener('click', async e => {
+        // load image file
+        const img = await Utility.loadImageFile();
+        if(!img) { return; }
+        console.log(`width: ${img.width}, height: ${img.height}`);
+        // 画像がおそらく大きいので 横幅を1024pixelにする
+        const width = 1024;
+        const height = Math.round(img.height / img.width * width);
+        // get canvas and context
+        const [canvas, ctx] = Utility.getCanvasContextById('my-canvas');
+        canvas.width = width;
+        canvas.height = height;
+        ctx.fillStyle = 'green';
+        //ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        ctx.drawImage(img, 0, 0, img.width, img.height, 0, 0, ctx.canvas.width, ctx.canvas.height);
+        const imageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
+        const info = Utility.getColorInfo(imageData);
+        console.log(Utility.isAllWhite(imageData));
+        console.log(info);
+    });
 });
 
-/**
- * 画像ファイルをファイルダイアログを開いて読み込む
- * @returns {Promise<Object>} オブジェクト(エラー発生時はnull) 
- */
-async function loadImageFile() {
-    const fileoptions = {
-        multiple : false, // 複数のファイルを選択しない
-        excludeAcceptAllOption : false,  // 使い道が見いだせないのでとりあえず無視
-        types : [// ファイルの種類のフィルター
-            {
-                description : 'Application config file',  // ファイルの説明                    
-                accept : { 'application/json': ['.json'], } // MIME typeと対象の拡張子                    
-            }
-        ],
-    };
-    try {
-        const fileHandles = await window.showOpenFilePicker(fileoptions);
-        if(fileHandles.length !== 1) {
-            throw 'file count is not one.'
-        }
-        const file = await fileHandles[0].getFile();
-        const text = await file.text();
-        if(text) {
-            return JSON.parse(text);
-        } else {
-            return null;
-        }
-    } catch(e) {// ファイル未選択            
-        return null;
-    }
-}
+
 </script>
 </head>
 <body>

@@ -541,7 +541,91 @@ class Utility {
         return regexp.test(text);
     }
 
-    
+    /**
+     * 画像ファイルをファイルダイアログを開いて読み込む
+     * @returns {Promise<Object>} オブジェクト(エラー発生時はnull) 
+     */
+    static async loadImageFile() {
+        const fileoptions = {
+            multiple : false, // 複数のファイルを選択しない
+            excludeAcceptAllOption : false,  // 使い道が見いだせないのでとりあえず無視
+            types : [// ファイルの種類のフィルター
+                {
+                    description : 'png file',  // ファイルの説明                    
+                    accept : { 'image/png': ['.png'], } // MIME typeと対象の拡張子                    
+                },
+                {
+                    description : 'jpeg file',  // ファイルの説明                    
+                    accept : { 'image/jpeg': ['.jpeg', '.jpg'], } // MIME typeと対象の拡張子                    
+                }
+            ],
+        };
+        try {
+            const fileHandles = await window.showOpenFilePicker(fileoptions);
+            if(fileHandles.length !== 1) {
+                throw 'file count is not one.'
+            }
+            const file = await fileHandles[0].getFile();
+
+            // ファイルのブラウザ上でのURLを取得する
+            const blobUrl = window.URL.createObjectURL(file);
+            // 画像読み込み
+            const img = await Utility.loadImage(blobUrl);
+
+            if(img) {
+                return img;
+            } else {
+                return null;
+            }
+        } catch(e) {// ファイル未選択            
+            return null;
+        }
+    }
+
+    /**
+     * 画像の色情報を取得する
+     * @param {ImageData} imageData イメージデータ
+     * @returns {Array<Object>} 色情報
+     */
+    static getColorInfo(imageData) {
+        const ret = [];
+        const data = imageData.data;
+        for(let i = 0; i < data.length / 4; i += 1) {
+            const color = [ data[i * 4 + 0], data[i * 4 + 1], data[i * 4 + 2], data[i * 4 + 3] ];
+            const found = ret.find(c => c.color[0] === color[0] && c.color[1] === color[1] && c.color[2] === color[2] && c.color[3] === color[3]);
+            if(!found) {
+                ret.push({ color, count: 0 });
+            } else {
+                found.count += 1;
+            }
+        }
+        ret.sort((a, b) => b.count - a.count);
+        return ret;
+    }
+
+    /**
+     * 画像が全て白か確認する
+     * 透過は(0,0,0,0)であることの確認する。他の画素は(255,255,255)であることを確認する
+     * @param {ImageData} imageData イメージデータ
+     * @returns {boolean} 全て白か
+     */
+    static isAllWhite(imageData) {
+        const data = imageData.data;
+        for(let i = 0; i < data.length / 4; i += 1) {
+            const r = data[i * 4 + 0],
+                g = data[i * 4 + 1],
+                b = data[i * 4 + 2],
+                a = data[i * 4 + 3];
+            if(r === 0 && g === 0 && b === 0 && a === 0) {
+                continue;
+            } else if(r === 255 && g === 255 && b === 255 && a !== 0) {
+                continue;
+            } else {
+                return false;
+            }
+        }
+        return true;
+    }
 }
 	
 
