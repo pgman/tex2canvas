@@ -573,12 +573,12 @@ class Utility {
             const img = await Utility.loadImage(blobUrl);
 
             if(img) {
-                return img;
+                return [img, file.name];
             } else {
-                return null;
+                return [null, ''];
             }
         } catch(e) {// ファイル未選択            
-            return null;
+            return [null, ''];
         }
     }
 
@@ -604,12 +604,13 @@ class Utility {
     }
 
     /**
-     * 画像が全て白か確認する
+     * 画像が全て同じ色か確認する
      * 透過は(0,0,0,0)であることの確認する。他の画素は(255,255,255)であることを確認する
      * @param {ImageData} imageData イメージデータ
+     * @param {Array<number>} color rgbデータ
      * @returns {boolean} 全て白か
      */
-    static isAllWhite(imageData) {
+    static isSameColor(imageData, color) {
         const data = imageData.data;
         for(let i = 0; i < data.length / 4; i += 1) {
             const r = data[i * 4 + 0],
@@ -618,13 +619,88 @@ class Utility {
                 a = data[i * 4 + 3];
             if(r === 0 && g === 0 && b === 0 && a === 0) {
                 continue;
-            } else if(r === 255 && g === 255 && b === 255 && a !== 0) {
+            } else if(r === color[0] && g === color[1] && b === color[2] && a !== 0) {
                 continue;
             } else {
                 return false;
             }
         }
         return true;
+    }
+
+    /**
+     * 色を置換する
+     * @param {CanvasRenderingContext2D} ctx コンテキスト 
+     * @param {Array<number>} src 置き換えられる色 
+     * @param {Array<number>} dst 置換する色
+     * @returns {void} なし
+     */
+    static replceColor(ctx, src, dst) {
+        const imageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
+        const data = imageData.data;
+        for(let i = 0; i < data.length / 4; i += 1) {
+            const r = data[i * 4 + 0],
+                g = data[i * 4 + 1],
+                b = data[i * 4 + 2],
+                a = data[i * 4 + 3];
+            if(r === src[0] && g === src[1] && b === src[2] && a !== 0) {
+                data[i * 4 + 0] = dst[0];
+                data[i * 4 + 1] = dst[1];
+                data[i * 4 + 2] = dst[2];
+            }
+        }
+        ctx.putImageData(imageData, 0, 0);
+    }
+
+    static existX(imageData, x, startY, height) {
+        const data = imageData.data;
+
+        for(let y = startY; y < startY + height; y += 1) {
+            const i = x + y * imageData.width;
+            const r = data[i * 4 + 0],
+                g = data[i * 4 + 1],
+                b = data[i * 4 + 2],
+                a = data[i * 4 + 3];
+            if(r === 0 && g === 0 && b === 0 && a === 0) {
+                continue;
+            } else {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    static existY(imageData, y, startX, width) {
+        const data = imageData.data;
+
+        for(let x = startX; x < startX + width; x += 1) {
+            const i = x + y * imageData.width;
+            const r = data[i * 4 + 0],
+                g = data[i * 4 + 1],
+                b = data[i * 4 + 2],
+                a = data[i * 4 + 3];
+
+            if(r === 0 && g === 0 && b === 0 && a === 0) {
+                continue;
+            } else {
+                return true;
+            }
+        }
+        return false;   // その行は色が存在しない
+    }
+
+    /**
+     * トリミングしたキャンバスを作成する
+     * @param {HTMLCanvasElement} canvas キャンバス 
+     * @param {{x: number, y: number, width: number, height: number, }} rect 矩形 
+     * @returns {HTMLCanvasElement} トリミングしたキャンバス
+     */
+    static trimCanvas(canvas, rect) {
+        const trimmed = Utility.createCanvas(rect.width, rect.height);
+        const ctx = trimmed.getContext('2d', { willReadFrequently: true });
+        ctx.drawImage(canvas, rect.x, rect.y, rect.width, rect.height,
+            0, 0, trimmed.width, trimmed.height);
+        return trimmed;
     }
 }
 	

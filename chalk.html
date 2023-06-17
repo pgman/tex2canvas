@@ -7,33 +7,168 @@
 <title>bezier image</title>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
+    let img = null, imgFileName = '';
     document.querySelector('#load-button').addEventListener('click', async e => {
         // load image file
-        const img = await Utility.loadImageFile();
+        [img, imgFileName] = await Utility.loadImageFile();
         if(!img) { return; }
         console.log(`width: ${img.width}, height: ${img.height}`);
         // 画像がおそらく大きいので 横幅を1024pixelにする
-        const width = 1024;
-        const height = Math.round(img.height / img.width * width);
+        //const width = 1024;
+        //const height = Math.round(img.height / img.width * width);
+        const width = img.width;
+        const height = img.height;
         // get canvas and context
         const [canvas, ctx] = Utility.getCanvasContextById('my-canvas');
         canvas.width = width;
         canvas.height = height;
-        ctx.fillStyle = 'green';
-        //ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        const [backCanvas, backCtx] = Utility.getCanvasContextById('back-canvas');
+        backCanvas.width = width;
+        backCanvas.height = height;
+        const [operationCanvas, operationCtx] = Utility.getCanvasContextById('operation-canvas');
+        operationCanvas.width = width;
+        operationCanvas.height = height;
+
+        backCtx.fillStyle = 'green';
+        backCtx.fillRect(0, 0, backCtx.canvas.width, backCtx.canvas.height);
         ctx.drawImage(img, 0, 0, img.width, img.height, 0, 0, ctx.canvas.width, ctx.canvas.height);
         const imageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
         const info = Utility.getColorInfo(imageData);
-        console.log(Utility.isAllWhite(imageData));
+        console.log(Utility.isSameColor(imageData, [255, 255, 255]));
         console.log(info);
+        //ctx.font = '40px "チョーク S"';
+        //ctx.fillText('ああああ', 100, 100);
+    });
+
+    document.querySelector('#operation-canvas').addEventListener('click', e => {
+        document.querySelector('#x-text').value = e.offsetX + '';
+        document.querySelector('#y-text').value = e.offsetY + '';
+        document.querySelector('#draw-button').click();
+    });
+
+    document.querySelector('#to-white-button').addEventListener('click', async e => {
+        const [canvas, ctx] = Utility.getCanvasContextById('my-canvas');
+        Utility.replceColor(ctx, [0, 0, 0], [255, 255, 255]);
+    });
+
+    document.querySelector('#draw-button').addEventListener('click', async e => {
+        const [canvas, ctx] = Utility.getCanvasContextById('operation-canvas');
+        const x = Number(document.querySelector('#x-text').value);
+        const y = Number(document.querySelector('#y-text').value);
+        const width = Number(document.querySelector('#width-text').value);
+        const height = Number(document.querySelector('#height-text').value);
+        ctx.reset();
+        ctx.save();
+        ctx.fillStyle = 'rgba(255,0,0,0.4)';
+        ctx.fillRect(x, y, width, height);
+        ctx.restore();
+    });    
+
+    document.querySelector('#save-button').addEventListener('click', async e => {
+        const [canvas, ctx] = Utility.getCanvasContextById('my-canvas');
+        const x = Number(document.querySelector('#x-text').value);
+        const y = Number(document.querySelector('#y-text').value);
+        const width = Number(document.querySelector('#width-text').value);
+        const height = Number(document.querySelector('#height-text').value);
+        const trimmed = Utility.trimCanvas(canvas, { x, y, width, height });
+        trimmed.toBlob((blob) => {
+            const splits = imgFileName.split('.');
+            Utility.saveBlob(blob, `${splits[0]}(${x}-${y}-${width}-${height}).${splits[1]}`);
+        });
+    });    
+
+    document.querySelector('#fit-button').addEventListener('click', async e => {
+        const [canvas, ctx] = Utility.getCanvasContextById('my-canvas');
+        const imageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
+        const data = imageData.data;
+
+        const startX = Number(document.querySelector('#x-text').value);
+        const startY = Number(document.querySelector('#y-text').value);
+        const width = Number(document.querySelector('#width-text').value);
+        const height = Number(document.querySelector('#height-text').value);
+
+        // x
+        let left = startX;
+        let dbgCnt = 0;
+        while(true) {
+            if(++dbgCnt > 10000) { console.log('error'); break; }
+            const ret = Utility.existX(imageData, left, startY, height);
+            if(ret) { break; } 
+            else { left += 1; }
+        }
+        // y
+        let top = startY;
+        dbgCnt = 0;
+        while(true) {
+            if(++dbgCnt > 10000) { console.log('error'); break; }
+            const ret = Utility.existY(imageData, top, startX, width);
+            if(ret) { break; } 
+            else { top += 1; }
+        }
+        // right
+        let right = startX + width - 1;
+        dbgCnt = 0;
+        while(true) {
+            if(++dbgCnt > 10000) { console.log('error'); break; }
+            const ret = Utility.existX(imageData, right, startY, height);
+            if(ret) { break; } 
+            else { right -= 1; }
+        }
+        
+        // bottom
+        let bottom = startY + height - 1;
+        dbgCnt = 0;
+        while(true) {
+            if(++dbgCnt > 10000) { console.log('error'); break; }
+            const ret = Utility.existY(imageData, bottom, startX, width);
+            if(ret) { break; } 
+            else { bottom -= 1; }
+        }
+        
+        document.querySelector('#x-text').value = left + '';
+        document.querySelector('#y-text').value = top + '';
+        document.querySelector('#width-text').value = (right - left + 1) + '';
+        document.querySelector('#height-text').value = (bottom - top + 1) + '';
+        document.querySelector('#draw-button').click();
     });
 });
-
-
 </script>
+<style>
+#operation-area {
+    position: fixed; 
+    left: 8px; 
+    top: 8px;
+    z-index: 1;
+    background-color: white;
+    padding: 4px;
+    border: solid 1px #888;
+}
+#back-canvas, #my-canvas, #operation-canvas {
+    position: absolute;
+    left: 8px;
+    top: 80px;
+}
+.value-text {
+    width: 60px;
+}
+</style>
 </head>
 <body>
-    <button id="load-button">load</button><br>
+    <div id="operation-area">
+        <button id="load-button">load</button>&nbsp;
+        <button id="to-white-button">to white</button>&nbsp;
+        <button id="save-button">save</button><br>
+        x:<input id="x-text" class="value-text" value="0" type="text">
+        y:<input id="y-text" class="value-text" value="0" type="text">
+        &nbsp;&nbsp;&nbsp;
+        width:<input id="width-text" class="value-text" value="3768" type="text">
+        height:<input id="height-text" class="value-text" value="250" type="text">
+        &nbsp;
+        <button id="draw-button">draw</button>
+        <button id="fit-button">fit</button>
+    </div>
+    <canvas id="back-canvas" width="300" height = "150"></canvas>
     <canvas id="my-canvas" width="300" height = "150"></canvas>
+    <canvas id="operation-canvas" width="300" height = "150"></canvas>
 </body>
 </html>
