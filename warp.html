@@ -292,12 +292,34 @@ function bezierImage(ctx, img, points, startLineWidth, endLineWidth) {
         const indexes = getFilledIndexesBySquarePath([ top, nextTop, nextBottom, bottom ], 
             { width: ctx.canvas.width, height: ctx.canvas.height, });
 
+        const divides = 10;
         indexes.forEach(index => {
             // index to x, y
             const x = index % ctx.canvas.width;
             const y = Math.floor(index / ctx.canvas.width);
             // get rate of x
+            // top - nextTop を n分割する |--------| -> |-|-|-|-|-|-|-|-|
+            const topPoints = createPointsByLineSegment(top, nextTop, divides);
+            // bottom - nextBottom を n分割する |--------| -> |-|-|-|-|-|-|-|-|
+            const bottomPoints = createPointsByLineSegment(bottom, nextBottom, divides);
+            // 直線と点の距離を計算する
         });
+    }
+
+    /**
+     * 分割する
+     * @param {{ x: number, y: number, }} start 始点
+     * @param {{ x: number, y: number, }} end 終点
+     * @param {number} divides 分割数
+     * @returns {Array<{ x: number, y: number, }>} 点の配列
+     */
+    function createPointsByLineSegment(start, end, divides) {
+        const points = [];
+        for(let i = 0; i <= divides; i += 1) {
+            const point = Utility.linearInterpolation(start, end, i / divides);
+            points.push(point);
+        }
+        return points;
     }
 
     /**
