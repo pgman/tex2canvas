@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <script src="js/vector.js"></script>
+<script src="js/minmax.js"></script>
 <script src="js/utility.js"></script>
 <title>bezier image</title>
 <script>
@@ -15,10 +16,12 @@ document.addEventListener('DOMContentLoaded', () => {
         { x: 300, y: 100, },
         { x: 400, y: 600, },
     ];
-    const startLineWidth = 60;
-    const endLineWidth = 100;
+    const startLineWidth = 10;
+    const endLineWidth = 10;
     const img = new Image();
-	img.onload = () => { bezierImage(ctx, img, points, startLineWidth, endLineWidth); };
+	img.onload = () => { 
+        bezierImage(ctx, img, points, startLineWidth, endLineWidth); 
+    };
 	img.src = 'images/america.png';
 });
 
@@ -45,6 +48,9 @@ function bezierImage(ctx, img, points, startLineWidth, endLineWidth) {
     // 全体の長さを求める
     const [wholeLength, steps] = getWholeLength(points, 1000);
     const div = Math.round(wholeLength * 4);
+
+    const indexes = [];
+    let lastIndex = -1;
 
     ctx.reset();
 
@@ -83,14 +89,32 @@ function bezierImage(ctx, img, points, startLineWidth, endLineWidth) {
             x: pos.x + curLineWidth * (-nrm.x),
             y: pos.y + curLineWidth * (-nrm.y),
         };
+        const xRate = curLength / wholeLength;
 
+        // logic1: very late
+        // const imageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
+        // const data = imageData.data;
+        // Utility.drawLine(top, bottom, { width: ctx.canvas.width, height: ctx.canvas.height, }, indexes);
+        // ctx.save();
+        // for(let j = lastIndex + 1; j < indexes.length; j += 1) {
+        //     const elm = indexes[j];
+        //     const color = getImageColor(imgImageData, xRate, elm.rate);
+        //     const i = elm.index;
+        //     data[i * 4 + 0] = color.r;
+        //     data[i * 4 + 1] = color.g;
+        //     data[i * 4 + 2] = color.b;
+        //     data[i * 4 + 3] = color.a;
+        //     lastIndex = j;
+        // }
+        // ctx.putImageData(imageData, 0, 0);
+        // ctx.restore();
+        
         ctx.save();    
         const yDiv = Math.round(curLineWidth * 4);
         for(let j = 0; j <= yDiv; j += 1) {
             const rate = j / yDiv;
             // intPosの色を画像から取得する
-            const intPos = Utility.linearInterpolation(top, bottom, rate);
-            const xRate = curLength / wholeLength;
+            const intPos = Utility.linearInterpolation(top, bottom, rate);            
             const yRate = rate;
             const color = getImageColor(imgImageData, xRate, yRate);
             ctx.fillStyle = `rgba(${color.r},${color.g},${color.b},${color.a / 255})`;
@@ -205,6 +229,186 @@ function bezierImage(ctx, img, points, startLineWidth, endLineWidth) {
         return { x: unitVec.y, y: -unitVec.x };
     }
 }
+
+/**
+ * ベジェ曲線に沿って画像を描画する
+ * @param {CanvasRenderingContext2D} ctx キャンバスのコンテキスト
+ * @param {Image} img 画像
+ * @param {Araay<{ x: number, y: number}>} 制御点の配列
+ * @param {number} startLineWidth 始点の線の幅
+ * @param {number} endLineWidth 終点の線の幅
+ * @returns {void} なし
+ */
+ function bezierImage2(ctx, img, points, startLineWidth, endLineWidth) {
+    const imgCanvas = document.createElement('canvas');
+    imgCanvas.width = img.width;
+    imgCanvas.height = img.height;
+    const imgCtx = imgCanvas.getContext('2d', { willReadFrequently: true });
+    imgCtx.drawImage(img, 0, 0);
+    const imgImageData = imgCtx.getImageData(0, 0, imgCtx.canvas.width, imgCtx.canvas.height);
+
+    // ベクトルを求める
+    const vectors = getVectors(points);
+
+    // 全体の長さを求める
+    const [wholeLength, steps] = getWholeLength(points, 1000);
+    const div = Math.round(wholeLength * 4);
+
+    const indexes = [];
+    let lastIndex = -1;
+
+    ctx.reset();
+
+    let curLength = 0;
+    for(let i = 0; i < div; i += 1) {
+        const t = i / div;        
+        const nextT = (i + 1) / div;
+        const pos = {
+            x: getBezierPoint(points, t, 'x'),
+            y: getBezierPoint(points, t, 'y'),
+        };
+        const nextPos = {
+            x: getBezierPoint(points, nextT, 'x'),
+            y: getBezierPoint(points, nextT, 'y'),
+        };
+        if(i > 0) {
+            const preT = (i - 1) / div;
+            const prePos = {
+                x: getBezierPoint(points, preT, 'x'),
+                y: getBezierPoint(points, preT, 'y'),
+            };
+            const dist = Vector.dist(pos, prePos);
+            curLength += dist;
+        }
+        const curDist = Vector.dist(pos, nextPos);
+
+        // 現在の点から法線方向に現在の線分の幅の半分動かした点を取得する
+        const [top, bottom] = getShiftedPoints(pos, t, vectors, curLength / wholeLength, startLineWidth, endLineWidth);
+
+        // 次の点から法線方向に現在の線分の幅の半分動かした点を取得する
+        const [nextTop, nextBottom] = getShiftedPoints(nextPos, nextT, vectors, (curLength + curDist) / wholeLength, startLineWidth, endLineWidth);
+
+        // パスを塗りつぶすことにより、四角形内のインデックスを取得する
+        const indexes = getFilledIndexesBySquarePath([ top, nextTop, nextBottom, bottom ], 
+            { width: ctx.canvas.width, height: ctx.canvas.height, });
+
+        indexes.forEach(index => {
+            // index to x, y
+            const x = index % ctx.canvas.width;
+            const y = Math.floor(index / ctx.canvas.width);
+            // get rate of x
+        });
+    }
+
+    /**
+     * パスを塗りつぶすことにより、四角形内のインデックスを取得する
+     * @param {Array<{ x: number, y: number, }>} points 四角形の点(時計回り)
+     * @param {{ width: number, height: number, }} canvasSize キャンバスのサイズ
+     */
+    function getFilledIndexesBySquarePath(points, size) {
+
+        // get min/max of points
+        MinMax.save();
+        MinMax.init();
+        points.forEach(p => { MinMax.regist(p); });
+        MinMax.addMargin(2);
+        MinMax.truncate();
+        const mm = MinMax.getRect();
+        MinMax.restore();
+
+        // create canvas
+        const canvas = Utility.createCanvas(mm.width, mm.height);
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+        // transform points
+        trans = points.map(p => Vector.subtract(p, mm)); 
+
+        // fill square
+        ctx.save();
+        ctx.beginPath();
+        trans.forEach((p, i) => { 
+            if(i === 0) { ctx.moveTo(p.x, p.y); }
+            else { ctx.lineTo(p.x, p.y); }
+        });
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+
+        // get index of filled pixel
+        const imageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
+        const data = imageData.data;
+        const indexes = [];
+        for(let i = 0; i < data.length / 4; i += 1) {
+            if(data[i * 4 + 3] !== 0) {// filled
+                indexes.push(i);
+            }
+        }
+
+        return indexes;
+    }
+
+    function getShiftedPoints(pos, t, vectors, rate, startLineWidth, endLineWidth) {
+        // 接線のベクトルを求める
+        let vector = {
+            x: getFirstDerivative(vectors, t, 'x'),
+            y: getFirstDerivative(vectors, t, 'y'),
+        };
+        // 単位ベクトル化する
+        vector = Vector.unit(vector);
+        // -90度回す
+        const nrm = getNrm(vector);
+
+        const lineWidth = startLineWidth + (endLineWidth - startLineWidth) * rate;
+        const halfWidth = lineWidth * 0.5;
+        const top = {
+            x: pos.x + halfWidth * nrm.x,
+            y: pos.y + halfWidth * nrm.y,
+        };
+        const bottom = {
+            x: pos.x + halfWidth * (-nrm.x),
+            y: pos.y + halfWidth * (-nrm.y),
+        };
+        return { top, bottom, };
+    }
+
+    /**
+     * ベジェ曲線の点を求める
+     * @param {Array<{ x: number, y: number }>} points 制御点の配列
+     * @param {number} t パラメータ
+     * @param {string} prop プロパティ名
+     * @returns {{ x: number, y: number, }} 点
+     */
+    function getBezierPoint(points, t, prop) {
+        return (1 - t) ** 3 * points[0][prop] 
+                + 3 * t * (1 - t) ** 2 * points[1][prop] 
+                + 3 * t ** 2 * (1 - t) * points[2][prop] 
+                + t ** 3 * points[3][prop];
+    }
+
+    /**
+     * ベジェ曲線の1階微分を求める
+     * @param {Array<{ x: number, y: number }>} vectors ベクトルの配列
+     * @param {number} t パラメータ
+     * @param {string} prop プロパティ名
+     * @returns {{ x: number, y: number, }} 1階微分
+     */
+    function getFirstDerivative(vectors, t, prop) {
+        const dr = (1 - t) ** 2 * vectors[0][prop]
+                + 2 * t * (1 - t) * vectors[1][prop]
+                + t ** 2 * vectors[2][prop];
+        return dr * 3;
+    }
+
+    /**
+     * 法線ベクトルを求める
+     * @param {{ x: number, y: number, }} vec ベクトル
+     * @returns {{ x: number, y: number, }} 法線ベクトル 
+     */
+    function getNrm(vec) {
+        const unitVec = Vector.unit(vec);
+        return { x: unitVec.y, y: -unitVec.x };
+    }
+ }
 
 </script>
 </head>
