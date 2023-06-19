@@ -303,7 +303,7 @@ function bezierImage(ctx, img, points, startLineWidth, endLineWidth) {
      * @param {number} tol 距離の2乗を0とみなす許容範囲
      * @returns {Object} 対象となる点の近くを通る直線を定める情報
      */ 
-     function nearestRateLineSegment(points, target, tol = 1e-6) {
+    function nearestRateLineSegment(points, target, tol = 1e-6) {
         let start = points[0];
         let end = points[1];
         let startRate = 0;
