@@ -34,13 +34,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const canvas = document.querySelector('#my-canvas');
         const ctx = canvas.getContext('2d', { willReadFrequently: true });
         const points = [
-            { x: 100, y: 100, },
-            { x: 250, y: 100, },
-            { x: 400, y: 100, },
-            { x: 600, y: 100, },
+            { x: 100, y: 300, },
+            { x: 120, y: 100, },
+            { x: 140, y: 100, },
+            { x: 160, y: 300, },
         ];
-        const startLineWidth = 60;
-        const endLineWidth = 60;
+        const startLineWidth = 20;
+        const endLineWidth = 20;
         const img = new Image();
         img.onload = () => { 
             const startTime = new Date();
@@ -52,7 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
         };
-        img.src = 'chalk-images/chalk-line/chalk-line-5(37-913-4601-510).png'; 
+        img.src = 'chalk-images/chalk-line/chalk-line-2(26-1479-1290-336).png'; 
         //img.src = 'images/america.png';
         //img.src = 'images/yellow.png';
     });
@@ -647,14 +647,6 @@ function getImageColor(imageData, xRate, yRate) {
     if(color.a < 0) { color.a = 0; }
     if(color.a > 255) { color.a = 255; }
     return color;
-/*
-    const i = y * width + x;
-    return {
-        r: data[i * 4 + 0],
-        g: data[i * 4 + 1],
-        b: data[i * 4 + 2],
-        a: data[i * 4 + 3],
-    };*/
 }
 
 function getColor(imageData, x, y) {
