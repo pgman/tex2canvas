@@ -166,4 +166,13 @@ class Vector {
     static dist2LinePoint(o, p, q, tol = 1e-6) {
         return Vector._dist2OriginLinePoint(Vector.subtract(p, o), Vector.subtract(q, o));
     } 
+
+    /**
+     * 法線を求める
+     * @param {{ x: number, y: number, }} v ベクトル 
+     * @returns {{ x: number, y: number, }} 法線
+     */
+    static nrm(v) {
+        return { x: v.y, y: -v.x };
+    }
 }

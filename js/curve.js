@@ -52,39 +52,6 @@ class Curve {
         return ret;
     }
 
-    pathDivided(ctx, move = false, brushDiameter) {
-        const points = this.points;
-
-        const divideCount = 3;
-        for(let i = 0; i < divideCount; i += 1) {
-            const t = i / divideCount;
-            const tNext = (i + 1) / divideCount;
-            const pos = this.interpolate(t);
-            const posNext = this.interpolate(tNext);
-            draw(pos.x, pos.y, posNext.x, posNext.y, brushDiameter);
-        }
-
-        function draw(xLast, yLast, x, y, brushDiameter) {
-            ctx.strokeStyle = 'rgba(255,255,255,'+(0.2+Math.random()*0.2)+')';
-            ctx.beginPath();
-            ctx.moveTo(xLast, yLast);		
-            ctx.lineTo(x, y);
-            ctx.stroke();
-              
-            // Chalk Effect
-            var length = Math.round(Math.sqrt(Math.pow(x-xLast,2)+Math.pow(y-yLast,2))/(5/brushDiameter));
-            var xUnit = (x-xLast)/length;
-            var yUnit = (y-yLast)/length;
-            for(var i=0; i<length; i++ ){
-                var xCurrent = xLast+(i*xUnit);	
-                var yCurrent = yLast+(i*yUnit);
-                var xRandom = xCurrent+(Math.random()-0.5)*brushDiameter*1.2;			
-                var yRandom = yCurrent+(Math.random()-0.5)*brushDiameter*1.2;
-                ctx.clearRect( xRandom, yRandom, Math.random()*2+2, Math.random()+1);
-            }
-        }
-    }
-
     /**
      * 矩形を取得する
      * @param {number} divLength パラメータの分割数

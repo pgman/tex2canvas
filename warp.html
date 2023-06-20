@@ -5,25 +5,91 @@
 <script src="js/vector.js"></script>
 <script src="js/min-max.js"></script>
 <script src="js/utility.js"></script>
+<script src="js/cubic-bezier-curve.js"></script>
+<script src="js/paint.js"></script>
+<script
+  src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.2.0/chart.min.js"
+  integrity="sha512-VMsZqo0ar06BMtg0tPsdgRADvl0kDHpTbugCBBrL55KmucH6hP9zWdLIWY//OTfMnzz6xWQRxQqsUFefwHuHyg=="
+  crossorigin="anonymous"></script>
+<script
+  src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@next/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+</head>
 <title>bezier image</title>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    const canvas = document.querySelector('#my-canvas');
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    const points = [
-        { x: 100, y: 600, },
-        { x: 200, y: 100, },
-        { x: 300, y: 100, },
-        { x: 400, y: 600, },
-    ];
-    const startLineWidth = 100;
-    const endLineWidth = 50;
-    const img = new Image();
-	img.onload = () => { 
-        bezierImage(ctx, img, points, startLineWidth, endLineWidth); 
-    };
-	img.src = 'images/america.png';
+
+    // #done-button click
+    document.querySelector('#done-button').addEventListener('click', e => {
+        let func = null;
+        const logicValue = document.querySelector('#logic-select').value;
+        if(logicValue === 'logic1') { func = bezierImage; }
+        else if(logicValue === 'logic2') { func = bezierImage2; }
+        else if(logicValue === 'logic3') { func = bezierImage3; }
+
+        let useFillRect = false;
+        const useValue = document.querySelector('#use-select').value;
+        if(useValue === 'false') { useFillRect = false; }
+        else { useFillRect = true; }
+
+        const canvas = document.querySelector('#my-canvas');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        const points = [
+            { x: 100, y: 400, },
+            { x: 200, y: 100, },
+            { x: 300, y: 100, },
+            { x: 400, y: 400, },
+        ];
+        const startLineWidth = 20;
+        const endLineWidth = 20;
+        const img = new Image();
+        img.onload = () => { 
+            const startTime = new Date();
+            const data = func(ctx, img, points, startLineWidth, endLineWidth, useFillRect); 
+            const endTime = new Date();
+            document.querySelector('#time-span').innerHTML = `${endTime - startTime} ms`;
+            if(data) {
+                updateChart(data);
+            }
+            
+        };
+        img.src = 'chalk-images/chalk-line/chalk-line-5(37-913-4601-510).png'; 
+        //img.src = 'images/america.png';
+        //img.src = 'images/yellow.png';
+    });
 });
+
+function updateChart(data) {
+    const ctx = document.getElementById('my-chart').getContext('2d');
+
+    const myChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: data.map(d => d.length.toFixed(2)),
+            datasets: [
+                {
+                    label: 'first',
+                    data: data.map(d => d.first),
+                    borderColor: '#f88',
+                }, 
+                {
+                    label: 'diff',
+                    data: data.map(d => d.diff),
+                    borderColor: '#8f8',
+                }, 
+                {
+                    label: 'second',
+                    data: data.map(d => d.second),
+                    borderColor: '#484',
+                }, 
+                {
+                    label: 'curvature',
+                    data: data.map(d => 1 / Math.abs(d.curvature)),
+                    borderColor: '#48f',
+                }
+            ],
+        },
+    });
+}
 
 /**
  * ベジェ曲線に沿って画像を描画する
@@ -43,43 +109,51 @@ function bezierImage(ctx, img, points, startLineWidth, endLineWidth) {
     const imgImageData = imgCtx.getImageData(0, 0, imgCtx.canvas.width, imgCtx.canvas.height);
 
     // ベクトルを求める
-    const vectors = getVectors(points);
+    const vectors = CubicBezierCurve.getVectors(points);
 
     // 全体の長さを求める
-    const [wholeLength, steps] = getWholeLength(points, 1000);
+    const [wholeLength, steps] = CubicBezierCurve.wholeLength(points, 1000);
     const div = Math.round(wholeLength * 4);
 
     const indexes = [];
     let lastIndex = -1;
 
     ctx.reset();
+    ctx.fillStyle = 'black';
+    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
+    const data = [];
     let curLength = 0;
-    for(let i = 0; i <= div; i += 1) {
-        const t = i / div;        
-        const pos = {
-            x: getBezierPoint(points, t, 'x'),
-            y: getBezierPoint(points, t, 'y'),
-        };
-        if(i > 0) {
-            const preT = (i - 1) / div;
-            const prePos = {
-                x: getBezierPoint(points, preT, 'x'),
-                y: getBezierPoint(points, preT, 'y'),
-            };
+    let preT = -1;
+    let t = 0;
+    while(true) {
+        const pos = CubicBezierCurve.pointByT(points, t);
+        if(preT >= 0) {
+            const prePos = CubicBezierCurve.pointByT(points, preT);
             const dist = Vector.dist(pos, prePos);
             curLength += dist;
         }
 
-        // 接線のベクトルを求める
-        let vector = {
-            x: getFirstDerivative(vectors, t, 'x'),
-            y: getFirstDerivative(vectors, t, 'y'),
-        };
-        // 単位ベクトル化する
+        // tが微小変化(1/1000)したときの長さを求める
+        const diffT = t + 1 / 1000;
+        const diffPos = CubicBezierCurve.pointByT(points, diffT);
+        const diff = Vector.dist(pos, diffPos);
+
+        data.push({
+            t,
+            diff,
+            length: curLength,
+            first: Vector.length(CubicBezierCurve.firstDerivativeByT(points, t)),
+            second: Vector.length(CubicBezierCurve.secondDerivativeByT(points, t)),
+            curvature: CubicBezierCurve.curvatureByT(points, t),
+        });
+
+        // get first derivative
+        let vector = CubicBezierCurve.firstDerivativeByT(points, t);
+        // unit vectorize
         vector = Vector.unit(vector);
-        // -90度回す
-        const nrm = getNrm(vector);
+        // rotate -90 degree
+        const nrm = Vector.nrm(vector);
         const curLineWidth = startLineWidth + (endLineWidth - startLineWidth) * curLength / wholeLength;
         const top = {
             x: pos.x + curLineWidth / 2 * nrm.x,
@@ -90,120 +164,29 @@ function bezierImage(ctx, img, points, startLineWidth, endLineWidth) {
             y: pos.y + curLineWidth / 2 * (-nrm.y),
         };
         const xRate = curLength / wholeLength;
-
-        //logic1: very late
-        // const imageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
-        // const data = imageData.data;
-        // Utility.drawLine(top, bottom, { width: ctx.canvas.width, height: ctx.canvas.height, }, indexes);
-        // ctx.save();
-        // for(let j = lastIndex + 1; j < indexes.length; j += 1) {
-        //     const elm = indexes[j];
-        //     const color = getImageColor(imgImageData, xRate, elm.rate);
-        //     const i = elm.index;
-        //     data[i * 4 + 0] = color.r;
-        //     data[i * 4 + 1] = color.g;
-        //     data[i * 4 + 2] = color.b;
-        //     data[i * 4 + 3] = color.a;
-        //     lastIndex = j;
-        // }
-        // ctx.putImageData(imageData, 0, 0);
-        // ctx.restore();
         
         ctx.save();    
         const yDiv = Math.round(curLineWidth * 4);
         for(let j = 0; j <= yDiv; j += 1) {
-            const rate = j / yDiv;
-            // intPosの色を画像から取得する
-            const intPos = Utility.linearInterpolation(top, bottom, rate);            
-            const yRate = rate;
+            const yRate = j / yDiv;
+            const intPos = Utility.linearInterpolation(top, bottom, yRate); 
+            // intPosの色を画像から取得する            
             const color = getImageColor(imgImageData, xRate, yRate);
             ctx.fillStyle = `rgba(${color.r},${color.g},${color.b},${color.a / 255})`;
-            ctx.fillRect(intPos.x, intPos.y, 1, 1);
+            ctx.fillRect(intPos.x, intPos.y, 0.5, 0.5);
         }
         ctx.restore();
-    }  
-    
-    
 
-    /**
-     * ベジェ曲線の長さを取得する
-     * @param {Array<{ x: number, y: number }>} points 制御点の配列
-     * @param {number} div 分割数
-     * @returns {number} 長さ
-     */
-    function getWholeLength(points, div) {
-        let wholeLength = 0;
-        const steps = [{ t: 0, dist: 0, }];
-        for(let i = 0; i < div; i += 1) {
-            const t = i / div;
-            const nextT = (i + 1) / div;
-            const pos = {
-                x: getBezierPoint(points, t, 'x'),
-                y: getBezierPoint(points, t, 'y'),
-            };
-            const nextPos = {
-                x: getBezierPoint(points, nextT, 'x'),
-                y: getBezierPoint(points, nextT, 'y'),
-            };
-            const dist = Vector.dist(pos, nextPos);
-            wholeLength += dist;
-            steps.push({ t: nextT, dist });
-        }
-        return [wholeLength, steps];
-    }    
-
-    /**
-     * 制御点からベクトルを求める(単位ベクトル化される)
-     * @param {Array<{ x: number, y: number }>} points 制御点の配列
-     * @returns {Array<{ x: number, y: number }>} ベクトルの配列
-     */
-    function getVectors(points) {
-        const vectors = [];
-        for(let i = 0; i < points.length; i += 1) {
-            if(i + 1 >= points.length) { continue; }
-            const vector = { x: points[i + 1].x - points[i].x, y: points[i + 1].y - points[i].y, };
-            vectors.push(Vector.unit(vector));
-        }
-        return vectors;
+        // finish ?
+        if(t === 1) { break; }
+        // update t
+        preT = t;
+        let radius = 1/ Math.abs(CubicBezierCurve.curvatureByT(points, t));
+        if(radius > 1) { radius = 1; }
+        t += radius * 0.25 / diff / 1000;
+        if(t > 1) { t = 1; }
     }
-
-    /**
-     * ベジェ曲線の点を求める
-     * @param {Array<{ x: number, y: number }>} points 制御点の配列
-     * @param {number} t パラメータ
-     * @param {string} prop プロパティ名
-     * @returns {{ x: number, y: number, }} 点
-     */
-    function getBezierPoint(points, t, prop) {
-        return (1 - t) ** 3 * points[0][prop] 
-                + 3 * t * (1 - t) ** 2 * points[1][prop] 
-                + 3 * t ** 2 * (1 - t) * points[2][prop] 
-                + t ** 3 * points[3][prop];
-    }
-
-    /**
-     * ベジェ曲線の1階微分を求める
-     * @param {Array<{ x: number, y: number }>} vectors ベクトルの配列
-     * @param {number} t パラメータ
-     * @param {string} prop プロパティ名
-     * @returns {{ x: number, y: number, }} 1階微分
-     */
-    function getFirstDerivative(vectors, t, prop) {
-        const dr = (1 - t) ** 2 * vectors[0][prop]
-                + 2 * t * (1 - t) * vectors[1][prop]
-                + t ** 2 * vectors[2][prop];
-        return dr * 3;
-    }
-
-    /**
-     * 法線ベクトルを求める
-     * @param {{ x: number, y: number, }} vec ベクトル
-     * @returns {{ x: number, y: number, }} 法線ベクトル 
-     */
-    function getNrm(vec) {
-        const unitVec = Vector.unit(vec);
-        return { x: unitVec.y, y: -unitVec.x };
-    }
+    return data;
 }
 
 /**
@@ -216,6 +199,87 @@ function bezierImage(ctx, img, points, startLineWidth, endLineWidth) {
  * @returns {void} なし
  */
  function bezierImage2(ctx, img, points, startLineWidth, endLineWidth) {
+    const imgCanvas = document.createElement('canvas');
+    imgCanvas.width = img.width;
+    imgCanvas.height = img.height;
+    const imgCtx = imgCanvas.getContext('2d', { willReadFrequently: true });
+    imgCtx.drawImage(img, 0, 0);
+    const imgImageData = imgCtx.getImageData(0, 0, imgCtx.canvas.width, imgCtx.canvas.height);
+
+    // ベクトルを求める
+    const vectors = CubicBezierCurve.getVectors(points);
+
+    // 全体の長さを求める
+    const [wholeLength, steps] = CubicBezierCurve.wholeLength(points, 1000);
+    const div = Math.round(wholeLength * 4);
+
+    //const indexes = [];
+    let lastIndex = -1;
+
+    ctx.reset();
+    ctx.fillStyle = 'black';
+    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+    let curLength = 0;
+    for(let i = 0; i <= div; i += 1) {
+        const t = i / div;        
+        const pos = CubicBezierCurve.pointByT(points, t);
+        if(i > 0) {
+            const preT = (i - 1) / div;
+            const prePos = CubicBezierCurve.pointByT(points, preT);
+            const dist = Vector.dist(pos, prePos);
+            curLength += dist;
+        }
+
+        // 接線のベクトルを求める
+        let vector = CubicBezierCurve.firstDerivativeByT(points, t);
+        // 単位ベクトル化する
+        vector = Vector.unit(vector);
+        // -90度回す
+        const nrm = Vector.nrm(vector);
+        const curLineWidth = startLineWidth + (endLineWidth - startLineWidth) * curLength / wholeLength;
+        const top = {
+            x: pos.x + curLineWidth / 2 * nrm.x,
+            y: pos.y + curLineWidth / 2 * nrm.y,
+        };
+        const bottom = {
+            x: pos.x + curLineWidth / 2 * (-nrm.x),
+            y: pos.y + curLineWidth / 2 * (-nrm.y),
+        };
+        const xRate = curLength / wholeLength;
+
+        // logic2: very late
+        const imageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
+        const data = imageData.data;
+        const indexes = Paint.drawLine(top, bottom, { width: ctx.canvas.width, height: ctx.canvas.height, });
+        ctx.save();
+        for(let j = 0; j < indexes.length; j += 1) {
+            const elm = indexes[j];
+            const color = getImageColor(imgImageData, xRate, elm.rate);
+            const i = elm.index;
+            if(color.a !== 0) {
+                data[i * 4 + 0] = color.r;
+                data[i * 4 + 1] = color.g;
+                data[i * 4 + 2] = color.b;
+                data[i * 4 + 3] = color.a;
+            }            
+            lastIndex = j;
+        }
+        ctx.putImageData(imageData, 0, 0);
+        ctx.restore();
+    }
+}
+
+/**
+ * ベジェ曲線に沿って画像を描画する
+ * @param {CanvasRenderingContext2D} ctx キャンバスのコンテキスト
+ * @param {Image} img 画像
+ * @param {Araay<{ x: number, y: number}>} 制御点の配列
+ * @param {number} startLineWidth 始点の線の幅
+ * @param {number} endLineWidth 終点の線の幅
+ * @returns {void} なし
+ */
+ function bezierImage3(ctx, img, points, startLineWidth, endLineWidth, useFillRect) {
 
     const imgCanvas = document.createElement('canvas');
     imgCanvas.width = img.width;
@@ -224,40 +288,34 @@ function bezierImage(ctx, img, points, startLineWidth, endLineWidth) {
     imgCtx.drawImage(img, 0, 0);
     const imgImageData = imgCtx.getImageData(0, 0, imgCtx.canvas.width, imgCtx.canvas.height);
 
+    ctx.reset();
+    ctx.fillStyle = 'black';
+    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
     // get imagedata of ctx
     const imageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
     const data = imageData.data;
 
     // get vectors
-    const vectors = getVectors(points);
+    const vectors = CubicBezierCurve.getVectors(points);
 
     // 全体の長さを求める
-    const [wholeLength, steps] = getWholeLength(points, 1000);
+    const [wholeLength, steps] = CubicBezierCurve.wholeLength(points, 1000);
     const div = Math.round(wholeLength / 4); // * 4 is too late.
 
     const indexes = [];
-    let lastIndex = -1;
+    let lastIndex = -1;    
 
-    ctx.reset();
     ctx.save();
     let curLength = 0;
     for(let i = 0; i < div; i += 1) {
         const t = i / div;        
         const nextT = (i + 1) / div;
-        const pos = {
-            x: getBezierPoint(points, t, 'x'),
-            y: getBezierPoint(points, t, 'y'),
-        };
-        const nextPos = {
-            x: getBezierPoint(points, nextT, 'x'),
-            y: getBezierPoint(points, nextT, 'y'),
-        };
+        const pos = CubicBezierCurve.pointByT(points, t);
+        const nextPos = CubicBezierCurve.pointByT(points, nextT);
         if(i > 0) {
             const preT = (i - 1) / div;
-            const prePos = {
-                x: getBezierPoint(points, preT, 'x'),
-                y: getBezierPoint(points, preT, 'y'),
-            };
+            const prePos = CubicBezierCurve.pointByT(points, preT);
             const dist = Vector.dist(pos, prePos);
             curLength += dist;
         }
@@ -278,21 +336,28 @@ function bezierImage(ctx, img, points, startLineWidth, endLineWidth) {
             const x = index % ctx.canvas.width;
             const y = Math.floor(index / ctx.canvas.width);
             // get rate of x
-            const nearestX = nearestRate2LineSegments([top, nextTop, nextBottom, bottom], { x, y, });
+            const nearestX = nearestRate2LineSegments([top, nextTop, nextBottom, bottom], { x, y, }, 1e-2);
             const xRate = (curLength + curDist * nearestX.rate) / wholeLength;
             // get rate of y
-            const nearestY = nearestRateLineSegment([nearestX.point, nearestX.nextPoint], { x, y, });
+            const nearestY = nearestRateLineSegment([nearestX.point, nearestX.nextPoint], { x, y, }, 1e-2);
             const yRate = nearestY.rate;
             // get image color by xRate and yRate
             const color = getImageColor(imgImageData, xRate, yRate);
-            // data[index * 4 + 0] = color.r;
-            // data[index * 4 + 1] = color.g;
-            // data[index * 4 + 2] = color.b;
-            // data[index * 4 + 3] = color.a;
-            ctx.fillStyle = `rgba(${color.r},${color.g},${color.b},${color.a / 255})`;
-            ctx.fillRect(x, y, 1, 1);
+            if(!useFillRect) {
+                if(color.a !== 0) {
+                    data[index * 4 + 0] = color.r;
+                    data[index * 4 + 1] = color.g;
+                    data[index * 4 + 2] = color.b;
+                    data[index * 4 + 3] = color.a;
+                }
+            } else {
+                ctx.fillStyle = `rgba(${color.r},${color.g},${color.b},${color.a / 255})`;
+                ctx.fillRect(x, y, 1, 1);
+            }            
         });
-        //ctx.putImageData(imageData, 0, 0);
+        if(!useFillRect) {
+            ctx.putImageData(imageData, 0, 0);
+        }
     }
     ctx.restore();
 
@@ -310,11 +375,11 @@ function bezierImage(ctx, img, points, startLineWidth, endLineWidth) {
         let endRate = 1;
 
         let loopCnt = 0;
-        const maxLoopCnt = 10;
+        const maxLoopCnt = 5;
         let nearest = null;
         while(true) {
             if(++loopCnt >= maxLoopCnt) { 
-                console.log('max loop count.');
+                //console.log('max loop count.');
                 break; 
             }
             const distances = [];
@@ -374,11 +439,11 @@ function bezierImage(ctx, img, points, startLineWidth, endLineWidth) {
         let endRate = 1;
 
         let loopCnt = 0;
-        const maxLoopCnt = 10;
+        const maxLoopCnt = 5;
         let nearest = null;
         while(true) {
             if(++loopCnt >= maxLoopCnt) { 
-                console.log('max loop count.');
+                //console.log('max loop count.');
                 break; 
             }
             const distances = [];
@@ -515,14 +580,11 @@ function bezierImage(ctx, img, points, startLineWidth, endLineWidth) {
 
     function getShiftedPoints(pos, t, vectors, rate, startLineWidth, endLineWidth) {
         // 接線のベクトルを求める
-        let vector = {
-            x: getFirstDerivative(vectors, t, 'x'),
-            y: getFirstDerivative(vectors, t, 'y'),
-        };
+        let vector = CubicBezierCurve.firstDerivativeByT(points, t);
         // 単位ベクトル化する
         vector = Vector.unit(vector);
         // -90度回す
-        const nrm = getNrm(vector);
+        const nrm = Vector.nrm(vector);
 
         const lineWidth = startLineWidth + (endLineWidth - startLineWidth) * rate;
         const halfWidth = lineWidth * 0.5;
@@ -536,118 +598,25 @@ function bezierImage(ctx, img, points, startLineWidth, endLineWidth) {
         };
         return [ top, bottom, ];
     }
+}
 
-    /**
-     * 制御点からベクトルを求める(単位ベクトル化される)
-     * @param {Array<{ x: number, y: number }>} points 制御点の配列
-     * @returns {Array<{ x: number, y: number }>} ベクトルの配列
-     */
-     function getVectors(points) {
-        const vectors = [];
-        for(let i = 0; i < points.length; i += 1) {
-            if(i + 1 >= points.length) { continue; }
-            const vector = { x: points[i + 1].x - points[i].x, y: points[i + 1].y - points[i].y, };
-            vectors.push(Vector.unit(vector));
-        }
-        return vectors;
-    }
-
-    /**
-     * ベジェ曲線の長さを取得する
-     * @param {Array<{ x: number, y: number }>} points 制御点の配列
-     * @param {number} div 分割数
-     * @returns {number} 長さ
-     */
-     function getWholeLength(points, div) {
-        let wholeLength = 0;
-        const steps = [{ t: 0, dist: 0, }];
-        for(let i = 0; i < div; i += 1) {
-            const t = i / div;
-            const nextT = (i + 1) / div;
-            const pos = {
-                x: getBezierPoint(points, t, 'x'),
-                y: getBezierPoint(points, t, 'y'),
-            };
-            const nextPos = {
-                x: getBezierPoint(points, nextT, 'x'),
-                y: getBezierPoint(points, nextT, 'y'),
-            };
-            const dist = Vector.dist(pos, nextPos);
-            wholeLength += dist;
-            steps.push({ t: nextT, dist });
-        }
-        return [wholeLength, steps];
-    }    
-
-    /**
-     * ベジェ曲線の点を求める
-     * @param {Array<{ x: number, y: number }>} points 制御点の配列
-     * @param {number} t パラメータ
-     * @param {string} prop プロパティ名
-     * @returns {{ x: number, y: number, }} 点
-     */
-    function getBezierPoint(points, t, prop) {
-        return (1 - t) ** 3 * points[0][prop] 
-                + 3 * t * (1 - t) ** 2 * points[1][prop] 
-                + 3 * t ** 2 * (1 - t) * points[2][prop] 
-                + t ** 3 * points[3][prop];
-    }
-
-    /**
-     * ベジェ曲線の1階微分を求める
-     * @param {Array<{ x: number, y: number }>} vectors ベクトルの配列
-     * @param {number} t パラメータ
-     * @param {string} prop プロパティ名
-     * @returns {{ x: number, y: number, }} 1階微分
-     */
-    function getFirstDerivative(vectors, t, prop) {
-        const dr = (1 - t) ** 2 * vectors[0][prop]
-                + 2 * t * (1 - t) * vectors[1][prop]
-                + t ** 2 * vectors[2][prop];
-        return dr * 3;
-    }
-
-    /**
-     * ベジェ曲線の2階微分を求める
-     * @param {Array<{ x: number, y: number }>} vectors ベクトルの配列
-     * @param {number} t パラメータ
-     * @param {string} prop プロパティ名
-     * @returns {{ x: number, y: number, }} 1階微分
-     */
-     function getSecondDerivative(vectors, t, prop) {
-        const d2r = (1 - t) * (vectors[1][prop] - vectors[0][prop])
-                + t * (vectors[2][prop] - vectors[1][prop]);
-        return d2r * 6;
-    }
-
-    /**
-     * 法線ベクトルを求める
-     * @param {{ x: number, y: number, }} vec ベクトル
-     * @returns {{ x: number, y: number, }} 法線ベクトル 
-     */
-    function getNrm(vec) {
-        const unitVec = Vector.unit(vec);
-        return { x: unitVec.y, y: -unitVec.x };
-    }
- }
-
- /**
+/**
  * 画像の色を取得する
  * @param {ImageData} imageData イメージデータ
  * @param {number} xRate xの割合
  * @param {number} yRate yの割合
  * @returns {{ r: number, g: number, b: number, a: number }} 色
  */
-    function getImageColor(imageData, xRate, yRate) {
+function getImageColor(imageData, xRate, yRate) {
     const data = imageData.data;
     const width = imageData.width;
     const height = imageData.height;
     let x = Math.round(xRate * imageData.width);
     if(x < 0) { x = 0; }
-    if(x >= width) { x = width - 1; }
+    if(x > width - 1) { x = width - 1; }
     let y = Math.round(yRate * imageData.height);
     if(y < 0) { y = 0; }
-    if(y >= height) { y = height - 1; }
+    if(y > height - 1) { y = height - 1; }
     const i = y * width + x;
     return {
         r: data[i * 4 + 0],
@@ -660,7 +629,24 @@ function bezierImage(ctx, img, points, startLineWidth, endLineWidth) {
 </script>
 </head>
 <body>
-    <canvas id="my-canvas" width="800" height = "800"></canvas>
+    logic: 
+    <select id="logic-select">
+        <option value="logic1">logic1</option>
+        <option value="logic2">logic2</option>
+        <option value="logic3">logic3</option>
+    </select>
+    use:
+    <select id="use-select">
+        <option value="false">false</option>
+        <option value="true">true</option>
+    </select>
+    <button id="done-button">done</button>
+    &nbsp;
+    <span id="time-span"></span>
+    <br>
+    <canvas id="my-canvas" width="500" height="500"></canvas>
+    <br>
+    <canvas id="my-chart"></canvas>
     <br><br>
 </body>
 </html>

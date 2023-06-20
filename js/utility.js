@@ -703,48 +703,7 @@ class Utility {
         return trimmed;
     }
 
-    /**
-     * 線分描画(実際には描画される点を返す)
-     * @param {{ x: number, y: number, }} start 始点 
-     * @param {{ x: number, y: number, }} end 終点 
-     * @param {{ width: number, height: number, }} size 描画するキャンバスのサイズ  
-     * @returns {Array<{ index: number, rate: number, }>} インデックスと割合の配列
-     */
-    static drawLine(start, end, size, indexes) {
-        // 始点と終点のx座標とy座標の差を計算
-        const vec = Vector.subtract(end, start);
-        // 線の長さを計算
-        const length = Vector.length(vec);
-        // 横軸との成す角を計算
-        const rad = Math.atan2(vec.y, vec.x);
-        const cos = Math.cos(rad);
-        const sin = Math.sin(rad);
-
-        // 長さ分の線を描画
-        //const indexes = [];
-        for(let l = 0; l <= length;) {
-            const x = Math.round(start.x + l * cos);
-            const y = Math.round(start.y + l * sin);
-            // 画像外の点は描画しない
-            if(x >= 0 && x < size.width && y >= 0 && y < size.height) { 
-                const index = y * size.width + x;
-                if(!indexes.some(elm => elm.index === index)) {
-                    const rate = l === length ? 1 : l / length;
-                    indexes.push({ index, rate }); 
-                }
-            }
-            
-            if(l === length) {
-                break;
-            }
-            if(l + 1 > length) {// 次が最後
-                l = length;
-            } else {// 次が最後でない
-                l += 1;
-            }
-        }
-        //return indexes;
-    }
+    
 
 }
 	
