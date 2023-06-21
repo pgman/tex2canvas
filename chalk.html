@@ -77,6 +77,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });    
 
+    document.querySelector('#refine-button').addEventListener('click', async e => {
+        refineSize();
+    });
+
     function refineSize() {
         const [canvas, ctx] = Utility.getCanvasContextById('my-canvas');
         
@@ -184,6 +188,7 @@ document.addEventListener('DOMContentLoaded', () => {
         height:<input id="height-text" class="value-text" value="250" type="text">
         &nbsp;
         <button id="draw-button">draw</button>
+        <button id="refine-button">refine</button>
         <button id="fit-button">fit</button>
     </div>
     <canvas id="back-canvas" width="300" height = "150"></canvas>
