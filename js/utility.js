@@ -703,7 +703,87 @@ class Utility {
         return trimmed;
     }
 
-    
+    /**
+     * 画像の色を取得する
+     * @param {ImageData} imageData イメージデータ
+     * @param {number} xRate xの割合
+     * @param {number} yRate yの割合
+     * @returns {{ r: number, g: number, b: number, a: number }} 色
+     */
+    static getImageColor(imageData, xRate, yRate, startXRate = 0, endXRate = 1) {
+        const width = imageData.width;
+        const height = imageData.height;
+        let x = startXRate + (endXRate - startXRate) * xRate * (width - 1);
+        if(x < 0) { x = 0; }
+        if(x > width - 1) { x = width - 1; }
+        let y = yRate * (height - 1);
+        if(y < 0) { y = 0; }
+        if(y > height - 1) { y = height - 1; }
+        // bilenear 周辺4pxの画素の色を取得する
+        const xMin = Math.floor(x);
+        const xMax = Math.ceil(x);
+        const xt = x - xMin;
+        const yMin = Math.floor(y);
+        const yMax = Math.ceil(y);
+        const yt = y - yMin;
+
+        const xMinYMinColor = getColor(imageData, xMin, yMin);
+        const xMinYMaxColor = getColor(imageData, xMin, yMax);
+        const xMinColor = linearInterpolation(xMinYMinColor, xMinYMaxColor, yt);
+
+        const xMaxYMinColor = getColor(imageData, xMax, yMin);
+        const xMaxYMaxColor = getColor(imageData, xMax, yMax);
+        const xMaxColor = linearInterpolation(xMaxYMinColor, xMaxYMaxColor, yt);
+
+        let color = linearInterpolation(xMinColor, xMaxColor, xt);
+        color.r = Math.round(color.r);
+        color.g = Math.round(color.g);
+        color.b = Math.round(color.b);
+        color.a = Math.round(color.a);
+        if(color.r < 0) { color.r = 0; }
+        if(color.r > 255) { color.r = 255; }
+        if(color.g < 0) { color.g = 0; }
+        if(color.g > 255) { color.g = 255; }
+        if(color.b < 0) { color.b = 0; }
+        if(color.b > 255) { color.b = 255; }
+        if(color.a < 0) { color.a = 0; }
+        if(color.a > 255) { color.a = 255; }
+        return color;
+
+        function getColor(imageData, x, y) {
+            const i = y * imageData.width + x;
+            return {
+                r: imageData.data[i * 4 + 0],
+                g: imageData.data[i * 4 + 1],
+                b: imageData.data[i * 4 + 2],
+                a: imageData.data[i * 4 + 3],
+            };
+        }
+
+        function linearInterpolation(c0, c1, t) {
+            return { 
+                r: (1 - t) * c0.r + t * c1.r,
+                g: (1 - t) * c0.g + t * c1.g,
+                b: (1 - t) * c0.b + t * c1.b,
+                a: (1 - t) * c0.a + t * c1.a,
+            };
+        }
+    }
+
+    /**
+     * 画像からイメージデータを取得する
+     * @param {Image} img 画像 
+     * @returns {ImageData} イメージデータ
+     */
+    static getImageDataByImage(img) {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        ctx.drawImage(img, 0, 0);
+        const imageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
+        return imageData;
+    }
 
 }
 	

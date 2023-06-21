@@ -140,9 +140,8 @@ class CubicBezierCurve {
      * @param {number} div 分割数
      * @returns {number} 長さ
      */
-    static wholeLength(points, div = 1000) {
+    static length(points, div = 1000) {
         let length = 0;
-        const steps = [{ t: 0, dist: 0, }];
         for(let i = 0; i < div; i += 1) {
             const t = i / div;
             const nextT = (i + 1) / div;
@@ -150,9 +149,48 @@ class CubicBezierCurve {
             const nextPos = CubicBezierCurve.pointByT(points, nextT);
             const dist = Vector.dist(pos, nextPos);
             length += dist;
-            steps.push({ t: nextT, dist });
         }
-        return [length, steps];
+        return length;
     } 
+
+    /**
+     * 2つの3次ベジェ曲線が滑らかに接続されているか調べる
+     * 位置ベクトルと接線ベクトルが一致すれば、滑らかと判定する
+     * @param {Array<{ x: number, y: number }>} points0 
+     * @param {Array<{ x: number, y: number }>} points1 
+     * @param {number} epsilon イプシロン(デフォルト値は 1e-5。差の絶対値がこの値より小さいなら等しいと判定する)
+     * @return {boolean} スムーズに接続されているか true: スムーズに接続されている, false: スムーズに接続されていない
+     */
+    static isSmoothed(points0, points1, tol = 1e-5) {
+        // 最初の3次ベジェ曲線の t = 1 の位置ベクトルと接線ベクトルを求める
+        const firstPoint = points0[3];
+        const firstVector = CubicBezierCurve.firstDerivativeByT(points0, 1); 
+        // 次の3次ベジェ曲線の t = 0 の位置ベクトルと接線ベクトルを求める
+        const secondPoint = points1[0];
+        const secondVector = CubicBezierCurve.firstDerivativeByT(points1, 0); 
+        // 位置ベクトルが等しいか
+        const equalPoint = Vector.equals(firstPoint, secondPoint, tol);
+        // 接線ベクトルが等しいか
+        const equalVector = Vector.equals(firstVector, secondVector, tol);
+        return equalPoint && equalVector;
+    }
+
+    /**
+     * 2つの3次ベジェ曲線が接続されているか調べる
+     * 位置ベクトルが一致すれば、接続されていると判定する
+     * @param {Array<{ x: number, y: number }>} points0 
+     * @param {Array<{ x: number, y: number }>} points1 
+     * @param {number} epsilon イプシロン(デフォルト値は 1e-5。差の絶対値がこの値より小さいなら等しいと判定する)
+     * @return {boolean} 接続されているか true: 接続されている, false: 接続されていない
+     */
+    static isConnected(points0, points1, tol = 1e-5) {
+        // 最初の3次ベジェ曲線の t = 1 の位置ベクトルを求める
+        const firstPoint = points0[3];
+        // 次の3次ベジェ曲線の t = 0 の位置ベクトルを求める
+        const secondPoint = points1[1];
+        // 位置ベクトルが等しいか
+        const equalPoint = Vector.equals(firstPoint, secondPoint, tol);
+        return equalPoint;
+    }
     
 }

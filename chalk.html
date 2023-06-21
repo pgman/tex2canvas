@@ -77,6 +77,25 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });    
 
+    function refineSize() {
+        const [canvas, ctx] = Utility.getCanvasContextById('my-canvas');
+        
+        const startX = Number(document.querySelector('#x-text').value);
+        const startY = Number(document.querySelector('#y-text').value);
+        let width = Number(document.querySelector('#width-text').value);
+        let height = Number(document.querySelector('#height-text').value);
+
+        // ここは要動作確認
+        if(startX + width >= canvas.width) {
+            width = canvas.width - startX;
+        }
+        if(startY + height >= canvas.height) {
+            height = canvas.height - startY;
+        }
+        document.querySelector('#width-text').value = width + '';
+        document.querySelector('#height-text').value = height + '';
+    }
+
     document.querySelector('#fit-button').addEventListener('click', async e => {
         const [canvas, ctx] = Utility.getCanvasContextById('my-canvas');
         const imageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);

@@ -20,35 +20,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // #done-button click
     document.querySelector('#done-button').addEventListener('click', e => {
-        let func = null;
-        const logicValue = document.querySelector('#logic-select').value;
-        if(logicValue === 'logic1') { func = bezierImage; }
-        else if(logicValue === 'logic2') { func = bezierImage2; }
-        else if(logicValue === 'logic3') { func = bezierImage3; }
-
-        let useFillRect = false;
-        const useValue = document.querySelector('#use-select').value;
-        if(useValue === 'false') { useFillRect = false; }
-        else { useFillRect = true; }
-
         const canvas = document.querySelector('#my-canvas');
         const ctx = canvas.getContext('2d', { willReadFrequently: true });
         const points = [
-            { x: 100, y: 300, },
-            { x: 120, y: 100, },
-            { x: 140, y: 100, },
-            { x: 160, y: 300, },
+            { x: 100, y: 400, },
+            { x: 200, y: 100, },
+            { x: 300, y: 100, },
+            { x: 400, y: 400, },
         ];
         const startLineWidth = 20;
         const endLineWidth = 20;
         const img = new Image();
         img.onload = () => { 
             const startTime = new Date();
-            const data = func(ctx, img, points, startLineWidth, endLineWidth, useFillRect); 
+            const data = bezierImage(ctx, img, points, startLineWidth, endLineWidth, 0, 0.4); 
             const endTime = new Date();
             document.querySelector('#time-span').innerHTML = `${endTime - startTime} ms`;
             if(data) {
-                updateChart(data);
+                //updateChart(data);
             }
             
         };
@@ -56,39 +45,107 @@ document.addEventListener('DOMContentLoaded', () => {
         //img.src = 'images/america.png';
         //img.src = 'images/yellow.png';
     });
+
+    // #debug-button click
+    document.querySelector('#debug-button').addEventListener('click', e => {
+        const bezier0 = [
+            { x: 50,  y: 200, },
+            { x: 100, y: 100, },
+            { x: 150, y: 100, },
+            { x: 200, y: 200, },
+        ];
+        const bezier1 = [
+            { x: 200, y: 200, },
+            { x: 250, y: 300, },
+            { x: 300, y: 300, },
+            { x: 350, y: 200, },
+        ];
+        const bezier2 = [
+            { x: 400, y: 100, },
+            { x: 450, y: 100, },
+            { x: 500, y: 100, },
+            { x: 550, y: 100, },
+        ];
+        const path0 = [ bezier0, bezier1, bezier2 ];
+        const path1 = [ bezier2 ];
+        const stroke0 = [ path0, path1 ];
+        const newStrokeArray = dividePath([ stroke0 ]);
+        const lengthArray = getPathLength(newStrokeArray);
+        // このlengthArray と同じ構造の画像を animationFrame 関数には渡すことになる
+
+        // 色取得の startRate と endRate を実装する
+        debugger;
+    });
 });
 
-function updateChart(data) {
-    const ctx = document.getElementById('my-chart').getContext('2d');
+/**
+ * strokeArray の path の長さを求める
+ * @param {Array<stroke>} strokeArray ストロークの配列(1文字に相当)
+ * @returns {Array<any>} strokeArrayと同じ構造でpathの代わりに長さが格納されているもの
+ */
+function getPathLength(strokeArray) {
+    const newStrokeArray = [];
+    for(let i = 0; i < strokeArray.length; i += 1) {
+        const stroke = strokeArray[i];
+        const newStroke = [];
+        for(let j = 0; j < stroke.length; j += 1) {
+            const path = stroke[j]; 
+            let wholeLength = 0;           
+            for(let k = 0; k < path.length; k += 1) {
+                const bezier = path[k];
+                const length = CubicBezierCurve.length(bezier, 1000);
+                wholeLength += length;
+            }
+            newStroke.push(wholeLength);
+        }
+        newStrokeArray.push(newStroke);
+    }
+    return newStrokeArray;
+}
 
-    const myChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: data.map(d => d.length.toFixed(2)),
-            datasets: [
-                {
-                    label: 'first',
-                    data: data.map(d => d.first),
-                    borderColor: '#f88',
-                }, 
-                {
-                    label: 'diff',
-                    data: data.map(d => d.diff),
-                    borderColor: '#8f8',
-                }, 
-                {
-                    label: 'second',
-                    data: data.map(d => d.second),
-                    borderColor: '#484',
-                }, 
-                {
-                    label: 'curvature',
-                    data: data.map(d => 1 / Math.abs(d.curvature)),
-                    borderColor: '#48f',
+/**
+ * strokeArray の path を滑らかでない箇所で分割する
+ * @param {Array<stroke>} strokeArray ストロークの配列(1文字に相当)
+ * @returns {Array<stroke>} ストロークの配列
+ */
+function dividePath(strokeArray) {
+    // まずはストロークを分割する必要があるか調べる
+    // ストロークとは、1画に相当するもので、
+    // なめらかなストロークなら1つのベジェ曲線群からなる
+    // なめらかでないストロークは2つ以上のベジェ曲線群からなる
+    // 滑らかに接続されたベジェ曲線群をsmoothedと表現する
+    // ベジェ曲線はbezierと表現する
+    // ベジェ曲線は3次ベジェ曲線であり、2次元ベジェ曲線は3次変換して扱う
+    // よって、bezierは4点からなる配列とする
+    // stroke = [ [b, b], [b], [b, b, b] ] = [ path, path, path ] 
+    // path = [ b, b ]
+    // bezier = b = [ p, p, p, p ] であり
+    // point = p = { x, y } である
+
+    const newStrokeArray = [];
+    for(let i = 0; i < strokeArray.length; i += 1) {
+        const stroke = strokeArray[i];
+        const newStroke = [];
+        for(let j = 0; j < stroke.length; j += 1) {
+            const path = stroke[j];
+            let curPath = [];
+            for(let k = 0; k < path.length; k += 1) {
+                curPath.push(path[k]);
+                if(k === path.length - 1) { continue; } // last bezier curve
+                const bezier = path[k];
+                const bezierNext = path[k + 1];
+                // two bezier curves are smoothed ? 
+                const ret = CubicBezierCurve.isSmoothed(bezier, bezierNext);
+                if(!ret) {// no smoothed -> cut path
+                    newStroke.push(curPath);
+                    curPath = [];
                 }
-            ],
-        },
-    });
+            }
+            newStroke.push(curPath);
+        }
+        newStrokeArray.push(newStroke);
+    }
+    return newStrokeArray;
 }
 
 /**
@@ -100,24 +157,12 @@ function updateChart(data) {
  * @param {number} endLineWidth 終点の線の幅
  * @returns {void} なし
  */
-function bezierImage(ctx, img, points, startLineWidth, endLineWidth) {
-    const imgCanvas = document.createElement('canvas');
-    imgCanvas.width = img.width;
-    imgCanvas.height = img.height;
-    const imgCtx = imgCanvas.getContext('2d', { willReadFrequently: true });
-    imgCtx.drawImage(img, 0, 0);
-    const imgImageData = imgCtx.getImageData(0, 0, imgCtx.canvas.width, imgCtx.canvas.height);
+function bezierImage(ctx, img, points, startLineWidth, endLineWidth, startXRate, endXRate) {
+    const imageData = Utility.getImageDataByImage(img);
 
-    // ベクトルを求める
-    const vectors = CubicBezierCurve.getVectors(points);
-
-    // 全体の長さを求める
-    const [wholeLength, steps] = CubicBezierCurve.wholeLength(points, 1000);
-    const div = Math.round(wholeLength * 4);
-
-    const indexes = [];
-    let lastIndex = -1;
-
+    // get whole length
+    const wholeLength = CubicBezierCurve.length(points, 1000);
+    
     ctx.reset();
     ctx.fillStyle = 'black';
     ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
@@ -169,11 +214,12 @@ function bezierImage(ctx, img, points, startLineWidth, endLineWidth) {
         const yDiv = Math.round(curLineWidth * 4);
         for(let j = 0; j <= yDiv; j += 1) {
             const yRate = j / yDiv;
-            const intPos = Utility.linearInterpolation(top, bottom, yRate); 
-            // intPosの色を画像から取得する            
-            const color = getImageColor(imgImageData, xRate, yRate);
+            const internal = Utility.linearInterpolation(top, bottom, yRate); 
+            // get internal point color            
+            const color = Utility.getImageColor(imageData, xRate, yRate, startXRate, endXRate);
+            // 本当は画素を直接描画したいがそうすると、きれいにはならない。
             ctx.fillStyle = `rgba(${color.r},${color.g},${color.b},${color.a / 255})`;
-            ctx.fillRect(intPos.x, intPos.y, 0.5, 0.5);
+            ctx.fillRect(internal.x, internal.y, 0.5, 0.5);
         }
         ctx.restore();
 
@@ -189,504 +235,48 @@ function bezierImage(ctx, img, points, startLineWidth, endLineWidth) {
     return data;
 }
 
-/**
- * ベジェ曲線に沿って画像を描画する
- * @param {CanvasRenderingContext2D} ctx キャンバスのコンテキスト
- * @param {Image} img 画像
- * @param {Araay<{ x: number, y: number}>} 制御点の配列
- * @param {number} startLineWidth 始点の線の幅
- * @param {number} endLineWidth 終点の線の幅
- * @returns {void} なし
- */
- function bezierImage2(ctx, img, points, startLineWidth, endLineWidth) {
-    const imgCanvas = document.createElement('canvas');
-    imgCanvas.width = img.width;
-    imgCanvas.height = img.height;
-    const imgCtx = imgCanvas.getContext('2d', { willReadFrequently: true });
-    imgCtx.drawImage(img, 0, 0);
-    const imgImageData = imgCtx.getImageData(0, 0, imgCtx.canvas.width, imgCtx.canvas.height);
+function updateChart(data) {
+    const ctx = document.getElementById('my-chart').getContext('2d');
 
-    // ベクトルを求める
-    const vectors = CubicBezierCurve.getVectors(points);
-
-    // 全体の長さを求める
-    const [wholeLength, steps] = CubicBezierCurve.wholeLength(points, 1000);
-    const div = Math.round(wholeLength * 4);
-
-    //const indexes = [];
-    let lastIndex = -1;
-
-    ctx.reset();
-    ctx.fillStyle = 'black';
-    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-
-    let curLength = 0;
-    for(let i = 0; i <= div; i += 1) {
-        const t = i / div;        
-        const pos = CubicBezierCurve.pointByT(points, t);
-        if(i > 0) {
-            const preT = (i - 1) / div;
-            const prePos = CubicBezierCurve.pointByT(points, preT);
-            const dist = Vector.dist(pos, prePos);
-            curLength += dist;
-        }
-
-        // 接線のベクトルを求める
-        let vector = CubicBezierCurve.firstDerivativeByT(points, t);
-        // 単位ベクトル化する
-        vector = Vector.unit(vector);
-        // -90度回す
-        const nrm = Vector.nrm(vector);
-        const curLineWidth = startLineWidth + (endLineWidth - startLineWidth) * curLength / wholeLength;
-        const top = {
-            x: pos.x + curLineWidth / 2 * nrm.x,
-            y: pos.y + curLineWidth / 2 * nrm.y,
-        };
-        const bottom = {
-            x: pos.x + curLineWidth / 2 * (-nrm.x),
-            y: pos.y + curLineWidth / 2 * (-nrm.y),
-        };
-        const xRate = curLength / wholeLength;
-
-        // logic2: very late
-        const imageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
-        const data = imageData.data;
-        const indexes = Paint.drawLine(top, bottom, { width: ctx.canvas.width, height: ctx.canvas.height, });
-        ctx.save();
-        for(let j = 0; j < indexes.length; j += 1) {
-            const elm = indexes[j];
-            const color = getImageColor(imgImageData, xRate, elm.rate);
-            const i = elm.index;
-            if(color.a !== 0) {
-                data[i * 4 + 0] = color.r;
-                data[i * 4 + 1] = color.g;
-                data[i * 4 + 2] = color.b;
-                data[i * 4 + 3] = color.a;
-            }            
-            lastIndex = j;
-        }
-        ctx.putImageData(imageData, 0, 0);
-        ctx.restore();
-    }
-}
-
-/**
- * ベジェ曲線に沿って画像を描画する
- * @param {CanvasRenderingContext2D} ctx キャンバスのコンテキスト
- * @param {Image} img 画像
- * @param {Araay<{ x: number, y: number}>} 制御点の配列
- * @param {number} startLineWidth 始点の線の幅
- * @param {number} endLineWidth 終点の線の幅
- * @returns {void} なし
- */
- function bezierImage3(ctx, img, points, startLineWidth, endLineWidth, useFillRect) {
-
-    const imgCanvas = document.createElement('canvas');
-    imgCanvas.width = img.width;
-    imgCanvas.height = img.height;
-    const imgCtx = imgCanvas.getContext('2d', { willReadFrequently: true });
-    imgCtx.drawImage(img, 0, 0);
-    const imgImageData = imgCtx.getImageData(0, 0, imgCtx.canvas.width, imgCtx.canvas.height);
-
-    ctx.reset();
-    ctx.fillStyle = 'black';
-    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-
-    // get imagedata of ctx
-    const imageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
-    const data = imageData.data;
-
-    // get vectors
-    const vectors = CubicBezierCurve.getVectors(points);
-
-    // 全体の長さを求める
-    const [wholeLength, steps] = CubicBezierCurve.wholeLength(points, 1000);
-    const div = Math.round(wholeLength / 4); // * 4 is too late.
-
-    const indexes = [];
-    let lastIndex = -1;    
-
-    ctx.save();
-    let curLength = 0;
-    for(let i = 0; i < div; i += 1) {
-        const t = i / div;        
-        const nextT = (i + 1) / div;
-        const pos = CubicBezierCurve.pointByT(points, t);
-        const nextPos = CubicBezierCurve.pointByT(points, nextT);
-        if(i > 0) {
-            const preT = (i - 1) / div;
-            const prePos = CubicBezierCurve.pointByT(points, preT);
-            const dist = Vector.dist(pos, prePos);
-            curLength += dist;
-        }
-        const curDist = Vector.dist(pos, nextPos);
-
-        // 現在の点から法線方向に現在の線分の幅の半分動かした点を取得する
-        const [top, bottom] = getShiftedPoints(pos, t, vectors, curLength / wholeLength, startLineWidth, endLineWidth);
-
-        // 次の点から法線方向に現在の線分の幅の半分動かした点を取得する
-        const [nextTop, nextBottom] = getShiftedPoints(nextPos, nextT, vectors, (curLength + curDist) / wholeLength, startLineWidth, endLineWidth);
-
-        // パスを塗りつぶすことにより、四角形内のインデックスを取得する
-        const indexes = getFilledIndexesBySquarePath([ top, nextTop, nextBottom, bottom ], 
-            { width: ctx.canvas.width, height: ctx.canvas.height, });
-
-        indexes.forEach(index => {
-            // index to x, y
-            const x = index % ctx.canvas.width;
-            const y = Math.floor(index / ctx.canvas.width);
-            // get rate of x
-            const nearestX = nearestRate2LineSegments([top, nextTop, nextBottom, bottom], { x, y, }, 1e-2);
-            const xRate = (curLength + curDist * nearestX.rate) / wholeLength;
-            // get rate of y
-            const nearestY = nearestRateLineSegment([nearestX.point, nearestX.nextPoint], { x, y, }, 1e-2);
-            const yRate = nearestY.rate;
-            // get image color by xRate and yRate
-            const color = getImageColor(imgImageData, xRate, yRate);
-            if(!useFillRect) {
-                if(color.a !== 0) {
-                    data[index * 4 + 0] = color.r;
-                    data[index * 4 + 1] = color.g;
-                    data[index * 4 + 2] = color.b;
-                    data[index * 4 + 3] = color.a;
+    const myChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: data.map(d => d.length.toFixed(2)),
+            datasets: [
+                {
+                    label: 'first',
+                    data: data.map(d => d.first),
+                    borderColor: '#f88',
+                }, 
+                {
+                    label: 'diff',
+                    data: data.map(d => d.diff),
+                    borderColor: '#8f8',
+                }, 
+                {
+                    label: 'second',
+                    data: data.map(d => d.second),
+                    borderColor: '#484',
+                }, 
+                {
+                    label: 'curvature',
+                    data: data.map(d => 1 / Math.abs(d.curvature)),
+                    borderColor: '#48f',
                 }
-            } else {
-                ctx.fillStyle = `rgba(${color.r},${color.g},${color.b},${color.a / 255})`;
-                ctx.fillRect(x, y, 1, 1);
-            }            
-        });
-        if(!useFillRect) {
-            ctx.putImageData(imageData, 0, 0);
-        }
-    }
-    ctx.restore();
-
-    /**
-     * 線分上のパラメータを求める
-     * @param {Array<{ x: number, y: number, }>} points 0-1: 線分#0
-     * @param {{ x: number, y: number, }} target 対象となる点
-     * @param {number} tol 距離の2乗を0とみなす許容範囲
-     * @returns {Object} 対象となる点の近くを通る直線を定める情報
-     */ 
-    function nearestRateLineSegment(points, target, tol = 1e-6) {
-        let start = points[0];
-        let end = points[1];
-        let startRate = 0;
-        let endRate = 1;
-
-        let loopCnt = 0;
-        const maxLoopCnt = 5;
-        let nearest = null;
-        while(true) {
-            if(++loopCnt >= maxLoopCnt) { 
-                //console.log('max loop count.');
-                break; 
-            }
-            const distances = [];
-            const divides = 10;
-
-            for(let i = 0; i <= divides; i += 1) {
-                const rate = i / divides;
-                const point = Utility.linearInterpolation(start, end, rate);
-                const dist2 = Vector.dist2(point, target);
-                const curRate = startRate + (endRate - startRate) * rate;
-                distances.push({ index: i, rate: curRate, dist2, point, });
-            }
-            // sort by distance squared 
-            distances.sort((a, b) => a.dist2 - b.dist2);
-            nearest = distances[0];
-            if(nearest.dist2 < tol) {// found.
-                break;
-            }
-
-            // update start, end, startRate and endRate            
-            const index = distances[0].index;
-            const oldStartRate = startRate;
-            const oldRateVec = endRate - startRate;
-            if(index === 0) {
-                start = points[0];
-                end = Utility.linearInterpolation(start, end, 1 / divides);
-                startRate = oldStartRate;
-                endRate = oldStartRate + oldRateVec * (1 / divides);
-            } else if(index === divides) {
-                start = Utility.linearInterpolation(start, end, (divides - 1) / divides);
-                end = points[1];
-                startRate = oldStartRate + oldRateVec * (divides - 1) / divides;
-                endRate = oldStartRate + oldRateVec * 1;
-            } else {
-                start = Utility.linearInterpolation(start, end, (index - 1) / divides);
-                end = Utility.linearInterpolation(start, end, (index + 1) / divides);
-                startRate = oldStartRate + oldRateVec * (index - 1) / divides;
-                endRate = oldStartRate + oldRateVec * (index + 1) / divides;
-            }
-        }
-        return nearest;
-    }
-
-    /**
-     * 2線分上のパラメータを求める
-     * @param {Array<{ x: number, y: number, }>} points 0-1: 線分#0, 3-2: 線分#1
-     * @param {{ x: number, y: number, }} target 対象となる点
-     * @param {number} tol 距離の2乗を0とみなす許容範囲
-     * @returns {Object} 対象となる点の近くを通る直線を定める情報
-     */ 
-    function nearestRate2LineSegments(points, target, tol = 1e-6) {
-        let start = points[0];
-        let end = points[1];
-        let nextStart = points[3];
-        let nextEnd = points[2];
-        let startRate = 0;
-        let endRate = 1;
-
-        let loopCnt = 0;
-        const maxLoopCnt = 5;
-        let nearest = null;
-        while(true) {
-            if(++loopCnt >= maxLoopCnt) { 
-                //console.log('max loop count.');
-                break; 
-            }
-            const distances = [];
-            const divides = 10;
-            for(let i = 0; i <= divides; i += 1) {
-                const rate = i / divides;
-                const point = Utility.linearInterpolation(start, end, rate);
-                const nextPoint = Utility.linearInterpolation(nextStart, nextEnd, rate);
-                const dist2 = Vector.dist2LinePoint(point, nextPoint, target);
-                const curRate = startRate + (endRate - startRate) * rate;
-                distances.push({ index: i, rate: curRate, dist2, point, nextPoint });
-            }
-            // sort by distance squared 
-            distances.sort((a, b) => a.dist2 - b.dist2);
-            nearest = distances[0];
-            if(nearest.dist2 < tol) {// found.
-                break;
-            }
-            // update start, end, nextStart, nextEnd, startRate and endRate            
-            const index = distances[0].index;
-            const oldStartRate = startRate;
-            const oldRateVec = endRate - startRate;
-            if(index === 0) {
-                start = points[0];
-                end = Utility.linearInterpolation(start, end, 1 / divides);
-                nextStart = points[3];
-                nextEnd = Utility.linearInterpolation(nextStart, nextEnd, 1 / divides);
-                startRate = oldStartRate;
-                endRate = oldStartRate + oldRateVec * (1 / divides);
-            } else if(index === divides) {
-                start = Utility.linearInterpolation(start, end, (divides - 1) / divides);
-                end = points[1];
-                nextStart = Utility.linearInterpolation(nextStart, nextEnd, (divides - 1) / divides);
-                nextEnd = points[2];
-                startRate = oldStartRate + oldRateVec * (divides - 1) / divides;
-                endRate = oldStartRate + oldRateVec * 1;
-            } else {
-                start = Utility.linearInterpolation(start, end, (index - 1) / divides);
-                end = Utility.linearInterpolation(start, end, (index + 1) / divides);
-                nextStart = Utility.linearInterpolation(nextStart, nextEnd, (index - 1) / divides);
-                nextEnd = Utility.linearInterpolation(nextStart, nextEnd, (index + 1) / divides);
-                startRate = oldStartRate + oldRateVec * (index - 1) / divides;
-                endRate = oldStartRate + oldRateVec * (index + 1) / divides;
-            }
-        }
-        return nearest;
-    }
-
-    /**
-     * 分割する
-     * @param {{ x: number, y: number, }} start 始点
-     * @param {{ x: number, y: number, }} end 終点
-     * @param {number} divides 分割数
-     * @returns {Array<{ x: number, y: number, }>} 点の配列
-     */
-    function createPointsByLineSegment(start, end, divides) {
-        const points = [];
-        for(let i = 0; i <= divides; i += 1) {
-            const point = Utility.linearInterpolation(start, end, i / divides);
-            points.push(point);
-        }
-        return points;
-    }
-
-    /**
-     * パスを塗りつぶすことにより、四角形内のインデックスを取得する
-     * @param {Array<{ x: number, y: number, }>} points 四角形の点(時計回り)
-     * @param {{ width: number, height: number, }} canvasSize キャンバスのサイズ
-     */
-    function getFilledIndexesBySquarePath(points, size) {
-
-        // get min/max of points
-        MinMax.save();
-        MinMax.init();
-        points.forEach(p => { MinMax.regist(p); });
-        MinMax.addMargin(2);
-        MinMax.truncate();
-        const mm = MinMax.getRect();
-        MinMax.restore();
-
-        // create canvas
-        const canvas = Utility.createCanvas(mm.width, mm.height);
-        const ctx = canvas.getContext('2d', { willReadFrequently: true });
-
-        // transform points
-        trans = points.map(p => Vector.subtract(p, mm)); 
-
-        // fill square
-        ctx.save();
-        ctx.beginPath();
-        trans.forEach((p, i) => { 
-            if(i === 0) { ctx.moveTo(p.x, p.y); }
-            else { ctx.lineTo(p.x, p.y); }
-        });
-        ctx.closePath();
-        ctx.fill();
-        ctx.restore();
-
-        // get index of filled pixel
-        const imageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
-        const data = imageData.data;
-        let indexes = [];
-        for(let i = 0; i < data.length / 4; i += 1) {
-            if(data[i * 4 + 3] !== 0) {// filled
-                indexes.push(i);
-            }
-        }
-
-        // 元のcanvasの外側にある点は無視する
-        indexes = indexes.filter(index => {
-            let x = index % ctx.canvas.width;
-            let y = Math.floor(index / ctx.canvas.width);
-            x += mm.x;
-            y += mm.y;
-            if(x < 0 || x >= size.width || y < 0 || y >= size.height) {
-                return false;
-            } else {
-                return true;
-            }
-        });
-
-        // indexsを変換する。元のcanvasの座標系でのインデックスに変換する
-        indexes = indexes.map(index => {
-            let x = index % ctx.canvas.width;
-            let y = Math.floor(index / ctx.canvas.width);
-            x += mm.x;
-            y += mm.y;
-            const newIndex = x + y * size.height;
-            return newIndex;
-        });
-
-        return indexes;
-    }
-
-    function getShiftedPoints(pos, t, vectors, rate, startLineWidth, endLineWidth) {
-        // 接線のベクトルを求める
-        let vector = CubicBezierCurve.firstDerivativeByT(points, t);
-        // 単位ベクトル化する
-        vector = Vector.unit(vector);
-        // -90度回す
-        const nrm = Vector.nrm(vector);
-
-        const lineWidth = startLineWidth + (endLineWidth - startLineWidth) * rate;
-        const halfWidth = lineWidth * 0.5;
-        const top = {
-            x: pos.x + halfWidth * nrm.x,
-            y: pos.y + halfWidth * nrm.y,
-        };
-        const bottom = {
-            x: pos.x + halfWidth * (-nrm.x),
-            y: pos.y + halfWidth * (-nrm.y),
-        };
-        return [ top, bottom, ];
-    }
+            ],
+        },
+    });
 }
-
-/**
- * 画像の色を取得する
- * @param {ImageData} imageData イメージデータ
- * @param {number} xRate xの割合
- * @param {number} yRate yの割合
- * @returns {{ r: number, g: number, b: number, a: number }} 色
- */
-function getImageColor(imageData, xRate, yRate) {
-    const data = imageData.data;
-    const width = imageData.width;
-    const height = imageData.height;
-    let x = xRate * (width - 1);
-    if(x < 0) { x = 0; }
-    if(x > width - 1) { x = width - 1; }
-    let y = yRate * (height - 1);
-    if(y < 0) { y = 0; }
-    if(y > height - 1) { y = height - 1; }
-    // bilenear 周辺4pxの画素の色を取得する
-    const xMin = Math.floor(x);
-    const xMax = Math.ceil(x);
-    const xt = x - xMin;
-    const yMin = Math.floor(y);
-    const yMax = Math.ceil(y);
-    const yt = y - yMin;
-
-    const xMinYMinColor = getColor(imageData, xMin, yMin);
-    const xMinYMaxColor = getColor(imageData, xMin, yMax);
-    const xMinColor = linearInterpolation(xMinYMinColor, xMinYMaxColor, yt);
-
-    const xMaxYMinColor = getColor(imageData, xMax, yMin);
-    const xMaxYMaxColor = getColor(imageData, xMax, yMax);
-    const xMaxColor = linearInterpolation(xMaxYMinColor, xMaxYMaxColor, yt);
-
-    let color = linearInterpolation(xMinColor, xMaxColor, xt);
-    color.r = Math.round(color.r);
-    color.g = Math.round(color.g);
-    color.b = Math.round(color.b);
-    color.a = Math.round(color.a);
-    if(color.r < 0) { color.r = 0; }
-    if(color.r > 255) { color.r = 255; }
-    if(color.g < 0) { color.g = 0; }
-    if(color.g > 255) { color.g = 255; }
-    if(color.b < 0) { color.b = 0; }
-    if(color.b > 255) { color.b = 255; }
-    if(color.a < 0) { color.a = 0; }
-    if(color.a > 255) { color.a = 255; }
-    return color;
-}
-
-function getColor(imageData, x, y) {
-    const i = y * imageData.width + x;
-    return {
-        r: imageData.data[i * 4 + 0],
-        g: imageData.data[i * 4 + 1],
-        b: imageData.data[i * 4 + 2],
-        a: imageData.data[i * 4 + 3],
-    };
-}
-
-function linearInterpolation(c0, c1, t) {
-    return { 
-        r: (1 - t) * c0.r + t * c1.r,
-        g: (1 - t) * c0.g + t * c1.g,
-        b: (1 - t) * c0.b + t * c1.b,
-        a: (1 - t) * c0.a + t * c1.a,
-    };
-}
-
 </script>
 </head>
 <body>
-    logic: 
-    <select id="logic-select">
-        <option value="logic1">logic1</option>
-        <option value="logic2">logic2</option>
-        <option value="logic3">logic3</option>
-    </select>
-    use:
-    <select id="use-select">
-        <option value="false">false</option>
-        <option value="true">true</option>
-    </select>
     <button id="done-button">done</button>
+    &nbsp;
+    <button id="debug-button">debug</button>
     &nbsp;
     <span id="time-span"></span>
     <br>
-    <canvas id="my-canvas" width="650" height="500"></canvas>
+    <canvas id="my-canvas" width="600" height="500"></canvas>
     <br>
     <canvas id="my-chart"></canvas>
     <br><br>
