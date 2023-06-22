@@ -199,15 +199,11 @@ function bezierImage(ctx, img, points, startLineWidth, endLineWidth, startXRate,
         vector = Vector.unit(vector);
         // rotate -90 degree
         const nrm = Vector.nrm(vector);
+        // nrm length
         const curLineWidth = startLineWidth + (endLineWidth - startLineWidth) * curLength / wholeLength;
-        const top = {
-            x: pos.x + curLineWidth / 2 * nrm.x,
-            y: pos.y + curLineWidth / 2 * nrm.y,
-        };
-        const bottom = {
-            x: pos.x + curLineWidth / 2 * (-nrm.x),
-            y: pos.y + curLineWidth / 2 * (-nrm.y),
-        };
+        // get shifted point
+        const top = Vector.add(pos, Vector.scale(nrm, curLineWidth / 2));
+        const bottom = Vector.add(pos, Vector.scale(nrm, -curLineWidth / 2));
         const xRate = curLength / wholeLength;
         
         ctx.save();    
