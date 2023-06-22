@@ -785,6 +785,25 @@ class Utility {
         return imageData;
     }
 
+    /**
+     * 画像の差分を取得する
+     * @param {ImageData} src 画像 
+     * @param {ImageData} dst 画像
+     * @returns {Array<{ index: number, r: number, g: number, b: number, a: number, }>} 差分のインデックスと色の配列
+     */
+    static getImageDataDiff(src, dst) {
+        const ret = [],
+            sd = src.data,
+            dd = dst.data;
+        for(let i = 0; i < sd.length / 4; i += 1) {
+            if(sd[i * 4 + 0] !== dd[i * 4 + 0] || sd[i * 4 + 1] !== dd[i * 4 + 1]
+            || sd[i * 4 + 2] !== dd[i * 4 + 2] || sd[i * 4 + 3] !== dd[i * 4 + 3]) {
+                ret.push({ index: i, r: dd[i * 4 + 0], g: dd[i * 4 + 1], b: dd[i * 4 + 2], a: dd[i * 4 + 3], });
+            }
+        }
+        return ret;
+    }
+
 }
 	
 
