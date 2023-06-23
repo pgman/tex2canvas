@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <script src="js/vector.js"></script>
 <script src="js/utility.js"></script>
+<script src="js/graphics.js"></script>
+<script src="js/graphics-api.js"></script>
 <title>bezier image</title>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
@@ -33,8 +35,8 @@ document.addEventListener('DOMContentLoaded', () => {
         backCtx.fillRect(0, 0, backCtx.canvas.width, backCtx.canvas.height);
         ctx.drawImage(img, 0, 0, img.width, img.height, 0, 0, ctx.canvas.width, ctx.canvas.height);
         const imageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
-        const info = Utility.getColorInfo(imageData);
-        console.log(Utility.isSameColor(imageData, [255, 255, 255]));
+        const info = Graphics.getColorInfo(imageData);
+        console.log(Graphics.isSameColor(imageData, [255, 255, 255]));
         console.log(info);
         //ctx.font = '40px "チョーク S"';
         //ctx.fillText('ああああ', 100, 100);
@@ -48,7 +50,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.querySelector('#to-white-button').addEventListener('click', async e => {
         const [canvas, ctx] = Utility.getCanvasContextById('my-canvas');
-        Utility.replceColor(ctx, [0, 0, 0], [255, 255, 255]);
+        GraphicsApi.replaceColor(ctx, [0, 0, 0], [255, 255, 255]);
     });
 
     document.querySelector('#draw-button').addEventListener('click', async e => {
@@ -70,7 +72,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const y = Number(document.querySelector('#y-text').value);
         const width = Number(document.querySelector('#width-text').value);
         const height = Number(document.querySelector('#height-text').value);
-        const trimmed = Utility.trimCanvas(canvas, { x, y, width, height });
+        const trimmed = Graphics.trimCanvas(canvas, { x, y, width, height });
         trimmed.toBlob((blob) => {
             const splits = imgFileName.split('.');
             Utility.saveBlob(blob, `${splits[0]}(${x}-${y}-${width}-${height}).${splits[1]}`);
@@ -115,7 +117,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let dbgCnt = 0;
         while(true) {
             if(++dbgCnt > 10000) { console.log('error'); break; }
-            const ret = Utility.existX(imageData, left, startY, height);
+            const ret = Graphics.existX(imageData, left, startY, height);
             if(ret) { break; } 
             else { left += 1; }
         }
@@ -124,7 +126,7 @@ document.addEventListener('DOMContentLoaded', () => {
         dbgCnt = 0;
         while(true) {
             if(++dbgCnt > 10000) { console.log('error'); break; }
-            const ret = Utility.existY(imageData, top, startX, width);
+            const ret = Graphics.existY(imageData, top, startX, width);
             if(ret) { break; } 
             else { top += 1; }
         }
@@ -133,7 +135,7 @@ document.addEventListener('DOMContentLoaded', () => {
         dbgCnt = 0;
         while(true) {
             if(++dbgCnt > 10000) { console.log('error'); break; }
-            const ret = Utility.existX(imageData, right, startY, height);
+            const ret = Graphics.existX(imageData, right, startY, height);
             if(ret) { break; } 
             else { right -= 1; }
         }
@@ -143,7 +145,7 @@ document.addEventListener('DOMContentLoaded', () => {
         dbgCnt = 0;
         while(true) {
             if(++dbgCnt > 10000) { console.log('error'); break; }
-            const ret = Utility.existY(imageData, bottom, startX, width);
+            const ret = Graphics.existY(imageData, bottom, startX, width);
             if(ret) { break; } 
             else { bottom -= 1; }
         }

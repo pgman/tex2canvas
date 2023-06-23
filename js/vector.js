@@ -62,12 +62,15 @@ class Vector {
      * @param {{ x: number, y: number, }} v ベクトル
      * @returns {number} ベクトルの長さ
      */
-    static unit(v) {
-        const len = Vector.length(v);
+    static unit(v, tol = 1e-6) {
+        let len = Vector.length(v);
+        if(len < tol) {
+            len = tol;
+        } 
         return {
             x: v.x / len,
             y: v.y / len
-        };
+        };        
     }
 
     /**

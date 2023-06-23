@@ -129,7 +129,8 @@ class CubicBezierCurve {
         for(let i = 0; i < points.length; i += 1) {
             if(i + 1 >= points.length) { continue; }
             const vector = { x: points[i + 1].x - points[i].x, y: points[i + 1].y - points[i].y, };
-            vectors.push(Vector.unit(vector));
+            const unit = Vector.unit(vector);
+            vectors.push(unit);
         }
         return vectors;
     }

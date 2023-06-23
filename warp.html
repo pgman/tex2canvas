@@ -7,6 +7,9 @@
 <script src="js/utility.js"></script>
 <script src="js/cubic-bezier-curve.js"></script>
 <script src="js/paint.js"></script>
+<script src="js/scalar.js"></script>
+<script src="js/graphics.js"></script>
+<script src="js/graphics-api.js"></script>
 <script
   src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.2.0/chart.min.js"
   integrity="sha512-VMsZqo0ar06BMtg0tPsdgRADvl0kDHpTbugCBBrL55KmucH6hP9zWdLIWY//OTfMnzz6xWQRxQqsUFefwHuHyg=="
@@ -16,7 +19,13 @@
 </head>
 <title>bezier image</title>
 <script>
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+
+    const backCanvas = document.querySelector('#back-canvas');
+    const backCtx = backCanvas.getContext('2d', { willReadFrequently: true });
+
+    const backImg = await Utility.loadImage('images/black_board.jpg');
+    backCtx.drawImage(backImg, 0, 0);
 
     // #done-button click
     document.querySelector('#done-button').addEventListener('click', e => {
@@ -28,18 +37,35 @@ document.addEventListener('DOMContentLoaded', () => {
             { x: 300, y: 100, },
             { x: 400, y: 400, },
         ];
-        const startLineWidth = 20;
-        const endLineWidth = 20;
+        const startLineWidth = 100;
+        const endLineWidth = 100;
         const img = new Image();
         img.onload = () => { 
             const startTime = new Date();
-            const data = bezierImage(ctx, img, points, startLineWidth, endLineWidth, 0, 0.4); 
+            ctx.reset();
+            const ret = bezierImage(ctx, img, points, startLineWidth, endLineWidth, 0, 1); 
             const endTime = new Date();
+
+            const workCanvas = Utility.createCanvas(ctx.canvas.width, ctx.canvas.height);
+            const workCtx = workCanvas.getContext('2d', { willReadFrequently: true });
+            let animCnt = 0;
+            let intervalId = setInterval(() => {
+                const workImageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
+                ctx.reset();                
+                
+                const indexes = ret[animCnt].indexes;
+                indexes.forEach(elm => {
+                    Graphics.setColorByIndex(workImageData, elm.i, [elm.r, elm.g, elm.b, elm.a]);                    
+                });
+                workCtx.putImageData(workImageData, 0, 0);
+                ctx.drawImage(workCanvas, 0, 0);
+                
+                if(++animCnt >= ret.length) {
+                    clearInterval(intervalId);
+                }
+            }, 1 / 60);
             document.querySelector('#time-span').innerHTML = `${endTime - startTime} ms`;
-            if(data) {
-                //updateChart(data);
-            }
-            
+                        
         };
         img.src = 'chalk-images/chalk-line/chalk-line-2(26-1479-1290-336).png'; 
         //img.src = 'images/america.png';
@@ -158,20 +184,28 @@ function dividePath(strokeArray) {
  * @returns {void} なし
  */
 function bezierImage(ctx, img, points, startLineWidth, endLineWidth, startXRate, endXRate) {
-    const imageData = Utility.getImageDataByImage(img);
+    // 画像のイメージデータを取得する
+    const imageData = GraphicsApi.getImageDataByImage(img);
 
-    // get whole length
-    const wholeLength = CubicBezierCurve.length(points, 1000);
-    
-    ctx.reset();
-    ctx.fillStyle = 'black';
-    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    // ベクトルを求める
+    const vectors = CubicBezierCurve.getVectors(points);
 
-    const data = [];
+    // get length of cubic bezie curve
+    const wholeLength = CubicBezierCurve.length(points, 1000);    
+
+    // get imagedata
+    //const rawImageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
+    //const rawData = rawImageData.data;
+
     let curLength = 0;
     let preT = -1;
     let t = 0;
+    const ret = [];
+
+    //ctx.save();
+
     while(true) {
+        const data = [];
         const pos = CubicBezierCurve.pointByT(points, t);
         if(preT >= 0) {
             const prePos = CubicBezierCurve.pointByT(points, preT);
@@ -184,14 +218,8 @@ function bezierImage(ctx, img, points, startLineWidth, endLineWidth, startXRate,
         const diffPos = CubicBezierCurve.pointByT(points, diffT);
         const diff = Vector.dist(pos, diffPos);
 
-        data.push({
-            t,
-            diff,
-            length: curLength,
-            first: Vector.length(CubicBezierCurve.firstDerivativeByT(points, t)),
-            second: Vector.length(CubicBezierCurve.secondDerivativeByT(points, t)),
-            curvature: CubicBezierCurve.curvatureByT(points, t),
-        });
+        // 曲率半径を求める
+        const realRadius = 1 / Math.abs(CubicBezierCurve.curvatureByT(points, t));
 
         // get first derivative
         let vector = CubicBezierCurve.firstDerivativeByT(points, t);
@@ -205,65 +233,56 @@ function bezierImage(ctx, img, points, startLineWidth, endLineWidth, startXRate,
         const top = Vector.add(pos, Vector.scale(nrm, curLineWidth / 2));
         const bottom = Vector.add(pos, Vector.scale(nrm, -curLineWidth / 2));
         const xRate = curLength / wholeLength;
-        
-        ctx.save();    
-        const yDiv = Math.round(curLineWidth * 4);
-        for(let j = 0; j <= yDiv; j += 1) {
-            const yRate = j / yDiv;
-            const internal = Utility.linearInterpolation(top, bottom, yRate); 
-            // get internal point color            
-            const color = Utility.getImageColor(imageData, xRate, yRate, startXRate, endXRate);
-            // 本当は画素を直接描画したいがそうすると、きれいにはならない。
-            ctx.fillStyle = `rgba(${color.r},${color.g},${color.b},${color.a / 255})`;
-            ctx.fillRect(internal.x, internal.y, 0.5, 0.5);
-        }
-        ctx.restore();
+        // top と bottom を結ぶ直線が描画される画素を求める
+        const indexes = Graphics.drawLine(top, bottom, { width: ctx.canvas.width, height: ctx.canvas.height, });
+                
+        // for(let j = 0; j < indexes.length; j += 1) {
+        //     const elm = indexes[j];
+        //     const color = Graphics.getImageColor(imageData, xRate, elm.rate, startXRate, endXRate);
+        //     const i = elm.index;
+        //     rawData[i * 4 + 0] = color.r;
+        //     rawData[i * 4 + 1] = color.g;
+        //     rawData[i * 4 + 2] = color.b;
+        //     rawData[i * 4 + 3] = color.a;
+        // }
 
+        // create data
+        data.indexes = indexes.map(elm => {
+            const color = Graphics.getImageColor(imageData, xRate, elm.rate, startXRate, endXRate);
+            color.i = elm.index;
+            return color;
+        });
+        data.t = t;
+        data.diff = diff;
+        data.curLength = curLength;
+        data.realRadius = realRadius;
+        ret.push(data);
+        
         // finish ?
         if(t === 1) { break; }
-        // update t
+
+        // save previous t
         preT = t;
-        let radius = 1/ Math.abs(CubicBezierCurve.curvatureByT(points, t));
-        if(radius > 1) { radius = 1; }
-        t += radius * 0.25 / diff / 1000;
+        // 曲率半径を補正する
+        const maxRadius = 1, minRadius = 0.2;
+        const limitedRadius = Scalar.limit(realRadius, minRadius, maxRadius);
+        // update t
+        t += limitedRadius * 0.25 / diff / 1000;
         if(t > 1) { t = 1; }
     }
-    return data;
-}
+    //ctx.putImageData(rawImageData, 0, 0);
+    //ctx.restore();
 
-function updateChart(data) {
-    const ctx = document.getElementById('my-chart').getContext('2d');
-
-    const myChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: data.map(d => d.length.toFixed(2)),
-            datasets: [
-                {
-                    label: 'first',
-                    data: data.map(d => d.first),
-                    borderColor: '#f88',
-                }, 
-                {
-                    label: 'diff',
-                    data: data.map(d => d.diff),
-                    borderColor: '#8f8',
-                }, 
-                {
-                    label: 'second',
-                    data: data.map(d => d.second),
-                    borderColor: '#484',
-                }, 
-                {
-                    label: 'curvature',
-                    data: data.map(d => 1 / Math.abs(d.curvature)),
-                    borderColor: '#48f',
-                }
-            ],
-        },
-    });
+    return ret;
 }
 </script>
+<style>
+#back-canvas, #my-canvas {
+    position: absolute;
+    left: 8px;
+    top: 60px;
+}
+</style>
 </head>
 <body>
     <button id="done-button">done</button>
@@ -271,10 +290,7 @@ function updateChart(data) {
     <button id="debug-button">debug</button>
     &nbsp;
     <span id="time-span"></span>
-    <br>
+    <canvas id="back-canvas" width="600" height="500"></canvas>
     <canvas id="my-canvas" width="600" height="500"></canvas>
-    <br>
-    <canvas id="my-chart"></canvas>
-    <br><br>
 </body>
 </html>

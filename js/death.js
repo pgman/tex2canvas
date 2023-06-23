@@ -2,7 +2,7 @@
 // 画像を曲げる関数
 
 /**
- * ベジェ曲線に沿って画像を描画する
+ * ベジェ曲線に沿って画像を描画する - 2023/06/23
  * @param {CanvasRenderingContext2D} ctx キャンバスのコンテキスト
  * @param {Image} img 画像
  * @param {Araay<{ x: number, y: number}>} 制御点の配列
@@ -10,76 +10,85 @@
  * @param {number} endLineWidth 終点の線の幅
  * @returns {void} なし
  */
-function bezierImage2(ctx, img, points, startLineWidth, endLineWidth) {
-    const imgCanvas = document.createElement('canvas');
-    imgCanvas.width = img.width;
-    imgCanvas.height = img.height;
-    const imgCtx = imgCanvas.getContext('2d', { willReadFrequently: true });
-    imgCtx.drawImage(img, 0, 0);
-    const imgImageData = imgCtx.getImageData(0, 0, imgCtx.canvas.width, imgCtx.canvas.height);
+function bezierImage(ctx, img, points, startLineWidth, endLineWidth, startXRate, endXRate) {
+    // 画像のイメージデータを取得する
+    const imageData = GraphicsApi.getImageDataByImage(img);
 
-    // ベクトルを求める
-    const vectors = CubicBezierCurve.getVectors(points);
-
-    // 全体の長さを求める
-    const [wholeLength, steps] = CubicBezierCurve.wholeLength(points, 1000);
-    const div = Math.round(wholeLength * 4);
-
+    // get whole length
+    const wholeLength = CubicBezierCurve.length(points, 1000);
+    
     ctx.reset();
     ctx.fillStyle = 'black';
     ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
+    const data = [];
     let curLength = 0;
-    for(let i = 0; i <= div; i += 1) {
-        const t = i / div;        
+    let preT = -1;
+    let t = 0;
+    while(true) {
         const pos = CubicBezierCurve.pointByT(points, t);
-        if(i > 0) {
-            const preT = (i - 1) / div;
+        if(preT >= 0) {
             const prePos = CubicBezierCurve.pointByT(points, preT);
             const dist = Vector.dist(pos, prePos);
             curLength += dist;
         }
 
-        // 接線のベクトルを求める
-        let vector = CubicBezierCurve.firstDerivativeByT(points, t);
-        // 単位ベクトル化する
-        vector = Vector.unit(vector);
-        // -90度回す
-        const nrm = Vector.nrm(vector);
-        const curLineWidth = startLineWidth + (endLineWidth - startLineWidth) * curLength / wholeLength;
-        const top = {
-            x: pos.x + curLineWidth / 2 * nrm.x,
-            y: pos.y + curLineWidth / 2 * nrm.y,
-        };
-        const bottom = {
-            x: pos.x + curLineWidth / 2 * (-nrm.x),
-            y: pos.y + curLineWidth / 2 * (-nrm.y),
-        };
-        const xRate = curLength / wholeLength;
+        // tが微小変化(1/1000)したときの長さを求める
+        const diffT = t + 1 / 1000;
+        const diffPos = CubicBezierCurve.pointByT(points, diffT);
+        const diff = Vector.dist(pos, diffPos);
 
-        // logic2: very late
-        const imageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
-        const data = imageData.data;
-        const indexes = Paint.drawLine(top, bottom, { width: ctx.canvas.width, height: ctx.canvas.height, });
-        ctx.save();
-        for(let j = 0; j < indexes.length; j += 1) {
-            const elm = indexes[j];
-            const color = getImageColor(imgImageData, xRate, elm.rate);
-            const i = elm.index;
-            if(color.a !== 0) {
-                data[i * 4 + 0] = color.r;
-                data[i * 4 + 1] = color.g;
-                data[i * 4 + 2] = color.b;
-                data[i * 4 + 3] = color.a;
-            }
+        // for debug
+        data.push({
+            t,
+            diff,
+            length: curLength,
+            first: Vector.length(CubicBezierCurve.firstDerivativeByT(points, t)),
+            second: Vector.length(CubicBezierCurve.secondDerivativeByT(points, t)),
+            curvature: CubicBezierCurve.curvatureByT(points, t),
+        });
+
+        // get first derivative
+        let vector = CubicBezierCurve.firstDerivativeByT(points, t);
+        // unit vectorize
+        vector = Vector.unit(vector);
+        // rotate -90 degree
+        const nrm = Vector.nrm(vector);
+        // nrm length
+        const curLineWidth = startLineWidth + (endLineWidth - startLineWidth) * curLength / wholeLength;
+        // get shifted point
+        const top = Vector.add(pos, Vector.scale(nrm, curLineWidth / 2));
+        const bottom = Vector.add(pos, Vector.scale(nrm, -curLineWidth / 2));
+        const xRate = curLength / wholeLength;
+        
+        ctx.save();    
+        const yDiv = Math.round(curLineWidth * 4);
+        for(let j = 0; j <= yDiv; j += 1) {
+            const yRate = j / yDiv;
+            const internal = Utility.linearInterpolation(top, bottom, yRate); 
+            // get internal point color            
+            const color = Graphics.getImageColor(imageData, xRate, yRate, startXRate, endXRate);
+            // 本当は画素を直接描画したいがそうすると、きれいにはならない。
+            ctx.fillStyle = `rgba(${color.r},${color.g},${color.b},${color.a / 255})`;
+            ctx.fillRect(internal.x, internal.y, 0.5, 0.5);
         }
-        ctx.putImageData(imageData, 0, 0);
         ctx.restore();
+
+        // finish ?
+        if(t === 1) { break; }
+        // update t
+        preT = t;
+        let radius = 1 / Math.abs(CubicBezierCurve.curvatureByT(points, t));
+        const maxRadius = 1, minRadius = 0.2;
+        radius = Scalar.limit(radius, minRadius, maxRadius);
+        t += radius * 0.25 / diff / 1000;
+        if(t > 1) { t = 1; }
     }
+    return data;
 }
 
 /**
- * ベジェ曲線に沿って画像を描画する
+ * ベジェ曲線に沿って画像を描画する - 2023/06/20 ごろ本ソースへ移籍
  * @param {CanvasRenderingContext2D} ctx キャンバスのコンテキスト
  * @param {Image} img 画像
  * @param {Araay<{ x: number, y: number}>} 制御点の配列
@@ -474,7 +483,7 @@ function bezierImage3(ctx, img, points, startLineWidth, endLineWidth, useFillRec
             const nearestY = nearestRateLineSegment([nearestX.point, nearestX.nextPoint], { x, y, }, 1e-5);
             const yRate = nearestY.rate;
             // get image color by xRate and yRate
-            const color = Utility.getImageColor(imgImageData, xRate, yRate);
+            const color = Graphics.getImageColor(imgImageData, xRate, yRate);
             if(!useFillRect) {
                 if(color.a !== 0) {
                     data[index * 4 + 0] = color.r;
