@@ -13,7 +13,7 @@ class Graphics {
             const color = [ data[i * 4 + 0], data[i * 4 + 1], data[i * 4 + 2], data[i * 4 + 3] ];
             const found = ret.find(c => c.color[0] === color[0] && c.color[1] === color[1] && c.color[2] === color[2] && c.color[3] === color[3]);
             if(!found) {
-                ret.push({ color, count: 0 });
+                ret.push({ color, count: 1 });
             } else {
                 found.count += 1;
             }
@@ -173,18 +173,10 @@ class Graphics {
         const xMaxColor = linearInterpolation(xMaxYMinColor, xMaxYMaxColor, yt);
 
         let color = linearInterpolation(xMinColor, xMaxColor, xt);
-        color.r = Math.round(color.r);
-        color.g = Math.round(color.g);
-        color.b = Math.round(color.b);
-        color.a = Math.round(color.a);
-        if(color.r < 0) { color.r = 0; }
-        if(color.r > 255) { color.r = 255; }
-        if(color.g < 0) { color.g = 0; }
-        if(color.g > 255) { color.g = 255; }
-        if(color.b < 0) { color.b = 0; }
-        if(color.b > 255) { color.b = 255; }
-        if(color.a < 0) { color.a = 0; }
-        if(color.a > 255) { color.a = 255; }
+        color.r = Scalar.limit(Math.round(color.r), 0, 255);
+        color.g = Scalar.limit(Math.round(color.g), 0, 255);
+        color.b = Scalar.limit(Math.round(color.b), 0, 255);
+        color.a = Scalar.limit(Math.round(color.a), 0, 255);
         return color;
 
         function getColor(imageData, x, y) {

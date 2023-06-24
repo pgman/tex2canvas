@@ -37,8 +37,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             { x: 300, y: 100, },
             { x: 400, y: 400, },
         ];
-        const startLineWidth = 10;
-        const endLineWidth = 10;
+        const startLineWidth = 100;
+        const endLineWidth = 100;
         const img = new Image();
         img.onload = () => { 
             const startTime = new Date();
@@ -55,7 +55,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 console.log(ret[animCnt].dist);
                 const indexes = ret[animCnt].indexes;
                 indexes.forEach(elm => {
-                    Graphics.setColorByIndex(workImageData, elm.i, [elm.r, elm.g, elm.b, elm.a]);                    
+                    if(elm.a !== 0 && elm.a !== 255) {
+                        Graphics.setColorByIndex(workImageData, elm.i, [255, 255, 255, 0]);
+                    } else {
+                        Graphics.setColorByIndex(workImageData, elm.i, [255, 255, 255, elm.a]);
+                    }
+                                        
                 });
                 workCtx.putImageData(workImageData, 0, 0);
                 ctx.drawImage(workCanvas, 0, 0);
@@ -67,7 +72,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.querySelector('#time-span').innerHTML = `${endTime - startTime} ms`;
                         
         };
-        img.src = 'chalk-images/chalk-line/chalk-line-2(26-1479-1290-336).png'; 
+        img.src = 'chalk-lines/chalk-line-2(26-1479-1290-336).png'; 
         //img.src = 'images/america.png';
         //img.src = 'images/yellow.png';
     });

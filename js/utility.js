@@ -557,19 +557,41 @@ class Utility {
             return [null, ''];
         }
     }
+
+    /**
+     * テキストファイルを1行ずつ読み込む
+     * @param {string} filePath ファイルパス 
+     * @returns {Promise<Array<string>>} 行毎の配列
+     */
+    static async loadTextFileLineByLine(filePath) {
+        try {
+            const res = await fetch(filePath);
+            const text = await res.text();
+            let splitter;
+            const rIndex = text.indexOf('\r');
+            const nIndex = text.indexOf('\n');
+            const rnIndex = text.indexOf('\r\n');
+            if(rnIndex >= 0) {
+                splitter = '\r\n';
+            } else if(rIndex >= 0) {
+                splitter = '\r';
+            } else if(nIndex >= 0) {
+                splitter = '\n';
+            }
+            return text.split(splitter).filter(d => d);
+        } catch(e) {
+            return null;
+        }
+    }
+
+    /**
+     * ウェイトをかける
+     * @param {number} miliSecond ミリ秒
+     * @returns {Promise<void>} なし
+     */
+    static wait(miliSecond) {
+        return new Promise(resolve => {
+            setTimeout(() => { resolve(); }, miliSecond)
+        });
+    }
 }
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-	
-
-	

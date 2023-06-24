@@ -36,7 +36,8 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.drawImage(img, 0, 0, img.width, img.height, 0, 0, ctx.canvas.width, ctx.canvas.height);
         const imageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
         const info = Graphics.getColorInfo(imageData);
-        console.log(Graphics.isSameColor(imageData, [255, 255, 255]));
+        const sameColor = Graphics.isSameColor(imageData, [255, 255, 255]);
+        console.log(sameColor);
         console.log(info);
         //ctx.font = '40px "チョーク S"';
         //ctx.fillText('ああああ', 100, 100);

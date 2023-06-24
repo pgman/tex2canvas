@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<script src="js/vector.js"></script>
+<script src="js/utility.js"></script>
+<script src="js/graphics.js"></script>
+<script src="js/graphics-api.js"></script>
+<title>check image</title>
+<script>
+document.addEventListener('DOMContentLoaded', async () => {
+    // load text file
+    let texts = await Utility.loadTextFileLineByLine('chalk-lines\\file-list.txt');
+    texts = texts.filter(t => t.indexOf('.png') >= 0);
+    for(let i = 0; i < texts.length; i += 1) {
+        await Utility.wait(100);
+        changeImageSelect(texts[i]);
+    }
+    updateView();
+    changeImageSelect();
+
+    document.querySelector('#image-file-select').addEventListener('change', changeImageSelect);
+
+    function updateView() {
+        // update #image-select 
+        const html = texts.reduce((p, c) => `${p}<option>${c}</option>`,'');
+        document.querySelector('#image-file-select').innerHTML = html;
+    }
+
+    async function changeImageSelect(path) {
+        // get file path
+        const filePath = path ? path : document.querySelector('#image-file-select').value;
+        // load image
+        const img = await Utility.loadImage(`chalk-lines\\${filePath}`);
+        // width is 500px(fixed)
+        const height = Math.round(500 * img.height / img.width);
+        // change canvas height
+        const [canvas, ctx] = Utility.getCanvasContextById('my-canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+
+        const [backCanvas, backCtx] = Utility.getCanvasContextById('back-canvas');
+        backCanvas.width = img.width;
+        backCanvas.height = img.height;
+
+        backCtx.fillStyle = 'green';
+        backCtx.fillRect(0, 0, backCtx.canvas.width, backCtx.canvas.height);
+        ctx.drawImage(img, 0, 0, img.width, img.height, 0, 0, ctx.canvas.width, ctx.canvas.height);
+
+        const imageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
+        const info = Graphics.getColorInfo(imageData);
+        const sameColor = Graphics.isSameColor(imageData, [255, 255, 255]);
+        document.querySelector('#same-color-span').innerHTML = sameColor + '';
+        console.log(filePath, sameColor);
+    }
+
+});
+</script>
+<style>
+#operation-area {
+    position: fixed; 
+    left: 8px; 
+    top: 8px;
+    z-index: 1;
+    background-color: white;
+    padding: 4px;
+    border: solid 1px #888;
+}
+#back-canvas, #my-canvas, #operation-canvas {
+    position: absolute;
+    left: 8px;
+    top: 80px;
+    width: 500px;
+}
+.value-text {
+    width: 60px;
+}
+</style>
+</head>
+<body>
+    <div id="operation-area">
+        <select id="image-file-select"></select><br>
+        <span id="same-color-span"></span>
+    </div>
+    <canvas id="back-canvas" width="300" height = "150"></canvas>
+    <canvas id="my-canvas" width="300" height = "150"></canvas>
+</body>
+</html>
