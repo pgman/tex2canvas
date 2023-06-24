@@ -37,8 +37,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             { x: 300, y: 100, },
             { x: 400, y: 400, },
         ];
-        const startLineWidth = 100;
-        const endLineWidth = 100;
+        const startLineWidth = 10;
+        const endLineWidth = 10;
         const img = new Image();
         img.onload = () => { 
             const startTime = new Date();
@@ -52,7 +52,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             let intervalId = setInterval(() => {
                 const workImageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
                 ctx.reset();                
-                
+                console.log(ret[animCnt].dist);
                 const indexes = ret[animCnt].indexes;
                 indexes.forEach(elm => {
                     Graphics.setColorByIndex(workImageData, elm.i, [elm.r, elm.g, elm.b, elm.a]);                    
@@ -207,11 +207,12 @@ function bezierImage(ctx, img, points, startLineWidth, endLineWidth, startXRate,
     while(true) {
         const data = [];
         const pos = CubicBezierCurve.pointByT(points, t);
+        let dist = 0;
         if(preT >= 0) {
             const prePos = CubicBezierCurve.pointByT(points, preT);
-            const dist = Vector.dist(pos, prePos);
-            curLength += dist;
+            dist = Vector.dist(pos, prePos);
         }
+        curLength += dist;
 
         // tが微小変化(1/1000)したときの長さを求める
         const diffT = t + 1 / 1000;
@@ -247,13 +248,34 @@ function bezierImage(ctx, img, points, startLineWidth, endLineWidth, startXRate,
         // }
 
         // create data
-        data.indexes = indexes.map(elm => {
-            const color = Graphics.getImageColor(imageData, xRate, elm.rate, startXRate, endXRate);
+        data.indexes = indexes.map((elm, i) => {
+            let preColor;
+            if(i === 0) {
+                preColor = null;
+            } else {
+                const pre = indexes[i - 1];
+                preColor = Graphics.getImageColor(imageData, xRate, pre.rate, startXRate, endXRate);
+                preColor = JSON.parse(JSON.stringify(preColor));
+            }
+            let nextColor;
+            if(i === indexes.length - 1) {
+                nextColor = null;
+            } else {
+                const next = indexes[i + 1];
+                nextColor = Graphics.getImageColor(imageData, xRate, next.rate, startXRate, endXRate);
+                nextColor = JSON.parse(JSON.stringify(nextColor));
+            }
+            let color = Graphics.getImageColor(imageData, xRate, elm.rate, startXRate, endXRate);
+            color = JSON.parse(JSON.stringify(color));
             color.i = elm.index;
+            if(color.a !== 0 && ((preColor && preColor.a === 0) || (nextColor && nextColor.a === 0))) {
+                color.a = Math.round(color.a * 0.1);
+            }
             return color;
         });
         data.t = t;
         data.diff = diff;
+        data.dist = dist;
         data.curLength = curLength;
         data.realRadius = realRadius;
         ret.push(data);

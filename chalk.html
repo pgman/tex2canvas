@@ -54,6 +54,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.querySelector('#draw-button').addEventListener('click', async e => {
+        refineSize();
+        draw();
+    }); 
+    
+    function draw() {
         const [canvas, ctx] = Utility.getCanvasContextById('operation-canvas');
         const x = Number(document.querySelector('#x-text').value);
         const y = Number(document.querySelector('#y-text').value);
@@ -64,7 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.fillStyle = 'rgba(255,0,0,0.4)';
         ctx.fillRect(x, y, width, height);
         ctx.restore();
-    });    
+    }
 
     document.querySelector('#save-button').addEventListener('click', async e => {
         const [canvas, ctx] = Utility.getCanvasContextById('my-canvas');
@@ -72,7 +77,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const y = Number(document.querySelector('#y-text').value);
         const width = Number(document.querySelector('#width-text').value);
         const height = Number(document.querySelector('#height-text').value);
-        const trimmed = Graphics.trimCanvas(canvas, { x, y, width, height });
+        const trimmed = GraphicsApi.trimCanvas(canvas, { x, y, width, height });
         trimmed.toBlob((blob) => {
             const splits = imgFileName.split('.');
             Utility.saveBlob(blob, `${splits[0]}(${x}-${y}-${width}-${height}).${splits[1]}`);
@@ -81,6 +86,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.querySelector('#refine-button').addEventListener('click', async e => {
         refineSize();
+        draw();
     });
 
     function refineSize() {
@@ -103,7 +109,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     document.querySelector('#fit-button').addEventListener('click', async e => {
-        const [canvas, ctx] = Utility.getCanvasContextById('my-canvas');
+        const [canvas, ctx] = Utility.getCanvasContextById('my-canvas');        
         const imageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
         const data = imageData.data;
 
