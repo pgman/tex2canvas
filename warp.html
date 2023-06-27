@@ -380,10 +380,10 @@ function bezierImage3(ctx, img, points, startLineWidth, endLineWidth, useFillRec
             const x = index % ctx.canvas.width;
             const y = Math.floor(index / ctx.canvas.width);
             // get rate of x
-            const nearestX = nearestRate2LineSegments([top, nextTop, nextBottom, bottom], { x, y, }, 4, 4, 1e-6);
+            const nearestX = nearestRate2LineSegments([top, nextTop, nextBottom, bottom], { x, y, }, 6, 6, 1e-6);
             const xRate = (curLength + curDist * nearestX.rate) / wholeLength;
             // get rate of y
-            const nearestY = nearestRateLineSegment([nearestX.point, nearestX.nextPoint], { x, y, }, 4, 4, 1e-6);
+            const nearestY = nearestRateLineSegment([nearestX.point, nearestX.nextPoint], { x, y, }, 6, 6, 1e-6);
             const yRate = nearestY.rate;
             // get image color by xRate and yRate
             const color = Graphics.getImageColor(imageData, xRate, yRate);
