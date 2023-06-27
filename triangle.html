@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<script src="js/vector.js"></script>
+<script src="js/min-max.js"></script>
+<script src="js/utility.js"></script>
+<script src="js/cubic-bezier-curve.js"></script>
+<script src="js/paint.js"></script>
+<script src="js/scalar.js"></script>
+<script src="js/graphics.js"></script>
+<script src="js/graphics-api.js"></script>
+<script
+  src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.2.0/chart.min.js"
+  integrity="sha512-VMsZqo0ar06BMtg0tPsdgRADvl0kDHpTbugCBBrL55KmucH6hP9zWdLIWY//OTfMnzz6xWQRxQqsUFefwHuHyg=="
+  crossorigin="anonymous"></script>
+<script
+  src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@next/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+</head>
+<title>bezier image</title>
+<script>
+document.addEventListener('DOMContentLoaded', async () => {
+
+    const backCanvas = document.querySelector('#back-canvas');
+    const backCtx = backCanvas.getContext('2d', { willReadFrequently: true });
+    backCtx.fillStyle = '#000000';
+    backCtx.fillRect(0, 0, backCtx.canvas.width, backCtx.canvas.height);
+
+    // #triangle-button click
+    document.querySelector('#triangle-button').addEventListener('click', e => {       
+
+        const canvas = document.querySelector('#my-canvas');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        const imageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
+        const data = imageData.data;
+
+        const points = [
+            { x: 1, y: 1, }, 
+            { x: 10, y: 1, }, 
+            { x: 14, y: 12, },
+            { x: 1, y: 12, }
+        ];
+        const pixels = Graphics.drawSquare(points);
+
+        pixels.forEach(p => {
+            const i = p.x + p.y * ctx.canvas.width;
+            for(let j = 0; j < 4; j += 1) {
+                data[i * 4 + j] = 255;
+            }
+        });
+        
+        // setPixel(imageData, ret.x1, ret.y1, [255, 0, 0, 255]);
+        // setPixel(imageData, ret.x2, ret.y2, [255, 0, 0, 255]);
+        // setPixel(imageData, ret.x3, ret.y3, [255, 0, 0, 255]);
+        // if(typeof ret.xa !== 'undefined') {
+        //     setPixel(imageData, ret.xa, ret.y2, [0, 255, 0, 255]);
+        // }
+
+        ctx.putImageData(imageData, 0, 0);        
+    });
+});
+
+function setPixel(imageData, x, y, color) {
+    const width = imageData.width,
+        height = imageData.height,
+        data = imageData.data;
+    if(x < 0 || x >= width || y < 0 || y >= height) { return; }
+    const i = y * width + x;
+    for(let j = 0; j < 4; j += 1) {
+        data[i * 4 + j] = color[j];
+    }
+}
+
+</script>
+<style>
+#back-canvas, #my-canvas {
+    position: absolute;
+    left: 8px;
+    top: 60px;
+}
+#my-canvas {
+    width: 600px;
+    height: 600px;
+    image-rendering: pixelated;
+}
+</style>
+</head>
+<body>
+    <button id="triangle-button">triangle</button>
+    &nbsp;
+    <span id="time-span"></span>
+    <canvas id="back-canvas" width="600" height="600"></canvas>
+    <canvas id="my-canvas" width="20" height="20"></canvas>
+</body>
+</html>

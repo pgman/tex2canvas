@@ -66,5 +66,48 @@ class GraphicsApi {
             }
         }
         ctx.putImageData(imageData, 0, 0);
+    }    
+
+    /**
+     * 画像を90度回す
+     * @param {ImageData} imageData イメージデータ
+     * @returns {ImageData} イメージデータ
+     */
+    static rotateImage90Degrees(imageData) {
+        const srcData = imageData.data;
+        // replace width and height
+        const dst = GraphicsApi.createImageData(imageData.height, imageData.width);
+        const dstData = dst.data;
+        for(let x = 0; x < dst.width; x += 1) {
+            for(let y = 0; y < dst.height; y += 1) {
+                const di = dst.width * y + x;
+                const si = dst.width * x + y;
+                for(let j = 0; j < 4; j += 1) {
+                    dstData[di * 4 + j] = srcData[si * 4 + j];
+                }                
+            }
+        }
+        return dst;
+    }
+
+    /**
+     * 画像を1800度回す
+     * @param {ImageData} imageData イメージデータ
+     * @returns {ImageData} イメージデータ
+     */
+    static rotateImage180Degrees(imageData) {
+        const srcData = imageData.data;
+        const dst = GraphicsApi.createImageData(imageData.width, imageData.height);
+        const dstData = dst.data;
+        for(let x = 0; x < dst.width; x += 1) {
+            for(let y = 0; y < dst.height; y += 1) {
+                const di = dst.width * y + x;
+                const si = dst.width * (dst.height - 1 - y) + (dst.width - 1 - x);
+                for(let j = 0; j < 4; j += 1) {
+                    dstData[di * 4 + j] = srcData[si * 4 + j];
+                }                
+            }
+        }
+        return dst;
     }
 }

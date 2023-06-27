@@ -88,7 +88,7 @@ class Graphics {
             }
         }
         return indexes;
-    }
+    }    
 
     /**
      * あるXに色のついた画素があるか調べる
@@ -224,5 +224,258 @@ class Graphics {
         data[index * 4 + 1] = color[1];
         data[index * 4 + 2] = color[2];
         data[index * 4 + 3] = color[3];
+    }
+
+    static equalImageData(src, dst) {
+        const sd = src.data,
+            dd = dst.data;
+        for(let i = 0; i < sd.length; i += 1) {
+            if(sd[i] !== dd[i]) { return false; }   // not equal
+        }
+        return true;    // equal
+    }
+
+    static drawTriangleQiita(pos1, pos2, pos3) {
+        const pixels = [];
+        let x1 = Math.trunc(pos1.x), y1 = Math.trunc(pos1.y),
+            x2 = Math.trunc(pos2.x), y2 = Math.trunc(pos2.y),
+            x3 = Math.trunc(pos3.x), y3 = Math.trunc(pos3.y);
+        // y1 < y2 < y3 となるように並べ直す
+        if(y1 > y2) {
+            [x1, x2] = [x2, x1];    // swap(x1, x2);
+            [y1, y2] = [y2, y1];    // swap(y1, y2);
+        }
+        if(y1 > y3) {
+            [x1, x3] = [x3, x1];    // swap(x1, x3);
+            [y1, y3] = [y3, y1];    // swap(y1, y3);
+        }
+        if(y2 > y3) {
+            [x2, x3] = [x3, x2];    // swap(x2, x3);
+            [y2, y3] = [y3, y2];    // swap(y2, y3);
+        }
+  
+        // 例外的なパターンの排除
+        if (y1 === y3) {
+            return { x1, x2, x3, y1, y2, y3, pixels };        
+        }
+        if (x1 === x2 && x2 === x3) {
+            return { x1, x2, x3, y1, y2, y3, pixels };
+        }
+  
+        if (y1 === y2) {
+            draw_flatTriangle(x3, y3, x1, y1, x2);
+            return { x1, x2, x3, y1, y2, y3, pixels };
+        } else if (y2 === y3) {
+            draw_flatTriangle(x1, y1, x2, y2, x3);
+            return { x1, x2, x3, y1, y2, y3, pixels };
+        } else {
+            const xa = Math.trunc(x1 * (y2 - y1) / (y3 - y1) + x3 * (y2 - y3) / (y1 - y3));
+            draw_flatTriangle(x1, y1, xa, y2, x2);
+            draw_flatTriangle(x3, y3, xa, y2, x2);
+            return { x1, x2, x3, xa, y1, y2, y3, pixels };
+        }
+
+        function abs(x) { return Math.abs(x); }
+        function sgn(x, d) { return  x > 0 ? d : (x < 0 ? -d : 0); }
+
+        // この関数はハードウェア化する
+        function draw_Xaxis(y, x2, x3) {
+            let x = x2;
+            const adx = abs(x3 - x2);
+            const sdx = sgn(x3 - x2, 1);
+        
+            if(adx === 0) {// 書き込みが一点のケース
+                pixels.push({ x, y, });
+                return;
+            }
+        
+            for(let pos = 0; pos <= adx; x += sdx, pos++) {
+                pixels.push({ x, y, });
+            }
+        }
+
+        // この関数はハードウェア化する
+        function draw_flatTriangle(x1, y1, x2, y2, x3) {
+            const ady = abs(y1 - y2);
+            const sdy = sgn(y1 - y2, 1);
+            const adxa = abs(x1 - x2);
+            const sdxa = sgn(x1 - x2, 1);
+            const adxb = abs(x1 - x3);
+            const sdxb = sgn(x1 - x3, 1);
+            const dxa = (sdxa === sdy) ? 1 * sdy : -1 * sdy;    // ここの符号を反転させてみたがよいのか？
+            const dxb = (sdxb === sdy) ? 1 * sdy : -1 * sdy;    // ここの符号を反転させてみたがよいのか？
+            let xa = x2;
+            let xb = x3;
+            let xda = 0;
+            let xdb = 0;
+            let y = y2;
+
+            for(let ypos = 0; ypos <= ady; y += sdy, ypos++) {
+                draw_Xaxis(y, xa, xb);
+                xda += adxa;
+                while (xda >= ady) {
+                    xa += dxa;
+                    xda -= ady;
+                }
+                xdb += adxb;
+                while (xdb >= ady) {
+                    xb += dxb;
+                    xdb -= ady;
+                }
+            } 
+        }
+    }
+
+    static drawSquare(argPoints) {
+        const map = {};
+        const pixels = [];
+
+        // points to int
+        const points = argPoints.map(p => ({ x: Math.round(p.x), y: Math.round(p.y), }));
+        
+        // 0, 1, 2
+        Graphics.drawTriangle([ points[0], points[1], points[2] ], (x, y) => {
+            const key = `${x}-${y}`;
+            if(typeof map[key] === 'undefined') {
+                map[key] = 0;
+                pixels.push({ x, y, }); 
+            }
+        });
+        // 2, 3, 0
+        Graphics.drawTriangle([ points[2], points[3], points[0] ], (x, y) => {
+            const key = `${x}-${y}`;
+            if(typeof map[key] === 'undefined') {
+                map[key] = 0;
+                pixels.push({ x, y, }); 
+            }
+        });
+        // 4 line segments
+        points.forEach((p, i) => {
+            const iNext = (i + 1) % points.length;
+            const pNext = points[iNext];
+            Graphics.drawLineBresenham([p, pNext], (x, y) => {
+                const key = `${x}-${y}`;
+                if(typeof map[key] === 'undefined') {
+                    map[key] = 0;
+                    pixels.push({ x, y, }); 
+                }
+            });   
+        });
+        return pixels;        
+    }
+
+    static drawLineBresenham(points, func) {
+        let x0 = points[0].x, y0 = points[0].y, x1 = points[1].x, y1 = points[1].y;
+        const dx = Math.abs(x1 - x0);
+        const dy = Math.abs(y1 - y0);
+        let sx; 
+        if(x0 < x1) {
+            sx = 1;
+        } else {
+            sx = -1;
+        }
+        let sy;
+        if(y0 < y1) {
+            sy = 1;
+        } else {
+            sy = -1;
+        }
+        let err = dx - dy;
+ 
+        while(true) {
+            func(x0, y0);
+            if (x0 === x1 && y0 === y1) { break; }
+            const e2 = 2 * err;
+            if (e2 > -dy) { 
+                err = err - dy;
+                x0 = x0 + sx;
+            }
+            if (e2 < dx) { 
+                err = err + dx;
+                y0 = y0 + sy;
+            }
+        }
+    }
+
+    static drawTriangle(points, func) {
+        const pixels = [];
+        /* at first sort the three vertices by y-coordinate ascending so v1 is the topmost vertice */
+        const [v1, v2, v3] = sortVerticesAscendingByY(points);
+
+        /* here we know that v1.y <= v2.y <= v3.y */
+        if (v2.y === v3.y) {/* check for trivial case of bottom-flat triangle */        
+            fillBottomFlatTriangle(v1, v2, v3);
+        } else if (v1.y === v2.y) {/* check for trivial case of top-flat triangle */
+            fillTopFlatTriangle(v1, v2, v3);
+        } else {/* general case - split the triangle in a topflat and bottom-flat one */
+            const v4 = {
+                x: Math.trunc((v1.x + ((v2.y - v1.y) / (v3.y - v1.y)) * (v3.x - v1.x))), 
+                y: v2.y,
+            };
+            fillBottomFlatTriangle(v1, v2, v4);
+            fillTopFlatTriangle(v2, v4, v3);
+        }
+
+        function abs(x) { return Math.abs(x); }
+        function sgn(x, d) { return  x > 0 ? d : (x < 0 ? -d : 0); }
+
+        function drawXLine(y, x2, x3) {
+            let x = x2;
+            const adx = abs(x3 - x2);
+            const sdx = sgn(x3 - x2, 1);
+        
+            // if(adx === 0) {// 書き込みが一点のケース
+            //     pixels.push({ x, y, });
+            //     return;
+            // }
+        
+            for(let pos = 0; pos <= adx; x += sdx, pos++) {
+                //pixels.push({ x, y, });
+                func(x, y);
+            }
+        }
+
+        function sortVerticesAscendingByY(points) {
+            let v1 = points[0], v2 = points[1], v3 = points[2];
+            // y1 < y2 < y3 となるように並べ直す
+            if(v1.y > v2.y) {
+                [v1, v2] = [v2, v1]; 
+            }
+            if(v1.y > v3.y) {
+                [v1, v3] = [v3, v1]; 
+            }
+            if(v2.y > v3.y) {
+                [v2, v3] = [v3, v2];
+            }
+            return [v1, v2, v3];
+        }        
+
+        function fillBottomFlatTriangle(v1, v2, v3) {
+            const invslope1 = (v2.x - v1.x) / (v2.y - v1.y);
+            const invslope2 = (v3.x - v1.x) / (v3.y - v1.y);
+
+            let curx1 = v1.x;
+            let curx2 = v1.x;
+
+            for(let scanlineY = Math.trunc(v1.y); scanlineY <= Math.trunc(v2.y); scanlineY += 1) {
+                drawXLine(scanlineY, Math.trunc(curx1), Math.trunc(curx2));
+                curx1 += invslope1;
+                curx2 += invslope2;
+            }
+        }
+
+        function fillTopFlatTriangle(v1, v2, v3) {
+            const invslope1 = (v3.x - v1.x) / (v3.y - v1.y);
+            const invslope2 = (v3.x - v2.x) / (v3.y - v2.y);
+
+            let curx1 = v3.x;
+            let curx2 = v3.x;
+
+            for(let scanlineY = Math.trunc(v3.y); scanlineY >= Math.trunc(v1.y); scanlineY -= 1) {
+                drawXLine(scanlineY, Math.trunc(curx1), Math.trunc(curx2));
+                curx1 -= invslope1;
+                curx2 -= invslope2;
+            }
+        }
     }
 }
