@@ -326,6 +326,11 @@ class Graphics {
         }
     }
 
+    /**
+     * 四角形を塗りつぶす(座標は最初に整数に丸めます)
+     * @param {Array<{ x: number, y: number}>} argPoints 四角形の点 
+     * @returns {Array<{ x: number, y: number}>} 塗りつぶされた点
+     */
     static drawSquare(argPoints) {
         const map = {};
         const pixels = [];
@@ -364,6 +369,13 @@ class Graphics {
         return pixels;        
     }
 
+    /**
+     * ブレゼンハムのアルゴリズムで線分を描画する
+     * 参考URL: https://ja.wikipedia.org/wiki/ブレゼンハムのアルゴリズム
+     * @param {Array<{ x: number, y: number}>} points 線分の端点 
+     * @param {Function} func コールバック関数 
+     * @returns {void} なし
+     */
     static drawLineBresenham(points, func) {
         let x0 = points[0].x, y0 = points[0].y, x1 = points[1].x, y1 = points[1].y;
         const dx = Math.abs(x1 - x0);
@@ -397,6 +409,13 @@ class Graphics {
         }
     }
 
+    /**
+     * 三角形をを描画する
+     * 参考URL: http://www.sunshine2k.de/coding/java/TriangleRasterization/TriangleRasterization.html
+     * @param {Array<{ x: number, y: number}>} points 三角形の端点 
+     * @param {Function} func コールバック関数 
+     * @returns {void} なし
+     */
     static drawTriangle(points, func) {
         const pixels = [];
         /* at first sort the three vertices by y-coordinate ascending so v1 is the topmost vertice */
