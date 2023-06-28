@@ -150,12 +150,10 @@ class Graphics {
     static getImageColor(imageData, xRate, yRate, startXRate = 0, endXRate = 1) {
         const width = imageData.width;
         const height = imageData.height;
-        let x = startXRate + (endXRate - startXRate) * xRate * (width - 1);
-        if(x < 0) { x = 0; }
-        if(x > width - 1) { x = width - 1; }
+        let x = (startXRate + (endXRate - startXRate) * xRate) * (width - 1);
+        x = Scalar.limit(x, 0, width - 1);
         let y = yRate * (height - 1);
-        if(y < 0) { y = 0; }
-        if(y > height - 1) { y = height - 1; }
+        y = Scalar.limit(y, 0, height - 1);
         // bilenear 周辺4pxの画素の色を取得する
         const xMin = Math.floor(x);
         const xMax = Math.ceil(x);
@@ -172,7 +170,7 @@ class Graphics {
         const xMaxYMaxColor = getColor(imageData, xMax, yMax);
         const xMaxColor = linearInterpolation(xMaxYMinColor, xMaxYMaxColor, yt);
 
-        let color = linearInterpolation(xMinColor, xMaxColor, xt);
+        const color = linearInterpolation(xMinColor, xMaxColor, xt);
         color.r = Scalar.limit(Math.round(color.r), 0, 255);
         color.g = Scalar.limit(Math.round(color.g), 0, 255);
         color.b = Scalar.limit(Math.round(color.b), 0, 255);
@@ -235,6 +233,9 @@ class Graphics {
         return true;    // equal
     }
 
+    // 削除予定
+    // https://qiita.com/minosys/items/5375e6ffa049226943b0
+    // Cをjsに移行してみたがうまく動かない。削除してもよいと思う。現状使っていない
     static drawTriangleQiita(pos1, pos2, pos3) {
         const pixels = [];
         let x1 = Math.trunc(pos1.x), y1 = Math.trunc(pos1.y),
@@ -358,7 +359,7 @@ class Graphics {
         points.forEach((p, i) => {
             const iNext = (i + 1) % points.length;
             const pNext = points[iNext];
-            Graphics.drawLineBresenham([p, pNext], (x, y) => {
+            Graphics.drawLineByBresenham([p, pNext], (x, y) => {
                 const key = `${x}-${y}`;
                 if(typeof map[key] === 'undefined') {
                     map[key] = 0;
@@ -376,7 +377,7 @@ class Graphics {
      * @param {Function} func コールバック関数 
      * @returns {void} なし
      */
-    static drawLineBresenham(points, func) {
+    static drawLineByBresenham(points, func) {
         let x0 = points[0].x, y0 = points[0].y, x1 = points[1].x, y1 = points[1].y;
         const dx = Math.abs(x1 - x0);
         const dy = Math.abs(y1 - y0);
@@ -428,7 +429,7 @@ class Graphics {
             fillTopFlatTriangle(v1, v2, v3);
         } else {/* general case - split the triangle in a topflat and bottom-flat one */
             const v4 = {
-                x: Math.trunc((v1.x + ((v2.y - v1.y) / (v3.y - v1.y)) * (v3.x - v1.x))), 
+                x: Math.round((v1.x + ((v2.y - v1.y) / (v3.y - v1.y)) * (v3.x - v1.x))), 
                 y: v2.y,
             };
             fillBottomFlatTriangle(v1, v2, v4);
@@ -443,13 +444,7 @@ class Graphics {
             const adx = abs(x3 - x2);
             const sdx = sgn(x3 - x2, 1);
         
-            // if(adx === 0) {// 書き込みが一点のケース
-            //     pixels.push({ x, y, });
-            //     return;
-            // }
-        
             for(let pos = 0; pos <= adx; x += sdx, pos++) {
-                //pixels.push({ x, y, });
                 func(x, y);
             }
         }
@@ -476,8 +471,8 @@ class Graphics {
             let curx1 = v1.x;
             let curx2 = v1.x;
 
-            for(let scanlineY = Math.trunc(v1.y); scanlineY <= Math.trunc(v2.y); scanlineY += 1) {
-                drawXLine(scanlineY, Math.trunc(curx1), Math.trunc(curx2));
+            for(let scanlineY = Math.floor(v1.y); scanlineY <= Math.ceil(v2.y); scanlineY += 1) {
+                drawXLine(scanlineY, Math.round(curx1), Math.round(curx2));
                 curx1 += invslope1;
                 curx2 += invslope2;
             }
@@ -490,8 +485,8 @@ class Graphics {
             let curx1 = v3.x;
             let curx2 = v3.x;
 
-            for(let scanlineY = Math.trunc(v3.y); scanlineY >= Math.trunc(v1.y); scanlineY -= 1) {
-                drawXLine(scanlineY, Math.trunc(curx1), Math.trunc(curx2));
+            for(let scanlineY = Math.ceil(v3.y); scanlineY >= Math.floor(v1.y); scanlineY -= 1) {
+                drawXLine(scanlineY, Math.round(curx1), Math.round(curx2));
                 curx1 -= invslope1;
                 curx2 -= invslope2;
             }
