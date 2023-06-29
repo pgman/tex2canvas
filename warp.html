@@ -85,26 +85,43 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // #debug-button click
     document.querySelector('#debug-button').addEventListener('click', e => {
-        const bezier0 = [
+        const points0 = [
             { x: 50,  y: 200, },
             { x: 100, y: 100, },
             { x: 150, y: 100, },
             { x: 200, y: 200, },
         ];
-        const bezier1 = [
+        const length0 = CubicBezierCurve.length(points0);
+        const points1 = [
             { x: 200, y: 200, },
             { x: 250, y: 300, },
             { x: 300, y: 300, },
             { x: 350, y: 200, },
         ];
-        const bezier2 = [
+        const length1 = CubicBezierCurve.length(points1);
+        const points2 = [
             { x: 400, y: 100, },
             { x: 450, y: 100, },
             { x: 500, y: 100, },
             { x: 550, y: 100, },
         ];
-        const path0 = [ bezier0, bezier1, bezier2 ];
-        const path1 = [ bezier2 ];
+        const length2 = CubicBezierCurve.length(points2);
+        const path0 = {
+            curves: [
+                { type: Define.TYPE_CUBIC_BEZIER_CURVES, points: points0, length: length0, },
+                { type: Define.TYPE_CUBIC_BEZIER_CURVES, points: points1, length: length1, },
+                { type: Define.TYPE_CUBIC_BEZIER_CURVES, points: points2, length: length2, },
+            ], 
+            imageData: null,
+            segments: [],
+        };
+        const path1 = {
+            curves: [
+                { type: Define.TYPE_CUBIC_BEZIER_CURVES, points: points2, length: length2, },
+            ], 
+            imageData: null,
+            segments: [],
+        };;
         const stroke0 = [ path0, path1 ];
         const newStrokeArray = dividePath([ stroke0 ]);
         const lengthArray = getPathLength(newStrokeArray);
@@ -164,9 +181,8 @@ stroke は path の配列である: 文字の1画に相当する
 stroke = [ path, path, ... , ];
 
 path は曲線群である: 滑らかに接続されたとみなした曲線群である。なので、1画が全て滑らかであれば、stroke は1つの path からなる
-path = { curves: [curve, curve, ...], length: 123.0993544, imageData: ..., segments: []};
+path = { curves: [curve, curve, ...], imageData: ..., segments: []};
 path.curves: 曲線群
-path.length: 曲線群の長さ
 path.imageData: 曲線を描く画像のデータ(アプリ側で格納する必要がある)
 path.segments: 描画に必要な情報
 
@@ -181,7 +197,7 @@ point = { x: 124.23983, y: 6.356, }
 
 [使い方]
 1: KVGやAVGから strokeArray を作成する
-   path.curves, path.length, curve.type, curve.points, curve.length は格納しておく
+   path.curves, curve.type, curve.points, curve.length は格納しておく
    path.imageData === null, path.segments === [] としておく
 2: dividePathメソッドを呼ぶ。
    strokeのpathが滑らかでない箇所で分割される -> 結果 stroke.length が大きくなる

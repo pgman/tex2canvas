@@ -283,7 +283,7 @@ class SvgParser {
      */
     static parseKvg(svg) {
         const parser = new DOMParser();
-        const doc = parser.parseFromString(svg, "text/xml");
+        const doc = parser.parseFromString(svg, 'text/xml');
             
         // array like object を array に変換
         const pathArray = Array.from(doc.children[0].getElementsByTagName('path'));
@@ -291,27 +291,13 @@ class SvgParser {
             throw 'path is not found.'
         }
 
-        // id と c を取得する
-        // let id = pathArray[0].parentElement.getAttribute('id');
-        // const splits = id.split(':');
-        // if(splits.length !== 2) {
-        //     throw 'id is invalid.';
-        // }
-        // let c = splits[1];
-        // if(c.includes('-') && pathArray[0].parentElement.parentElement) {// 1回だけさかのぼってみる
-        //     id = pathArray[0].parentElement.parentElement.getAttribute('id');
-        //     const splits = id.split(':');
-        //     if(splits.length !== 2) {
-        //         throw 'id is invalid.';
-        //     }
-        //     c = splits[1];
-        // }        
-
+        // get id
         let id = doc.children[0].children[0].children[0].id;
         const splits = id.split(':');
         if(splits.length !== 2) {
             throw 'id is invalid.';
         }
+        // get c
         let c = splits[1];
 
         // <path>でループ
