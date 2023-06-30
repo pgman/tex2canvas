@@ -34,8 +34,8 @@ class MinMax {
     }
 
     /**
-     * 初期化する
-     * @returns {void} なし
+     * initialize
+     * @returns {void} nothing
      */
     static init() {
         MinMax.minX = Number.MAX_VALUE;
@@ -45,9 +45,9 @@ class MinMax {
     }
 
     /**
-     * 点を登録する
-     * @param {{ x: number, y: number, }} 点
-     * @returns {void} なし
+     * register point(compare point)
+     * @param {{ x: number, y: number, }} p point
+     * @returns {void} nothing
      */
     static regist(p) {
         if(p.x < MinMax.minX) { MinMax.minX = p.x; }
@@ -58,7 +58,7 @@ class MinMax {
 
     /**
      * 小数点を切り捨てる(min を切り捨てる。max は切り上げる)
-     * @returns {void} なし
+     * @returns {void} nothing
      */
     static truncate() {
         MinMax.minX = Math.floor(MinMax.minX);

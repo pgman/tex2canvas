@@ -18,7 +18,7 @@ function bezierImageOld(ctx, img, points, startLineWidth, endLineWidth, startXRa
     const imageData = GraphicsApi.getImageDataByImage(img);
 
     // get whole length
-    const wholeLength = CubicBezierCurve.length(points, 1000);
+    const wholeLength = CubicBezierCurve.getLength(points, 1000);
     
     ctx.reset();
     ctx.fillStyle = 'black';
@@ -109,7 +109,7 @@ function bezierImageOld2(ctx, img, points, startLineWidth, endLineWidth, startXR
     const vectors = CubicBezierCurve.getVectors(points);
 
     // get length of cubic bezie curve
-    const wholeLength = CubicBezierCurve.length(points, 1000); 
+    const wholeLength = CubicBezierCurve.getLength(points, 1000); 
 
     let curLength = 0;
     let preT = -1;

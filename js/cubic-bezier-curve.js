@@ -3,8 +3,8 @@ class CubicBezierCurve {
 
     /**
      * 線分から3次ベジェ曲線への変換
-     * @param {Array<{x: number, y: number, }>} points 線分の始点と終点
-     * @returns {Array<{x: number, y: number, }>} 3次ベジェ曲線の制御点
+     * @param {Array<{ x: number, y: number, }>} points 線分の始点と終点
+     * @returns {Array<{ x: number, y: number, }>} 3次ベジェ曲線の制御点
      */
     static fromLineSegment(points) {
         const inter = t => Utility.linearInterpolation(points[0], points[1], t);
@@ -13,8 +13,8 @@ class CubicBezierCurve {
 
     /**
      * 2次ベジェ曲線から3次ベジェ曲線への変換
-     * @param {Array<{x: number, y: number, }>} points 2次ベジェ曲線の制御点
-     * @returns {Array<{x: number, y: number, }>} 3次ベジェ曲線の制御点
+     * @param {Array<{ x: number, y: number, }>} points 2次ベジェ曲線の制御点
+     * @returns {Array<{ x: number, y: number, }>} 3次ベジェ曲線の制御点
      */
     static fromQuadratic(points) {
         return [ points[0], points[1], points[1], points[2] ];
@@ -22,9 +22,9 @@ class CubicBezierCurve {
 
     /**
      * パラメータから3次ベジェ曲線の点の座標を得る
-     * @param {Array<{x: number, y: number, }>} points 3次ベジェ曲線の制御点
+     * @param {Array<{ x: number, y: number, }>} points 3次ベジェ曲線の制御点
      * @param {number} t パラメータ(0-1)
-     * @returns {{x: number, y: number, }} 点の座標
+     * @returns {{ x: number, y: number, }} 点の座標
      */
     static pointByT(points, t) {
         return {
@@ -34,7 +34,7 @@ class CubicBezierCurve {
 
         /**
          * 1次元の3次ベジェ曲線の点の座標を得る
-         * @param {Array<{x: number, y: number, }>} points 2次元の3次ベジェ曲線の制御点
+         * @param {Array<{ x: number, y: number, }>} points 2次元の3次ベジェ曲線の制御点
          * @param {number} t パラメータ(0-1)
          * @param {string} prop プロパティ名
          * @returns {number} 1次元の点の座標
@@ -77,7 +77,7 @@ class CubicBezierCurve {
 
     /**
      * ベジェ曲線の2階微分を求める
-     * @param {Array<{x: number, y: number, }>} points 2次元の3次ベジェ曲線の制御点
+     * @param {Array<{ x: number, y: number, }>} points 2次元の3次ベジェ曲線の制御点
      * @param {number} t パラメータ
      * @returns {{ x: number, y: number, }} 2階微分
      */
@@ -104,7 +104,7 @@ class CubicBezierCurve {
 
     /**
      * ベジェ曲線の曲率を求める
-     * @param {Array<{x: number, y: number, }>} points 2次元の3次ベジェ曲線の制御点
+     * @param {Array<{ x: number, y: number, }>} points 2次元の3次ベジェ曲線の制御点
      * @param {number} t パラメータ
      * @param {number} tol 1階微分の長さの2乗を0とみなす閾値 
      * @returns {number} 曲率
@@ -121,8 +121,8 @@ class CubicBezierCurve {
 
     /**
      * 制御点からベクトルを求める
-     * @param {Array<{ x: number, y: number }>} points 制御点の配列(length === 4)
-     * @returns {Array<{ x: number, y: number }>} ベクトルの配列(length === 3)
+     * @param {Array<{ x: number, y: number, }>} points 制御点の配列(length === 4)
+     * @returns {Array<{ x: number, y: number, }>} ベクトルの配列(length === 3)
      */
     static getVectors(points) {
         const vectors = [];
@@ -137,11 +137,11 @@ class CubicBezierCurve {
 
     /**
      * ベジェ曲線の長さを取得する
-     * @param {Array<{ x: number, y: number }>} points 制御点の配列
+     * @param {Array<{ x: number, y: number, }>} points 制御点の配列
      * @param {number} div 分割数
      * @returns {number} 長さ
      */
-    static length(points, div = 1000) {
+    static getLength(points, div = 1000) {
         let length = 0;
         for(let i = 0; i < div; i += 1) {
             const t = i / div;
@@ -155,10 +155,24 @@ class CubicBezierCurve {
     } 
 
     /**
+     * ベジェ曲線の長さを取得する
+     * @param {Array<{ x: number, y: number, }>} points 制御点の配列
+     * @returns {{ x: number, y: number, width: number, height: number, }} 矩形
+     */
+    static getRect(points) {
+        MinMax.save();
+        MinMax.init();
+        points.forEach(point => { MinMax.regist(point); });
+        const rect = MinMax.getRect();
+        MinMax.restore();
+        return rect;
+    }
+
+    /**
      * 2つの3次ベジェ曲線が滑らかに接続されているか調べる
      * 位置ベクトルと接線ベクトルが一致すれば、滑らかと判定する
-     * @param {Array<{ x: number, y: number }>} points0 
-     * @param {Array<{ x: number, y: number }>} points1 
+     * @param {Array<{ x: number, y: number, }>} points0 
+     * @param {Array<{ x: number, y: number, }>} points1 
      * @param {number} epsilon イプシロン(デフォルト値は 1e-5。差の絶対値がこの値より小さいなら等しいと判定する)
      * @return {boolean} スムーズに接続されているか true: スムーズに接続されている, false: スムーズに接続されていない
      */
@@ -179,8 +193,8 @@ class CubicBezierCurve {
     /**
      * 2つの3次ベジェ曲線が接続されているか調べる
      * 位置ベクトルが一致すれば、接続されていると判定する
-     * @param {Array<{ x: number, y: number }>} points0 
-     * @param {Array<{ x: number, y: number }>} points1 
+     * @param {Array<{ x: number, y: number, }>} points0 
+     * @param {Array<{ x: number, y: number, }>} points1 
      * @param {number} epsilon イプシロン(デフォルト値は 1e-5。差の絶対値がこの値より小さいなら等しいと判定する)
      * @return {boolean} 接続されているか true: 接続されている, false: 接続されていない
      */
@@ -192,6 +206,5 @@ class CubicBezierCurve {
         // 位置ベクトルが等しいか
         const equalPoint = Vector.equals(firstPoint, secondPoint, tol);
         return equalPoint;
-    }
-    
+    }    
 }

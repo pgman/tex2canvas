@@ -1,5 +1,12 @@
 class Utility {
     /**
+     * deep copy
+     * @param {any} obj any object
+     * @returns {any} copied object
+     */
+    static deepCopy(obj) { return JSON.parse(JSON.stringify(obj)); }
+
+    /**
      * 2点間の距離を求める
      * @param {{ x:number, y: number }} pos0 線分の始点
      * @param {{ x:number, y: number }} pos1 線分の終点
