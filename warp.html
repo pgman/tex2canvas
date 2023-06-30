@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <script src="js/define.js"></script>
+<script src="js/svg-parser.js"></script>
+<script src="js/kanjivg.js"></script>
 <script src="js/curve.js"></script>
 <script src="js/path.js"></script>
 <script src="js/stroke.js"></script>
@@ -45,7 +47,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         { x: 200, y: 400, },
     ];
 
-    const lineWidth = 10;
+    const lineWidth = 5;
     const step = 1;
 
     const img = await Utility.loadImage('chalk-lines/chalk-line-1(0-0-3768-165).png'); 
@@ -126,6 +128,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.querySelector('#done-button').click();
     });
 
+    // 05b97
+    // #load-button
+    document.querySelector('#load-button').addEventListener('click', async e => {        
+        await KanjiVG.loadFile('05b97');
+    });
+
 });
 
 /*
@@ -177,6 +185,7 @@ point = { x: 124.23983, y: 6.356, }
     &nbsp;
     <button id="insert-both-button">insert both</button>
     <button id="transform-button">transform</button>
+    <button id="load-button">load</button>
     &nbsp;
     <span id="time-span"></span>
     <canvas id="back-canvas" width="800" height="800"></canvas>
