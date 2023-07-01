@@ -8,9 +8,9 @@ class Stroke {
         if(!Array.isArray(paths)) {
             throw 'invalid parameter.';
         }
-        if(paths.length === 0) {
-            throw 'invalid paths.length.';
-        }
+        // if(paths.length === 0) {
+        //     throw 'invalid paths.length.';
+        // }
         this.paths = paths;
     }
 

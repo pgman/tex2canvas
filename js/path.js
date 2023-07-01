@@ -8,9 +8,9 @@ class Path {
         if(!Array.isArray(curves)) {
             throw 'invalid parameter.';
         }
-        if(curves.length === 0) {
-            throw 'invalid curves.length.';
-        }
+        // if(curves.length === 0) {
+        //     throw 'invalid curves.length.';
+        // }
         this.curves = curves;
         this.imageData = null;
         this.segments = [];

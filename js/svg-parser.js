@@ -11,7 +11,8 @@ class SvgParser {
         // 'M213 578L200 573Q186 568 160 563' を
         // 'M213 578', 'L200 573', 'Q186 568 160 563' のように分解する
         const separated = separate(d);
-        const datas = [];
+        const paths = [];
+        let path = null;
         const curPos = { x: 0, y: 0 };
         let preValues = null;
         separated.forEach(elm => {
@@ -20,7 +21,8 @@ class SvgParser {
             let values = getValues(elm.replaceAll('-',',-'));
             
             if(type === 'M' || type === 'm') {
-                datas.push([]);
+                path = new Path([]);
+                paths.push(path);                
                 preValues = null;
             } else if(type === 'L' || type === 'H' || type === 'V') {// L x y, H x, V y
                 if(type === 'H') {// H x
@@ -28,7 +30,7 @@ class SvgParser {
                 } else if(type === 'V') {// V y
                     values.unshift(curPos.x);
                 }
-                datas[datas.length - 1].push(new Curve([
+                path.curves.push(new Curve([
                     { x: curPos.x, y: curPos.y, },
                     { x: values[0], y: values[1], },
                 ]));
@@ -38,19 +40,19 @@ class SvgParser {
                 } else if(type === 'v') {// v dy
                     values.unshift(0);
                 }
-                datas[datas.length - 1].push(new Curve([
+                path.curves.push(new Curve([
                     { x: curPos.x, y: curPos.y, },
                     { x: curPos.x + values[0], y: curPos.y + values[1], },
                 ]));
             } else if(type === 'C') {// C x1 y1, x2 y2, x y
-                datas[datas.length - 1].push(new Curve([
+                path.curves.push(new Curve([
                     { x: curPos.x, y: curPos.y, },
                     { x: values[0], y: values[1], },
                     { x: values[2], y: values[3], },
                     { x: values[4], y: values[5], },
                 ]));
             } else if(type === 'c') {// c dx1 dy1, dx2 dy2, dx dy
-                datas[datas.length - 1].push(new Curve([
+                path.curves.push(new Curve([
                     { x: curPos.x, y: curPos.y, },
                     { x: curPos.x + values[0], y: curPos.y + values[1], },
                     { x: curPos.x + values[2], y: curPos.y + values[3], },
@@ -72,7 +74,7 @@ class SvgParser {
                 const y1 = preValues[preValues.length - 1] + dy;
                 values.unshift(y1);
                 values.unshift(x1);
-                datas[datas.length - 1].push(new Curve([
+                path.curves.push(new Curve([
                     { x: curPos.x, y: curPos.y, },
                     { x: values[0], y: values[1], },
                     { x: values[2], y: values[3], },
@@ -94,20 +96,20 @@ class SvgParser {
                 const y1 = dy;
                 values.unshift(y1);
                 values.unshift(x1);
-                datas[datas.length - 1].push(new Curve([
+                path.curves.push(new Curve([
                     { x: curPos.x, y: curPos.y, },
                     { x: curPos.x + values[0], y: curPos.y + values[1], },
                     { x: curPos.x + values[2], y: curPos.y + values[3], },
                     { x: curPos.x + values[4], y: curPos.y + values[5], },
                 ]));
             } else if(type === 'Q') {// Q x1 y1, x y
-                datas[datas.length - 1].push(new Curve([
+                path.curves.push(new Curve([
                     { x: curPos.x, y: curPos.y, },
                     { x: values[0], y: values[1], },
                     { x: values[2], y: values[3], },
                 ]));
             } else if(type === 'q') {// q dx1 dy1, dx dy
-                datas[datas.length - 1].push(new Curve([
+                path.curves.push(new Curve([
                     { x: curPos.x, y: curPos.y, },
                     { x: curPos.x + values[0], y: curPos.y + values[1], },
                     { x: curPos.x + values[2], y: curPos.y + values[3], },
@@ -128,7 +130,7 @@ class SvgParser {
                 const y1 = preValues[preValues.length - 1] + dy;
                 values.unshift(y1);
                 values.unshift(x1);
-                datas[datas.length - 1].push(new Curve([
+                path.curves.push(new Curve([
                     { x: curPos.x, y: curPos.y, },
                     { x: values[0], y: values[1], },
                     { x: values[2], y: values[3], },
@@ -160,7 +162,7 @@ class SvgParser {
             preValues = JSON.parse(JSON.stringify(values));
         });
 
-        return datas;
+        return new Stroke(paths);
 
         function getValues(str) {
             const splits = str.substring(1).split(/,| /).filter(elm => elm.length !== 0);

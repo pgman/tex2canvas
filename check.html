@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function changeImageSelect(path) {
         // get file path
-        const filePath = path ? path : document.querySelector('#image-file-select').value;
+        const filePath = typeof path === 'string' ? path : document.querySelector('#image-file-select').value;
         // load image
         const img = await Utility.loadImage(`chalk-lines\\${filePath}`);
         // width is 500px(fixed)

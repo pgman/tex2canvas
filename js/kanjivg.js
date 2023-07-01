@@ -49,12 +49,12 @@ class KanjiVG {
         }
 
         // loop of <path>
-        const paths = [];
+        const strokes = [];
         for(let i = 0; i < pathTags.length; i += 1) {
             const d = pathTags[i].getAttribute('d');
-            const curvesArray = SvgParser.parsePathD(d);
-            paths.push({ curvesArray, });
+            const stroke = SvgParser.parsePathD(d);
+            strokes.push(stroke);
         }   
-        return paths;
+        return new Figure(strokes);
     }
 }

@@ -26,28 +26,37 @@ document.addEventListener('DOMContentLoaded', async () => {
     backCtx.fillStyle = '#000000';
     backCtx.fillRect(0, 0, backCtx.canvas.width, backCtx.canvas.height);
 
+    function drawLine(ctx, x0, y0, x1, y1) {
+        ctx.beginPath();
+        ctx.moveTo(x0, y0);
+        ctx.lineTo(x1, y1);
+        ctx.stroke();
+    }
+
     // #triangle-button click
     document.querySelector('#triangle-button').addEventListener('click', e => {       
 
         const canvas = document.querySelector('#my-canvas');
         const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        ctx.strokeStyle = 'rgba(255,255,255,1)';
+        drawLine(ctx, 1, 1, 5, 5);
         const imageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
         const data = imageData.data;
 
-        const points = [
-            { x: 1, y: 1, }, 
-            { x: 10, y: 1, }, 
-            { x: 14, y: 12, },
-            { x: 1, y: 12, }
-        ];
-        const pixels = Graphics.drawSquare(points);
+        // const points = [
+        //     { x: 1, y: 1, }, 
+        //     { x: 10, y: 1, }, 
+        //     { x: 14, y: 12, },
+        //     { x: 1, y: 12, }
+        // ];
+        // const pixels = Graphics.drawSquare(points);
 
-        pixels.forEach(p => {
-            const i = p.x + p.y * ctx.canvas.width;
-            for(let j = 0; j < 4; j += 1) {
-                data[i * 4 + j] = 255;
-            }
-        });
+        // pixels.forEach(p => {
+        //     const i = p.x + p.y * ctx.canvas.width;
+        //     for(let j = 0; j < 4; j += 1) {
+        //         data[i * 4 + j] = 255;
+        //     }
+        // });
         
         // setPixel(imageData, ret.x1, ret.y1, [255, 0, 0, 255]);
         // setPixel(imageData, ret.x2, ret.y2, [255, 0, 0, 255]);
@@ -56,7 +65,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         //     setPixel(imageData, ret.xa, ret.y2, [0, 255, 0, 255]);
         // }
 
-        ctx.putImageData(imageData, 0, 0);        
+        //ctx.putImageData(imageData, 0, 0);        
     });
 });
 
