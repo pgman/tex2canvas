@@ -21,12 +21,6 @@
 <script src="js/graphics.js"></script>
 <script src="js/graphics-api.js"></script>
 <script src="js/view.js"></script>
-<script
-  src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.2.0/chart.min.js"
-  integrity="sha512-VMsZqo0ar06BMtg0tPsdgRADvl0kDHpTbugCBBrL55KmucH6hP9zWdLIWY//OTfMnzz6xWQRxQqsUFefwHuHyg=="
-  crossorigin="anonymous"></script>
-<script
-  src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@next/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 </head>
 <title>bezier image</title>
 <script>
@@ -238,7 +232,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         ctx.reset();
 
         const kvgCodes = await loadKvgCodes();
-        const equation = '\\begin{eqnarray}1234567890\\end{eqnarray}';
+        const equation = '\\begin{eqnarray}1234567890あ\\end{eqnarray}';
         const display = true;
         // get svg text
         const svgText = MathJaxSvg.getMathJaxSvgText(equation, display);  
@@ -255,7 +249,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // draw svg text
         const svgTextCtx = GraphicsApi.getContext('#svg-text-canvas');
         svgTextCtx.reset();
-        await View.drawSvgText(svgTextCtx, svgText, { translate, scale, color: [255, 255, 255] });
+        //await View.drawSvgText(svgTextCtx, svgText, { translate, scale, color: [255, 255, 255] });
         
         // parse
         const mvgData = MathJaxSvg.parseMathJaxSvg(svgText);
@@ -534,7 +528,7 @@ async function loadKvgFiles(mvgData, kvgCodes) {
         const code = Utility.getCodeByChar(shape.text);
         try {
             if(kvgCodes.indexOf(code) >= 0) {
-                const ret = await KanjiVG.loadFile(code);
+                const figure = await KanjiVG.loadFile(code);
                 kvgFigure[code] = figure;
                 console.log(`KVG ${code} is loaded.`);
             } else {
