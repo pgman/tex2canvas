@@ -15,10 +15,10 @@ class Curve {
             this.points = Utility.deepCopy(points);
         } else if(points.length === 3) {// quadratic bezier curve
             this.src = Define.QUADRATIC_BEZIER_CURVE;
-            this.points = CubicBezierCurve.fromQuadratic(points);
+            this.points = CubicBezierCurve.fromQuadratic(Utility.deepCopy(points));
         } else if(points.length === 2) {// line segment
             this.src = Define.LINE_SEGMENT;
-            this.points = CubicBezierCurve.fromLineSegment(points);
+            this.points = CubicBezierCurve.fromLineSegment(Utility.deepCopy(points));
         } else {
             throw 'invalid paramter.';
         }
@@ -378,6 +378,28 @@ class Curve {
         this.points = this.points.map(p => Matrix.multiplyVec(m, p));
         this.length = CubicBezierCurve.getLength(this.points);
         this.rect = CubicBezierCurve.getRect(this.points);
+    }
+
+    raw() {
+        let points = [];
+        if(this.type === Define.CUBIC_BEZIER_CURVE) {
+            if(this.src === Define.CUBIC_BEZIER_CURVE) {
+                points = this.points;
+            } else if(this.src === Define.QUADRATIC_BEZIER_CURVE) {
+                points = [this.points[0], this.points[1], this.points[3]];
+            } else if(this.src === Define.LINE_SEGMENT) {
+                points = [this.points[0], this.points[3]];
+            }
+        }
+        return { src: this.src, points, };
+    }
+
+    /**
+     * deep copy
+     * @returns {Curve} curve
+     */
+    copy() {
+        return new Curve(Utility.deepCopy(this.points));
     }
 
     stringify() {

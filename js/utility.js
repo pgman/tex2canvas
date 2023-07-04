@@ -7,16 +7,6 @@ class Utility {
     static deepCopy(obj) { return JSON.parse(JSON.stringify(obj)); }
 
     /**
-     * 2点間の距離を求める
-     * @param {{ x:number, y: number }} pos0 線分の始点
-     * @param {{ x:number, y: number }} pos1 線分の終点
-     * @return {number} 2点間の距離を返す
-     */
-    static distance(pos0, pos1) {
-       return Math.sqrt(Math.pow(pos0.x - pos1.x, 2) + Math.pow(pos0.y - pos1.y, 2));
-    }
-
-    /**
 	 * 線形補間する
 	 * @param {{ x:number, y: number }} pos0 線分の始点
 	 * @param {{ x:number, y: number }} pos1 線分の終点
@@ -251,6 +241,7 @@ class Utility {
 	    return new Promise(function(resolve, reject) {
 			const image = new Image();
 			image.onload = () => { resolve(image); };
+            image.onerror = () => { reject(null); };
 			image.src = dataUrl;
 	    });
 	}

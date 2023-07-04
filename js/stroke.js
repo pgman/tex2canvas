@@ -29,7 +29,7 @@ class Stroke {
     get rect() {
         MinMax.save();
         MinMax.init();
-        this.paths(path => {
+        this.paths.forEach(path => {
             const rect = path.rect;
             MinMax.regist({ x: rect.x, y: rect.y, });
             MinMax.regist({ x: rect.x + rect.width, y: rect.y + rect.height, });

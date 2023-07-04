@@ -1,6 +1,16 @@
 // APIを使用する画像処理
 class GraphicsApi {
     /**
+     * get context
+     * @param {string} selector selector of canvas 
+     * @returns {CanvasRenderingContext2D} context
+     */
+    static getContext(selector) {
+        const canvas = document.querySelector(selector);
+        return canvas.getContext('2d', { willReadFrequently: true });
+    }
+    
+    /**
      * イメージデータを作成する(canvasを経由して作成する)
      * @param {number} width 幅
      * @param {number} height 高さ
@@ -28,6 +38,15 @@ class GraphicsApi {
             0, 0, trimmed.width, trimmed.height);
         return trimmed;
     }   
+
+    /**
+     * get image data
+     * @param {CanvasRenderingContext2D} ctx context 
+     * @returns {ImageData} image data
+     */
+    static getImageData(ctx) {
+        return ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
+    }
 
     /**
      * 画像からイメージデータを取得する

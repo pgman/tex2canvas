@@ -1,29 +1,5 @@
 class View {
     static init() {
-        Settings.createHtml('#settings-wrapper');
-        document.querySelector('#svg-checkbox').checked = Model.svgCheck;
-        document.querySelector('#textarea').value = Model.equation;
-
-        // draw back-canvas
-        const backCanvas = document.querySelector('#back-canvas');
-        const backCtx = backCanvas.getContext('2d', { willReadFrequently: true });
-        View.drawBackCanvas(backCtx);
-
-        // AVG checkbox
-        document.querySelector('#avg-check').checked = Model.avgCheck;
-        View.toggleElement(document.querySelector('#avg-canvas'), Model.avgCheck, 'inline');
-
-        // MVG checkbox
-        document.querySelector('#mvg-check').checked = Model.mvgCheck;
-        View.toggleElement(document.querySelector('#mvg-canvas'), Model.mvgCheck, 'inline');
-
-        // Hand checkbox
-        document.querySelector('#hand-check').checked = Model.handCheck;
-        View.toggleElement(document.querySelector('#hand-canvas'), Model.handCheck, 'inline');
-
-        // Chalk checkbox
-        document.querySelector('#chalk-check').checked = Model.chalkCheck;
-        View.toggleElement(document.querySelector('#chalk-canvas'), Model.chalkCheck, 'inline');
     }
     static drawPosArray(posArray) {
         
@@ -44,34 +20,12 @@ class View {
         eraseCtx.restore();
     }
 
-    static drawBackCanvas(ctx) {
-        ctx.reset();
-        ctx.drawImage(Model.blackBoardImg, 0, 0);
-    }
+    static drawPreData(ctx, data, options) {
+        const figure = data.figure;
 
-    static drawMVG() {
-        const [ mvgCanvas, mvgCtx ] = Utility.getCanvasContextById('mvg-canvas');
-        mvgCtx.reset();
-        View.drawSvg(mvgCtx, Model.mvgData, { fillChar: true, strokeRect: true, });
-        // const img = document.createElement('img');
-        // img.onload = e => { 
-        //     const mvgCanvas = document.querySelector('#mvg-canvas');
-        //     const mvgCtx = mvgCanvas.getContext('2d');
-        //     View.drawSvg(mvgCtx, Model.mvgData, { fillChar: true, strokeRect: true, });
-        // };
-        // img.src = 'data:image/svg+xml;base64,' + btoa('<?xml version="1.0" encoding="UTF-8" standalone="no" ?>\n' + Model.svgText); 
-    }
-
-    static drawDatas(datas) {
-        const canvas = document.getElementById('avg-canvas');
-        const ctx = canvas.getContext('2d', { willReadFrequently: true });
-        ctx.reset();
-        datas.forEach(data => { View.drawData(ctx, data); });
-    }
-
-    static drawData(ctx, data) {
-        const transMat = Matrix.translate(Settings.padding, Settings.padding);
-        const scaleMat = Matrix.scale(Settings.scale, Settings.scale);
+        // translate and scale
+        const transMat = options.translate ? Matrix.translate(options.translate.x, options.translate.y) : Matrix.identify();
+        const scaleMat = options.scale ? Matrix.scale(options.scale, options.scale) : Matrix.identify();
         let mat = Matrix.multiply(scaleMat, data.mat);
         mat = Matrix.multiply(transMat, mat);
     
@@ -79,85 +33,110 @@ class View {
     
         Matrix.setTransform(ctx, mat);
     
-        ctx.strokeStyle = 'white';
+        ctx.strokeStyle = options.color ? `rgb(${options.color[0]},${options.color[1]},${options.color[2]})` : 'white';
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
-        ctx.lineWidth = Settings.lineWidth / mat[0];
-        if(data.type === 'avg') {
-            ctx.beginPath();
-            data.curvesArray.forEach((curves, i) => {
-                curves.forEach((curve, j) => { 
-                    curve.path(ctx, j === 0); 
-                });
-            });
-            ctx.stroke();
-        } else {
-            data.kvg.paths.forEach(path => {                
+        ctx.lineWidth = options.lineWidth ? options.lineWidth / mat[0] : 5 / mat[0];
+
+        // stroke path
+        figure.strokes.forEach(stroke => {
+            stroke.paths.forEach(path => {
                 ctx.beginPath();
-                path.curvesArray.forEach((curves, i) => {
-                    curves.forEach((curve, j) => { 
-                        curve.path(ctx, j === 0); 
-                    });
+                path.curves.forEach((curve, i) => {
+                    curve.createPath(ctx, i === 0);
                 });
                 ctx.stroke();
             });
-        }
+        });
+
+        //if(options.strokeRect) {// stroke rect
+            const rect = figure.rect;
+            ctx.strokeStyle = 'green';
+            ctx.lineWidth = 4;
+            ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
+        //}
     
         ctx.restore();
     }
 
-    static drawSvg(ctx, mvgData, options) {
+    /**
+     * draw mvg data
+     * @param {CanvasRenderingContext2D} ctx context 
+     * @param {*} mvgData mvg data
+     * @param {*} options options
+     */
+    static drawMvgData(ctx, mvgData, options) {
         ctx.save();
-    
-        const transMat = Matrix.translate(Settings.padding, Settings.padding);
-        const scaleMat = Matrix.scale(Settings.scale, Settings.scale);
-    
-        // ビューポート変換行列
+        // translate and scale
+        const transMat = options.translate ? Matrix.translate(options.translate.x, options.translate.y) : Matrix.identify();
+        const scaleMat = options.scale ? Matrix.scale(options.scale, options.scale) : Matrix.identify();
         Matrix.setTransform(ctx, transMat);    
         Matrix.transform(ctx, scaleMat);
     
         mvgData.shapes.forEach(shape => {
             ctx.save();
-            // オブジェクト変換行列をかける
+            // matrix of object
             Matrix.transform(ctx, shape.mat);
     
-            // 描画するpathを取得する
-            const path = mvgData.paths.find(p => p.c === shape.c);
-            if(!path) { 
+            // get data to draw
+            const data = mvgData.datas.find(d => d.id === shape.xlinkHref.replace('#', ''));
+            if(!data) { 
                 ctx.restore();
-                return; 
-            } // continue;
+                return; // continue;
+            }
+            // cache
+            const figure = data.figure;
             
-            if(options.fillChar) {// 文字を塗る
-                ctx.fillStyle = options.fillStyle ? options.fillStyle : 'green';
-                ctx.lineWidth = 10;
+            if(options.fillFigure) {// fill figure
+                ctx.fillStyle = 'green';
                 ctx.beginPath();
-                path.curvesArray.forEach(curves => {
-                    curves.forEach((curve, i) => { 
-                        curve.path(ctx, i === 0); 
+                figure.strokes.forEach(stroke => {
+                    stroke.paths.forEach(path => {
+                        path.curves.forEach((curve, i) => {
+                            curve.createPath(ctx, i === 0);
+                        });
                     });
                 });
                 ctx.closePath();
                 ctx.fill();
             }       
             
-            if(options.strokeRect) {
-                const rect = path.rect;
+            if(options.strokeRect) {// stroke rect
+                const rect = figure.rect;
                 ctx.strokeStyle = 'red';
+                ctx.lineWidth = 10;
                 ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
-            }               
-    
+            }
             ctx.restore();                 
-        });
-    
+        });    
         ctx.restore();
     }
 
-    static toggleElement(elm, flag, showType = 'block') {
-        if(flag) {
-            elm.style.display = showType;
-        } else {
-            elm.style.display = 'none';
-        }
+    /**
+     * draw svg text
+     * @param {CanvasRenderingContext2D} ctx context
+     * @param {string} svgText
+     * @returns {Promise<void>} nothing
+     */
+    static drawSvgText(ctx, svgText, options) {
+        return new Promise((resolve, reject) => {
+            const img = document.createElement('img');
+            img.onload = e => { 
+                // translate and scale
+                const transMat = options.translate ? Matrix.translate(options.translate.x, options.translate.y) : Matrix.identify();
+                const scaleMat = options.scale ? Matrix.scale(options.scale, options.scale) : Matrix.identify();
+                Matrix.setTransform(ctx, transMat);    
+                Matrix.transform(ctx, scaleMat);
+                ctx.drawImage(img, 0, 0);
+                const imageData = GraphicsApi.getImageData(ctx);
+                if(options.color) {
+                    Graphics.replaceColor(imageData, [0, 0, 0], options.color);
+                }                
+                ctx.putImageData(imageData, 0, 0);
+                resolve();
+            };
+            img.onerror = () => { reject(); }
+            img.src = 'data:image/svg+xml;base64,' + btoa('<?xml version="1.0" encoding="UTF-8" standalone="no" ?>\n' + svgText); 
+        });
     }
 }

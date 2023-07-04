@@ -31,7 +31,7 @@ class Path {
     get rect() {
         MinMax.save();
         MinMax.init();
-        this.curves(curve => {
+        this.curves.forEach(curve => {
             const rect = curve.rect;
             MinMax.regist({ x: rect.x, y: rect.y, });
             MinMax.regist({ x: rect.x + rect.width, y: rect.y + rect.height, });

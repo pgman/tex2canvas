@@ -23,6 +23,25 @@ class Graphics {
     }
 
     /**
+     * replace color(alpha is not zero.)
+     * @param {ImageData} imageData image data
+     * @param {Array<number>} srcColor color of source
+     * @param {Array<number>} dstColor color of destination
+     */
+    static replaceColor(imageData, srcColor, dstColor) {
+        const data = imageData.data;
+        for(let i = 0; i < data.length / 4; i += 1) {
+            const color = [ data[i * 4 + 0], data[i * 4 + 1], data[i * 4 + 2], data[i * 4 + 3] ];
+            if(color[0] === srcColor[0] && color[1] === srcColor[1] && color[2] === srcColor[2] && color[3] !== 0) {
+                // replace color
+                for(let j = 0; j < 3; j += 1) {
+                    data[i * 4 + j] = dstColor[j];
+                }
+            }
+        }
+    }
+
+    /**
      * 画像が全て同じ色か確認する
      * 透過は(0,0,0,0)であることの確認する。他の画素は指定色であることを確認する
      * @param {ImageData} imageData イメージデータ

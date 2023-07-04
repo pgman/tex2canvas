@@ -2,7 +2,9 @@
 <html>
 <head>
 <meta charset="UTF-8">
+<script id="MathJax-script" async src="js/tex-svg-full.js"></script>
 <script src="js/define.js"></script>
+<script src="js/mathjax-svg.js"></script>
 <script src="js/svg-parser.js"></script>
 <script src="js/kanjivg.js"></script>
 <script src="js/curve.js"></script>
@@ -18,6 +20,7 @@
 <script src="js/matrix.js"></script>
 <script src="js/graphics.js"></script>
 <script src="js/graphics-api.js"></script>
+<script src="js/view.js"></script>
 <script
   src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.2.0/chart.min.js"
   integrity="sha512-VMsZqo0ar06BMtg0tPsdgRADvl0kDHpTbugCBBrL55KmucH6hP9zWdLIWY//OTfMnzz6xWQRxQqsUFefwHuHyg=="
@@ -44,13 +47,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     ];
     const points2 = [
         { x: 700, y: 400, },
-        { x: 200, y: 400, },
+        { x: 100, y: 400, },
     ];
 
     const lineWidth = 5;
     const step = 1;
 
-    const img = await Utility.loadImage('chalk-lines/chalk-frame-8(1460-664-1809-1215).png'); 
+    let img;
+
+    try {
+        img = await Utility.loadImage('chalk-lines/chalk-line-1(0-2852-3768-230).png'); 
+    } catch(e) {
+        console.log(e);
+    }
     //const img = await Utility.loadImage('images/america.png');
     //const img = await Utility.loadImage('images/yellow.png');
     const imageData  = GraphicsApi.getImageDataByImage(img);
@@ -64,11 +73,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             path.imageData = imageData;
         });
     });    
+    let figures = [figure];
 
     const backCanvas = document.querySelector('#back-canvas');
     const backCtx = backCanvas.getContext('2d', { willReadFrequently: true });
-
-    const backImg = await Utility.loadImage('images/black_board.jpg');
+    
+    let backImg;
+    try {
+        backImg = await Utility.loadImage('images/black_board.jpg');
+    } catch(e) {
+        console.log(e);
+    }
     backCtx.drawImage(backImg, 0, 0, backCtx.canvas.width, backCtx.canvas.height);
 
     let intervalId = -1;
@@ -86,12 +101,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         const startTime = new Date();
         ctx.reset();
         let segments = [];
-        figure.strokes.forEach(stroke => {
-            stroke.paths.forEach(path => {
-                path.updateSegments(size, lineWidth, step);
-                segments = segments.concat(path.segments);
+        figures.forEach(figure => {
+            figure.strokes.forEach(stroke => {
+                stroke.paths.forEach(path => {
+                    path.updateSegments(size, lineWidth, step);
+                    segments = segments.concat(path.segments);
+                });
             });
-        });
+        });        
         const endTime = new Date();
 
         const workCanvas = Utility.createCanvas(ctx.canvas.width, ctx.canvas.height);
@@ -99,6 +116,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const workImageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
             
         let animCnt = 0;
+        let blured = {};
         intervalId = setInterval(() => {
             ctx.reset();
             const pixels = segments[animCnt].pixels;
@@ -107,7 +125,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     Graphics.setColorByIndex(workImageData, elm.i, [255, 255, 255, elm.a]);
                 }                
             });
-            untiAlias(workImageData, pixels, [255, 255, 255], 2, { start: 96, end: 16 });
+            antiAlias(workImageData, pixels, [255, 255, 255], blured);
             workCtx.putImageData(workImageData, 0, 0);
             ctx.drawImage(workCanvas, 0, 0);
             
@@ -118,16 +136,26 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.querySelector('#time-span').innerHTML = `${endTime - startTime} ms`;
     });
 
-    function untiAlias(imageData, pixels, color, radius, alpha) {
+    /**
+     * anti-aliasing
+     * @param {ImageData} imageData image data
+     * @param {Array<Object>} pixels data of pixel
+     * @param {Array<number>} color color
+     * @param {Object} blured avoid overlapping pixel sources
+     * @returns {void} nothing
+     */
+    function antiAlias(imageData, pixels, color, blured) {
         const data = imageData.data;
         const width = imageData.width;
         const height = imageData.height;
+        const radius = 1;
+        const alpha = { start: 256 / 8, end: 256 / 8 / 1.414 };
+
+        // Get pixels that have at least one unfilled pixel around them
         const filtered = pixels.filter(elm => {
             const targetX = elm.i % width;
             const targetY = Math.floor(elm.i / width);
-            const targetI = targetX + targetY * width;
-            const targetA = data[targetI * 4 + 3];
-            if(targetA < 128) {
+            if(elm.a < 128) {// no filled
                 return;
             }
             // check filled around 8px
@@ -138,16 +166,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                     if(x < 0 || x >= width || y < 0 || y >= height || (x === targetX && y === targetY)) {
                         continue;
                     }
-                    const adx = Math.abs(x - targetX);
-                    const ady = Math.abs(y - targetY);
                     const i = x + y * width;
+                    const key = `i${i}`;
                     const a = data[i * 4 + 3];
-                    filledArray.push(a !== 0);
+                    // filled and no blured
+                    filledArray.push(a >= 128 && typeof blured[key] === 'undefined');
                 }
             }
             return filledArray.some(e => !e);
         });
 
+        // update pixel color
         filtered.forEach(elm => {
             const targetX = elm.i % width;
             const targetY = Math.floor(elm.i / width);
@@ -157,23 +186,36 @@ document.addEventListener('DOMContentLoaded', async () => {
                         continue;
                     }
                     const i = x + y * width;
+                    const key = `i${i}`;
                     const adx = Math.abs(x - targetX);
                     const ady = Math.abs(y - targetY);
                     let dist = Math.sqrt(adx ** 2 + ady ** 2) - 1;
                     if(dist < 0) { dist = 0; }
                     const maxDist = radius * Math.sqrt(2) - 1;
                     // get a 
-                    const a = Scalar.linearInterpolation(alpha.start, alpha.end, dist / maxDist);
-                    if(a > data[i * 4 + 3]) {                        
+                    let a = elm.a / 255;
+                    if(x === targetX || y === targetY) { 
+                        a *= alpha.start; 
+                    } else {
+                        a *= alpha.end;
+                    }
+
+                    if(data[i * 4 + 3] >= 128) { continue; } // limit a
+                    // update pixel color
+                    if(typeof blured[key] === 'undefined') {// at first
+                        blured[key] = [elm.i];
                         data[i * 4 + 0] = color[0];
                         data[i * 4 + 1] = color[1];
                         data[i * 4 + 2] = color[2];
                         data[i * 4 + 3] = a;
+                    } else if (blured[key].indexOf(elm.i) === -1) {// second, third, ...
+                        blured[key].push(elm.i);
+                        data[i * 4 + 3] = data[i * 4 + 3] + a;
                     }   
                 }
             }        
         });
-    }
+    }    
 
     // #insert-both-button
     document.querySelector('#insert-both-button').addEventListener('click', e => {
@@ -188,19 +230,323 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.querySelector('#done-button').click();
     });
 
-    // 05b97
-    // #load-button
-    document.querySelector('#load-button').addEventListener('click', async e => {        
-        figure = await KanjiVG.loadFile('05b97');
+    // #mathjax-button
+    document.querySelector('#mathjax-button').addEventListener('click', async e => {     
 
-        figure.strokes.forEach(stroke => {
-            stroke.paths.forEach(path => {
-                path.imageData = imageData;
-            });
-        }); 
+        const canvas = document.querySelector('#my-canvas');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        ctx.reset();
+
+        const kvgCodes = await loadKvgCodes();
+        const equation = '\\begin{eqnarray}1234567890\\end{eqnarray}';
+        const display = true;
+        // get svg text
+        const svgText = MathJaxSvg.getMathJaxSvgText(equation, display);  
+        // check error
+        const error = MathJaxSvg.getError(svgText);
+        if(error) {// error
+            alert(error);
+            return;
+        }
+
+        const translate = { x: 40, y: 40, };
+        const scale = 3;
+
+        // draw svg text
+        const svgTextCtx = GraphicsApi.getContext('#svg-text-canvas');
+        svgTextCtx.reset();
+        await View.drawSvgText(svgTextCtx, svgText, { translate, scale, color: [255, 255, 255] });
+        
+        // parse
+        const mvgData = MathJaxSvg.parseMathJaxSvg(svgText);
+
+        // get kvg figure
+        const kvgFigure = await loadKvgFiles(mvgData, kvgCodes);
+
+        // draw mvg data
+        const mvgDataCtx = GraphicsApi.getContext('#mvg-data-canvas');
+        mvgDataCtx.reset();        
+        View.drawMvgData(mvgDataCtx, mvgData, { translate, scale, fillFigure: true, strokeRect: true, });
+
+        // get pre data
+        const preDatas = getPreAnimDatas(mvgData, kvgFigure, {});
+
+        // draw pre data
+        const preDataCtx = GraphicsApi.getContext('#pre-data-canvas');
+        preDataCtx.reset();   
+        preDatas.forEach(preData => {
+            View.drawPreData(preDataCtx, preData, { 
+                translate, scale, color: [0, 255, 255], lineWidth: 4,
+            }); 
+        });
+         
+        // create animation
+        figures = [];
+        preDatas.forEach(preData => {
+            const copied = preData.figure.copy();
+            const transMat = Matrix.translate(translate.x, translate.y);
+            const scaleMat = Matrix.scale(scale, scale);
+            let mat = Matrix.multiply(scaleMat, preData.mat);
+            mat = Matrix.multiply(transMat, mat);
+            copied.transform(mat);
+            
+            figures.push(copied);
+        });
+
+        figures.forEach(figure => {
+            figure.strokes.forEach(stroke => {
+                stroke.paths.forEach(path => {
+                    path.imageData = imageData;
+                });
+            });    
+        });        
+        
+    });
+});
+
+function getPreAnimDatas(mvgData, kvgFigure, avgData) {
+    const ret = [];
+    let skipFlag = false;
+
+    // ret に kvgDataのインデックスと変換行列を格納していく
+    mvgData.shapes.forEach((shape, i) => {
+        if(skipFlag) {
+            skipFlag = false;
+            return;
+        }
+        if(shape.tagName === 'use') {// <use>
+            // 描画するpathを取得する
+            const data = mvgData.datas.find(d => d.id === shape.xlinkHref.replace('#', ''));
+            if(!data) { return; } // continue;  
+            const figure = data.figure;     
+
+            // MathJax のshape.rectをスクリーン座標系へ変換する
+            let screenRect;
+            if(shape.parentSvg && shape.parentSvg.mat && shape.parentSvg.width && shape.parentSvg.height) {
+                // 簡易クリッピング(どうも<svg>でクリップする必要があるっぽい)
+                const mat = Matrix.multiply(shape.parentSvg.mat, shape.originalMat);
+                const inv = Matrix.inverse(mat);
+                const tempRect = Matrix.multiplyRect(mat, figure.rect);
+                const size = {};
+                if(tempRect.width >= shape.parentSvg.width) {
+                    size.width = shape.parentSvg.width;
+                }
+                if(tempRect.height >= shape.parentSvg.height) {
+                    size.height = shape.parentSvg.height;
+                }
+                Rect.changeSize(tempRect, size, true);
+                const rect = Matrix.multiplyRect(inv, tempRect);
+                screenRect = Matrix.multiplyRect(shape.mat, rect);
+            } else {
+                screenRect = Matrix.multiplyRect(shape.mat, figure.rect); // スクリーン座標系の矩形
+            }
+            screenRect = refineScreenRect(screenRect);
+
+            // コードを取得する
+            const [avgCode, kvgCode] = getCodes(shape);
+
+            if(avgData[avgCode]) {
+                // calc rect
+                const curvesArray = Model.avgData[avgCode].map(curves => {
+                    return curves.map(elm => new Curve(elm.points));
+                });
+                const rect = getCurvesArrayRect(curvesArray);
+                // push data
+                ret.push({ type: 'avg', code: avgCode, curvesArray, mat: getNewMatrix(screenRect, rect), });
+
+                // 縦線用データを作成する
+                if(avgCode === '239D' || avgCode === '23A0' || avgCode === '23A3' || avgCode === '23A6') {
+                    if(i - 1 < 0 || i + 1 >= mvgData.shapes.length) { return; }
+                    const preShape = mvgData.shapes[i - 1];
+                    const nextShape = mvgData.shapes[i + 1];
+                    const [preAvgCode] = getCodes(preShape);
+                    const [nextAvgCode] = getCodes(nextShape);
+                    if(!(preAvgCode === '239B' && avgCode === '239D' && nextAvgCode === '239C')
+                    && !(preAvgCode === '239E' && avgCode === '23A0' && nextAvgCode === '239F')
+                    && !(preAvgCode === '23A1' && avgCode === '23A3' && nextAvgCode === '23A2')
+                    && !(preAvgCode === '23A4' && avgCode === '23A6' && nextAvgCode === '23A5')) {
+                        return;
+                    }
+                    const preData = ret[ret.length - 2];
+                    const curData = ret[ret.length - 1];
+                    
+                    const preLastCurves = preData.curvesArray[preData.curvesArray.length - 1];
+                    const preLastCurve = preLastCurves[preLastCurves.length - 1];
+                    const preLastPoint = preLastCurve.points[preLastCurve.points.length - 1];
+                    
+                    const curFirstCurves = curData.curvesArray[0];
+                    const curFirstCurve = curFirstCurves[0];
+                    const curFirstPoint = curFirstCurve.points[0];
+
+                    const insertedStart = Matrix.multiplyVec(preData.mat, preLastPoint);
+                    const insertedEnd = Matrix.multiplyVec(curData.mat, curFirstPoint);
+
+                    const curvesArray = [
+                        [new Curve([insertedStart, 
+                                    Utility.linearInterpolation(insertedStart, insertedEnd, 1 / 3),
+                                    Utility.linearInterpolation(insertedStart, insertedEnd, 2 / 3), 
+                                    insertedEnd]) ]
+                    ];
+                    
+                    const popped = ret.pop();
+                    ret.push({ type: 'avg', code: 'original', curvesArray, mat: Matrix.identify(), });
+                    ret.push(popped);
+                    skipFlag = true;
+                }                        
+            } else {
+                // get kvg paths
+                const figure = kvgFigure[kvgCode]; 
+                if(!figure) { 
+                    console.log('kvg paths are not found.');
+                    return;
+                }
+                // push data
+                ret.push({ type: 'kvg', code: kvgCode, text: '', figure, mat: getNewMatrix(screenRect, figure.rect), });
+            }
+        } else if(shape.tagName === 'rect') {
+            // MathJax のshape.rectをスクリーン座標系へ変換する
+            let screenRect = Matrix.multiplyRect(shape.mat, shape.rect); // スクリーン座標系の矩形
+            screenRect = refineScreenRect(screenRect);
+            const curvesArray = [
+                [new Curve([{ x: 0, y: 0 }, { x: 30, y: 0 }, { x: 60, y: 0 }, { x: 90, y: 0 }]) ]
+            ];
+            const rect = getCurvesArrayRect(curvesArray);
+                
+            ret.push({ type: 'avg', code: 'rect', curvesArray, mat: getNewMatrix(screenRect, rect), });
+        } else if(shape.tagName === 'text') {// <text>    
+            // rect を適当に決めてみる(本当はfont-sizeから決めるべき？)
+            const fontSize = parseInt(shape.fontSize);
+            const rect = { x: 0, y: -fontSize, width: fontSize, height: fontSize };
+            // MathJax のshape.rectをスクリーン座標系へ変換する
+            let screenRect = Matrix.multiplyRect(shape.mat, rect); // スクリーン座標系の矩形      
+            screenRect = refineScreenRect(screenRect);
+            const kvgCode = Utility.getCodeByChar(shape.text);
+
+            // get kvg paths
+            const data = kvgData.find(data => data.c === kvgCode); 
+            if(!data) { 
+                console.log('kvg paths are not found.');
+                return;
+            }
+            const tmpRect = { x: 0, y: 0, width: 119, height: 119, };
+            Rect.addMargin(tmpRect, -12);   // これ適当(kvgが矩形に対してやや小さく定義しているので、矩形を小さくする必要がある)
+            const textMat = getNewMatrix(screenRect, tmpRect);
+            const transMat = Matrix.translate(0, 12);
+            // push data
+            ret.push({ type: 'kvg', code: 'text', text: shape.text, kvg: data, mat: Matrix.multiply(textMat, transMat), });
+        }
     });
 
-});
+    return ret;
+
+    function getNewMatrix(screenRect, rect) {
+        let aspect;
+        if(rect.height < 0.01) {
+            aspect = 100;
+        } else {
+            aspect= rect.width / rect.height;
+        }
+        let newRect = Utility.fitVerticalRect(screenRect, rect);
+        if(aspect > 5) {
+        newRect = Utility.fitHorizontalRect(screenRect, rect);                        
+        }
+
+        // 変換行列を求める
+        const trans = Matrix.translate(-newRect.x, -newRect.y);
+        const scale = Matrix.scale(screenRect.width / newRect.width, screenRect.height / newRect.height);
+        const revTrans = Matrix.translate(screenRect.x, screenRect.y);
+
+        let newMat = Matrix.multiply(scale, trans);
+        newMat = Matrix.multiply(revTrans, newMat);
+        return newMat;
+    }
+
+    /**
+     * 画面用矩形を修正する
+     * @param {{ x: number, y: number, width: number, height: number, }} argScreenRect 矩形
+     * @returns {{ x: number, y: number, width: number, height: number, }} 矩形
+     */
+    function refineScreenRect(argScreenRect) {
+        const screenRect = JSON.parse(JSON.stringify(argScreenRect));
+        // if(Model.fitRectCheck) {// 矩形内に収まるようにする
+        //     Rect.addMargin(screenRect, -Settings.lineWidth / 2 / Settings.scale);
+        // }
+        return screenRect;
+    }
+
+    function getCodes(shape) {
+        const id = shape.xlinkHref.substring(1);
+        let kvgCode = SvgParser.toKanjiVGCodeById(id);
+        kvgCode = Utility.zeroPadding(kvgCode, Define.SVG_FILE_NAME_LENGTH);
+        const splits = id.split('-');
+        const avgCode = splits[4]; 
+        return [avgCode, kvgCode];
+    }
+}
+
+async function loadKvgCodes() {
+    let kvgCodes;
+    try {
+        const res = await fetch('kvg-file.txt');
+        const data = await res.text();
+        let splitter;
+        const nIndex = data.indexOf('\n');
+        const rnIndex = data.indexOf('\r\n');
+        if(rnIndex < 0 && nIndex >= 0) {
+            splitter = '\n';
+        } else {
+            splitter = '\r\n';
+        }
+        kvgCodes = data.split(splitter).filter(d => d).map(d => d.replaceAll('.svg', ''));
+        return kvgCodes;
+    } catch(e) {
+        return null;
+    }
+}
+
+async function loadKvgFiles(mvgData, kvgCodes) {
+    // get kvg figure(no text)
+    const kvgFigure = {};
+    for(let i = 0; i < mvgData.datas.length; i += 1) {
+        const data = mvgData.datas[i];
+        let code = SvgParser.toKanjiVGCodeById(data.id);
+        code = Utility.zeroPadding(code, 5);
+        try {
+            if(kvgCodes.indexOf(code) >= 0) {
+                const figure = await KanjiVG.loadFile(code);
+                kvgFigure[code] = figure;
+                console.log(`KVG ${code} is loaded.`);
+            } else {
+                console.log(`KVG ${code} is not defined.`);
+            }                
+        } catch(e) {
+            console.log(`${code} is error.`);
+            throw 'error';
+        }          
+    }
+
+    // get kvg figure(text)
+    for(let i = 0; i < mvgData.shapes.length; i += 1) {
+        const shape = mvgData.shapes[i];
+        if(shape.tagName !== 'text') { continue; }
+        if(shape.text.length !== 1) { continue; }
+        // あ -> 03042
+        const code = Utility.getCodeByChar(shape.text);
+        try {
+            if(kvgCodes.indexOf(code) >= 0) {
+                const ret = await KanjiVG.loadFile(code);
+                kvgFigure[code] = figure;
+                console.log(`KVG ${code} is loaded.`);
+            } else {
+                console.log(`${code} is not defined.`);
+            }                
+        } catch(e) {
+            console.log(`${code} is error.`);
+            throw 'error';
+        }          
+    }
+    return kvgFigure;
+}
 
 /*
 [Figureに関する仕様]
@@ -239,10 +585,13 @@ point = { x: 124.23983, y: 6.356, }
 */
 </script>
 <style>
-#back-canvas, #my-canvas {
+.my-canvas {
     position: absolute;
     left: 8px;
     top: 60px;
+}
+#svg-text-canvas, #mvg-data-canvas, #pre-data-canvas {
+    display: none;
 }
 </style>
 </head>
@@ -251,10 +600,13 @@ point = { x: 124.23983, y: 6.356, }
     &nbsp;
     <button id="insert-both-button">insert both</button>
     <button id="transform-button">transform</button>
-    <button id="load-button">load</button>
+    <button id="mathjax-button">mathjax</button>
     &nbsp;
     <span id="time-span"></span>
-    <canvas id="back-canvas" width="800" height="800"></canvas>
-    <canvas id="my-canvas" width="800" height="800"></canvas>
+    <canvas id="back-canvas" class="my-canvas" width="800" height="800"></canvas>
+    <canvas id="pre-data-canvas" class="my-canvas" width="800" height="800"></canvas>
+    <canvas id="mvg-data-canvas" class="my-canvas" width="800" height="800"></canvas>
+    <canvas id="svg-text-canvas" class="my-canvas" width="800" height="800"></canvas>    
+    <canvas id="my-canvas" class="my-canvas" width="800" height="800"></canvas>
 </body>
 </html>

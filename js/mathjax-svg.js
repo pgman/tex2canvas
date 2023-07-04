@@ -39,7 +39,7 @@ class MathJaxSvg {
 
     // svgを解析して、オブジェクトに変換する
     static parseMathJaxSvg(svgText) {
-        // パースする
+        // parse
         const domParser = new DOMParser();
         const parsedSvgDoc = domParser.parseFromString(svgText, 'image/svg+xml');
         const parsedSvg = parsedSvgDoc.childNodes[0];        
@@ -58,9 +58,8 @@ class MathJaxSvg {
             throw 'parse error: def is not found.';
         }
 
-        // <path> を取得する
-        // defs.childNodes を列挙する
-        const paths = [];
+        // get datas from <path>
+        const datas = [];
         for(let i = 0; i < defs.childNodes.length; i += 1) {
             const child = defs.childNodes[i];
             if(child.tagName === 'path') {
@@ -69,26 +68,27 @@ class MathJaxSvg {
                 if(splits.length !== Define.PATH_ID_SEPARATE_COUNT) {
                     throw 'path id is invalid.'
                 }
-                // 実際のidにする('MJX-2-TEX-LO-222B' -> '222B') 
-                // そうしないと MJX-2-TEX-LO-222B のように MJX-の直後の数字がインクリメントする
+                // to real id('MJX-2-TEX-LO-222B' -> '222B') 
                 const c = splits[4];
                 const d = child.getAttribute('d');
                 if(d) {// dが未定義の場合がある(\ (半角スペース)など)
-                    const curvesArray = SvgParser.parsePathD(d);
-                    const rect = SvgParser.getCurvesArrayRect(curvesArray);
-                    paths.push({ id, c, d, curvesArray, rect, });
+                    const stroke = SvgParser.parsePathD(d);
+                    const figure = new Figure([ stroke ]);
+                    datas.push({ id, c, d, figure, });
                 }                
             }
         }
+
+        // create shapes from <g>, <use>, <rect>
         const shapes = [];
         let loopCnt = 0;
         const matStacks = [];
-        // ツリー構造をたどる(基本的に<g>を辿って<use>等を取得する)
+        // trace html(基本的に<g>を辿って<use>等を取得する)
         traceElm(parsedSvg);
         
         return {
-            parsedSvg,
-            paths,
+            parsedSvg,  // for debug
+            datas,
             shapes,
         };
 
