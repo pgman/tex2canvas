@@ -6,28 +6,24 @@ class MathJaxSvg {
     /**
      * 数式よりsvgテキストを取得する
      * @param {string} equation 数式
-     * @returns {string} svgテキスト
+     * @returns {SVGElement} svg element
      */
-    static getMathJaxSvgText(equation, display) {
+    static getMathJaxSvg(equation, display) {
         // Mathjaxよりsvgを取得する(同期処理)
         const svg = MathJax.tex2svg(equation, {display}).firstElementChild;
         if(!svg) { return ''; }
-
-        // エスケープする
-        //const svgText = unescape(encodeURIComponent(svg.outerHTML));
-        const svgText = svg.outerHTML;
-        return svgText;
+        return svg;
     }   
 
     /**
      * エラーが起こっているか検知する
-     * @param {string} svgText MathJaxで生成されたSVG
+     * @param {SVGElement} svg svg element
      * @returns {string} エラーメッセージ(英語)。エラーなしの場合は空文字列 
      */
-    static getError(svgText) {
+    static getError(svg) {
         // パースする
         const domParser = new DOMParser();
-        const parsedSvgDoc = domParser.parseFromString(svgText, 'image/svg+xml');
+        const parsedSvgDoc = domParser.parseFromString(svg.outerHTML, 'image/svg+xml');
         const parsedSvg = parsedSvgDoc.childNodes[0];
         const errorElm = parsedSvg.querySelector('[data-mml-node="merror"]');
         let errorMessage = '';
@@ -38,10 +34,10 @@ class MathJaxSvg {
     }
 
     // svgを解析して、オブジェクトに変換する
-    static parseMathJaxSvg(svgText) {
+    static parseMathJaxSvg(svg) {
         // parse
         const domParser = new DOMParser();
-        const parsedSvgDoc = domParser.parseFromString(svgText, 'image/svg+xml');
+        const parsedSvgDoc = domParser.parseFromString(svg.outerHTML, 'image/svg+xml');
         const parsedSvg = parsedSvgDoc.childNodes[0];        
 
         // MathJax(このバージョンの)が作成したsvgは<svg><defs>...</defs><g></g></svg>という構成なっているはずなので

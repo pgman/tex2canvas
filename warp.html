@@ -21,6 +21,7 @@
 <script src="js/graphics.js"></script>
 <script src="js/graphics-api.js"></script>
 <script src="js/view.js"></script>
+<script src="js/rect.js"></script>
 </head>
 <title>bezier image</title>
 <script>
@@ -231,13 +232,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         const ctx = canvas.getContext('2d', { willReadFrequently: true });
         ctx.reset();
 
+        const avgData = await loadAvgFile();
+        debugger;
         const kvgCodes = await loadKvgCodes();
-        const equation = '\\begin{eqnarray}1234567890あ\\end{eqnarray}';
+        const equation = '\\begin{eqnarray}\\frac{4}{3}あ\\end{eqnarray}';
         const display = true;
-        // get svg text
-        const svgText = MathJaxSvg.getMathJaxSvgText(equation, display);  
+        // get svg
+        const svg = MathJaxSvg.getMathJaxSvg(equation, display);  
         // check error
-        const error = MathJaxSvg.getError(svgText);
+        const error = MathJaxSvg.getError(svg);
         if(error) {// error
             alert(error);
             return;
@@ -246,13 +249,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         const translate = { x: 40, y: 40, };
         const scale = 3;
 
-        // draw svg text
-        const svgTextCtx = GraphicsApi.getContext('#svg-text-canvas');
-        svgTextCtx.reset();
-        //await View.drawSvgText(svgTextCtx, svgText, { translate, scale, color: [255, 255, 255] });
+        // draw svg (created by mathjax)
+        const svgCtx = GraphicsApi.getContext('#svg-canvas');
+        svgCtx.reset();
+        await View.drawSvg(svgCtx, svg, { translate, scale, color: [0, 255, 255] });
         
         // parse
-        const mvgData = MathJaxSvg.parseMathJaxSvg(svgText);
+        const mvgData = MathJaxSvg.parseMathJaxSvg(svg);
 
         // get kvg figure
         const kvgFigure = await loadKvgFiles(mvgData, kvgCodes);
@@ -297,6 +300,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         
     });
 });
+
+async function loadAvgFile() {
+    try {
+        const res = await fetch('avg.json');
+        const data = await res.text();
+        const parsed = JSON.parse(data);
+        return parsed;
+    } catch(e) {
+        return null;
+    }
+}
 
 function getPreAnimDatas(mvgData, kvgFigure, avgData) {
     const ret = [];
@@ -388,7 +402,7 @@ function getPreAnimDatas(mvgData, kvgFigure, avgData) {
                     skipFlag = true;
                 }                        
             } else {
-                // get kvg paths
+                // get kvg figure
                 const figure = kvgFigure[kvgCode]; 
                 if(!figure) { 
                     console.log('kvg paths are not found.');
@@ -401,12 +415,13 @@ function getPreAnimDatas(mvgData, kvgFigure, avgData) {
             // MathJax のshape.rectをスクリーン座標系へ変換する
             let screenRect = Matrix.multiplyRect(shape.mat, shape.rect); // スクリーン座標系の矩形
             screenRect = refineScreenRect(screenRect);
-            const curvesArray = [
-                [new Curve([{ x: 0, y: 0 }, { x: 30, y: 0 }, { x: 60, y: 0 }, { x: 90, y: 0 }]) ]
-            ];
-            const rect = getCurvesArrayRect(curvesArray);
+
+            const curve = new Curve([{ x: 0, y: 0 }, { x: 90, y: 0 }]);
+            const path = new Path([curve]);
+            const stroke = new Stroke([path]);
+            const figure = new Figure([stroke]);
                 
-            ret.push({ type: 'avg', code: 'rect', curvesArray, mat: getNewMatrix(screenRect, rect), });
+            ret.push({ type: 'avg', code: 'rect', figure, mat: getNewMatrix(screenRect, figure.rect), });
         } else if(shape.tagName === 'text') {// <text>    
             // rect を適当に決めてみる(本当はfont-sizeから決めるべき？)
             const fontSize = parseInt(shape.fontSize);
@@ -416,9 +431,9 @@ function getPreAnimDatas(mvgData, kvgFigure, avgData) {
             screenRect = refineScreenRect(screenRect);
             const kvgCode = Utility.getCodeByChar(shape.text);
 
-            // get kvg paths
-            const data = kvgData.find(data => data.c === kvgCode); 
-            if(!data) { 
+            // get kvg figure
+            const figure = kvgFigure[kvgCode]; 
+            if(!figure) { 
                 console.log('kvg paths are not found.');
                 return;
             }
@@ -427,7 +442,7 @@ function getPreAnimDatas(mvgData, kvgFigure, avgData) {
             const textMat = getNewMatrix(screenRect, tmpRect);
             const transMat = Matrix.translate(0, 12);
             // push data
-            ret.push({ type: 'kvg', code: 'text', text: shape.text, kvg: data, mat: Matrix.multiply(textMat, transMat), });
+            ret.push({ type: 'kvg', code: 'text', text: shape.text, figure, mat: Matrix.multiply(textMat, transMat), });
         }
     });
 
@@ -547,9 +562,11 @@ async function loadKvgFiles(mvgData, kvgCodes) {
 
 figure は strokeの配列である: 'あ','山'のような文字1つに対応するものである
 figure = [ stroke, stroke, ... , ];
+figure.strokes: 画群
 
 stroke は path の配列である: 文字の1画に相当する
 stroke = [ path, path, ... , ];
+stroke.paths: 
 
 path は曲線群である: 滑らかに接続されたとみなした曲線群である。なので、1画が全て滑らかであれば、stroke は1つの path からなる
 path = { curves: [curve, curve, ...], imageData: ..., segments: []};
@@ -600,7 +617,7 @@ point = { x: 124.23983, y: 6.356, }
     <canvas id="back-canvas" class="my-canvas" width="800" height="800"></canvas>
     <canvas id="pre-data-canvas" class="my-canvas" width="800" height="800"></canvas>
     <canvas id="mvg-data-canvas" class="my-canvas" width="800" height="800"></canvas>
-    <canvas id="svg-text-canvas" class="my-canvas" width="800" height="800"></canvas>    
+    <canvas id="svg-canvas" class="my-canvas" width="800" height="800"></canvas>    
     <canvas id="my-canvas" class="my-canvas" width="800" height="800"></canvas>
 </body>
 </html>
