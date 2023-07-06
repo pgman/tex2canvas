@@ -143,9 +143,9 @@ class AppSvg {
 
         // interpolation
         document.querySelector('#avg-interpolation-button').addEventListener('click', e => {
-            if(AppSvg.curFigure.strokes === 0
-            || AppSvg.curFigure.strokes[AppSvg.curFigure.strokes.length - 1].paths[0].curves.length !== 0) {       
-                AppSvg.mode = 'interpolation';                     
+            if(AppSvg.curFigure.strokes.length === 0
+            || AppSvg.curFigure.strokes[AppSvg.curFigure.strokes.length - 1].paths[0].curves.length !== 0) {    
+                    AppSvg.mode = 'interpolation';                     
                 const path = new Path([]);
                 const stroke = new Stroke([ path ]);
                 AppSvg.curFigure.strokes.push(stroke);
@@ -155,7 +155,7 @@ class AppSvg {
     
         // line
         document.querySelector('#avg-line-button').addEventListener('click', e => {
-            if(AppSvg.curFigure.strokes === 0
+            if(AppSvg.curFigure.strokes.length === 0
             || AppSvg.curFigure.strokes[AppSvg.curFigure.strokes.length - 1].paths[0].curves.length !== 0) {    
                 AppSvg.mode = 'line';
                 const path = new Path([]);
@@ -223,7 +223,7 @@ class AppSvg {
             });
             return loadFigure;
         } catch(e) {
-            return null;
+            return {};
         }
     }
 
@@ -250,37 +250,26 @@ class AppSvg {
             return;
         }
 
+        // create select
         let html = '';
         AppSvg.mvgData.datas.forEach((data, i) => {
             html += `<option ${i === 0 ? 'selected' : ''} value='${data.c}'>${data.c}</option>`;
         });
         document.querySelector('#avg-path-select').innerHTML = html;
-        AppSvg.selectedDataIndex = 0;
 
-        AppSvg.mode = '';
-        AppSvg.curFigure = new Figure([]);
-        //const currentPath = AppSvg.mvgData.paths[AppSvg.selectedPathIndex];
-        // if(Model.avgFigure[currentPath.c]) {
-        //     AppSvg.curvesArray = Model.avgFigure[currentPath.c].map(curves => {
-        //         return curves.map(elm => new Curve(elm.points));
-        //     });
-        // } 
-
-        AppSvg.onDraw(); 
+        AppSvg.onChange();
     
     }
 
     static onChange() {
         AppSvg.selectedDataIndex = document.querySelector('#avg-path-select').selectedIndex;
         AppSvg.mode = '';
-        AppSvg.curFigure = new Figure([]);
-        // AppSvg.tempCurves = [];
-        // const currentPath = AppSvg.mvgData.paths[AppSvg.selectedPathIndex];
-        // if(Model.avgFigure[currentPath.c]) {
-        //     AppSvg.curvesArray = Model.avgFigure[currentPath.c].map(curves => {
-        //         return curves.map(elm => new Curve(elm.points));
-        //     });
-        // } 
+        const selectData = AppSvg.mvgData.datas[AppSvg.selectedDataIndex];
+        if(AppSvg.avgFigure[selectData.c]) {
+            AppSvg.curFigure = AppSvg.avgFigure[selectData.c].copy();
+        } else {
+            AppSvg.curFigure = new Figure([]);
+        }
         AppSvg.onDraw();
     }
 
@@ -372,22 +361,12 @@ class AppSvg {
         if(options.fillChar) {// 文字を塗る
             ctx.fillStyle = options.fillStyle ? options.fillStyle : 'green';
             ctx.lineWidth = 10;
-            ctx.beginPath();
-            figure.strokes.forEach(stroke => {
-                stroke.paths.forEach(path => {
-                    path.curves.forEach((curve, i) => {
-                        curve.createPath(ctx, i === 0);
-                    });
-                });
-            });
-            ctx.closePath();
-            ctx.fill();
+            figure.fill(ctx);
         }       
             
         if(options.strokeRect) {
-            const rect = figure.rect;
             ctx.strokeStyle = options.strokeStyle ? options.strokeStyle : 'red';
-            ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
+            figure.strokeRect(ctx);
         }         
 
         ctx.restore();

@@ -215,14 +215,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // #avg-button click
     document.querySelector('#avg-button').addEventListener('click', e => {
-        AppSvg.show(avgData, mvgData);
+        AppSvg.show(avgFigure, mvgData);
     });
 
-    let avgData = {};
+    let avgFigure = {};
     let mvgData;
 
     // #mathjax-button
-    document.querySelector('#mathjax-button').addEventListener('click', async e => {     
+    document.querySelector('#mathjax-button').addEventListener('click', async e => {
+        avgFigure = await AppSvg.load(); 
 
         const canvas = document.querySelector('#my-canvas');
         const ctx = canvas.getContext('2d', { willReadFrequently: true });
@@ -246,7 +247,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // draw svg (created by mathjax)
         const svgCtx = GraphicsApi.getContext('#svg-canvas');
         svgCtx.reset();
-        await View.drawSvg(svgCtx, svg, { translate, scale, color: [0, 255, 255] });
+        //await View.drawSvg(svgCtx, svg, { translate, scale, color: [0, 255, 255] });
         
         // parse
         mvgData = MathJaxSvg.parseMathJaxSvg(svg);
@@ -260,7 +261,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         View.drawMvgData(mvgDataCtx, mvgData, { translate, scale, fillFigure: true, strokeRect: true, });
 
         // get pre data
-        const preDatas = getPreAnimDatas(mvgData, kvgFigure, {});
+        const preDatas = getPreAnimDatas(mvgData, kvgFigure, avgFigure);
 
         // draw pre data
         const preDataCtx = GraphicsApi.getContext('#pre-data-canvas');
@@ -295,7 +296,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 });
 
-function getPreAnimDatas(mvgData, kvgFigure, avgData) {
+function getPreAnimDatas(mvgData, kvgFigure, avgFigure) {
     const ret = [];
     let skipFlag = false;
 
@@ -336,14 +337,11 @@ function getPreAnimDatas(mvgData, kvgFigure, avgData) {
             // コードを取得する
             const [avgCode, kvgCode] = getCodes(shape);
 
-            if(avgData[avgCode]) {
-                // calc rect
-                const curvesArray = Model.avgData[avgCode].map(curves => {
-                    return curves.map(elm => new Curve(elm.points));
-                });
-                const rect = getCurvesArrayRect(curvesArray);
+            if(avgFigure[avgCode]) {
+                // cache
+                const figure = avgFigure[avgCode];
                 // push data
-                ret.push({ type: 'avg', code: avgCode, curvesArray, mat: getNewMatrix(screenRect, rect), });
+                ret.push({ type: 'avg', code: avgCode, figure, mat: getNewMatrix(screenRect, figure.rect), });
 
                 // 縦線用データを作成する
                 if(avgCode === '239D' || avgCode === '23A0' || avgCode === '23A3' || avgCode === '23A6') {
@@ -359,28 +357,30 @@ function getPreAnimDatas(mvgData, kvgFigure, avgData) {
                         return;
                     }
                     const preData = ret[ret.length - 2];
-                    const curData = ret[ret.length - 1];
+                    const nextData = ret[ret.length - 1];
                     
-                    const preLastCurves = preData.curvesArray[preData.curvesArray.length - 1];
-                    const preLastCurve = preLastCurves[preLastCurves.length - 1];
+                    const preFigure = preData.figure;
+                    const preLastStroke = preFigure.strokes[preFigure.strokes.length - 1];
+                    const preLastPath = preLastStroke.paths[preLastStroke.paths.length - 1];
+                    const preLastCurve = preLastPath.curves[preLastPath.curves.length - 1];
                     const preLastPoint = preLastCurve.points[preLastCurve.points.length - 1];
                     
-                    const curFirstCurves = curData.curvesArray[0];
-                    const curFirstCurve = curFirstCurves[0];
-                    const curFirstPoint = curFirstCurve.points[0];
+                    const nextFigure = nextData.figure;
+                    const nextFirstStroke = nextFigure.strokes[0];
+                    const nextFirstPath = nextFirstStroke.paths[0];
+                    const nextFirstCurve = nextFirstPath.curves[0];
+                    const nextFirstPoint = nextFirstCurve.points[0];
 
                     const insertedStart = Matrix.multiplyVec(preData.mat, preLastPoint);
-                    const insertedEnd = Matrix.multiplyVec(curData.mat, curFirstPoint);
+                    const insertedEnd = Matrix.multiplyVec(curData.mat, nextFirstPoint);
 
-                    const curvesArray = [
-                        [new Curve([insertedStart, 
-                                    Utility.linearInterpolation(insertedStart, insertedEnd, 1 / 3),
-                                    Utility.linearInterpolation(insertedStart, insertedEnd, 2 / 3), 
-                                    insertedEnd]) ]
-                    ];
-                    
+                    const newCurve = new Curve([insertedStart, insertedEnd]);
+                    const newPath = new Path([newCurve]);
+                    const newStroke = new Stroke([newPath]);
+                    const newFigure = new Figure([newStroke]);
+
                     const popped = ret.pop();
-                    ret.push({ type: 'avg', code: 'original', curvesArray, mat: Matrix.identify(), });
+                    ret.push({ type: 'avg', code: 'original', figure: newFigure, mat: Matrix.identify(), });
                     ret.push(popped);
                     skipFlag = true;
                 }                        

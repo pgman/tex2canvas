@@ -148,4 +148,32 @@ class Figure {
         });
         return figure;
     }
+
+    /**
+     * fill
+     * @param {CanvasRenderingContext2D} ctx context
+     * @returns {void} nothing
+     */
+    fill(ctx) {
+        ctx.beginPath();
+        this.strokes.forEach(stroke => {
+            stroke.paths.forEach(path => {
+                path.curves.forEach((curve, i) => {
+                    curve.createPath(ctx, i === 0);
+                });
+            });
+        });
+        ctx.closePath();
+        ctx.fill();
+    }
+
+    /**
+     * stroke rect
+     * @param {CanvasRenderingContext2D} ctx context
+     * @returns {void} nothing
+     */
+    strokeRect(ctx) {
+        const rect = this.rect;
+        ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
+    }
 }

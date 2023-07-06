@@ -50,10 +50,9 @@ class View {
         });
 
         //if(options.strokeRect) {// stroke rect
-            const rect = figure.rect;
             ctx.strokeStyle = 'green';
             ctx.lineWidth = 4;
-            ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
+            figure.strokeRect(ctx);
         //}
     
         ctx.restore();
