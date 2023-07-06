@@ -107,37 +107,6 @@ class Utility {
     }
 
     /**
-	 * 点配列を拡大する
-	 * @param {Array<T>} curves 点群
-	 * @param {number} rate 拡大率
-	 * @return {Array<T>} 拡大された点群
-	 */
-	static zoomCurves(curves, rate) {
-		return curves.map(array => 
-			array.map(inarray => 
-				inarray.map(pos => {
-					return { x: pos.x * rate, y: pos.y * rate };
-				})
-			)			
-		);
-	}
-
-    /**
-     * 点が矩形内に存在するか
-     * @param {{ x: number, y: number, }} pos 点 
-     * @param {{ x: number, y: number, width: number, height: number}} rect 矩形 
-     * @returns {boolean} 点が矩形内に存在するか
-     */
-    static isPosInRect(pos, rect) {
-		if(rect.x <= pos.x && pos.x <= rect.x + rect.width
-		&& rect.y <= pos.y && pos.y <= rect.y + rect.height) {
-			return true;
-		} else {
-			return false;
-		}
-	}
-
-    /**
      * 正規分布に従う乱数を生成する(ボックスミューラー法)
      * @param {number} mean 平均 
      * @param {number} sigma 標準偏差 

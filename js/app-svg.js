@@ -1,6 +1,6 @@
 class AppSvg {
 
-    static show(mvgData) {
+    static show(avgFigure, mvgData) {
         const layerElm = document.createElement('div');
         layerElm.id = 'avg-layer';
         layerElm.style.backgroundColor = '#888888';
@@ -36,6 +36,9 @@ class AppSvg {
                 <button id="avg-save-button">save</button>
                 <button id="avg-clear-button">clear</button>
             </div>
+            <div style="margin-bottom: 8px;">
+                <span>save</span>
+            </div>
             <div style="border: 2px solid black; width: ${AppSvg.CANVAS_SIZE}px; height: ${AppSvg.CANVAS_SIZE}px;">
                 <canvas id="avg-char-canvas"></canvas>
             </div>
@@ -48,7 +51,7 @@ class AppSvg {
         
         AppSvg.attachEvent();
 
-        AppSvg.onInit(mvgData);
+        AppSvg.onInit(avgFigure, mvgData);
     }
 
     static attachEvent() {
@@ -70,13 +73,18 @@ class AppSvg {
             if(AppSvg.mode === 'interpolation' || AppSvg.mode === 'line') {
                 if(e.button === 2) {// right button
                     AppSvg.mode = '';
-                    AppSvg.curvesArray.push(AppSvg.tempCurves);
-                    AppSvg.tempCurves = [];
                     AppSvg.onDraw();
                     return;
                 }
-                AppSvg.tempCurves.push(new Curve([ worldPos, worldPos, worldPos, worldPos, ]));
-            }
+                let curve;
+                if(AppSvg.mode === 'interpolation') {
+                    curve = new Curve([ worldPos, worldPos, worldPos, worldPos ]);
+                } else if(AppSvg.mode === 'line') {
+                    curve = new Curve([ worldPos, worldPos ]);
+                }
+                const curPath = AppSvg.curFigure.strokes[AppSvg.curFigure.strokes.length - 1].paths[0];
+                curPath.curves.push(curve);
+            } 
             AppSvg.onDraw();
         });
 
@@ -86,38 +94,37 @@ class AppSvg {
             const worldPos = AppSvg.getWorldPosByEvent(e);
     
             if(AppSvg.mode === 'interpolation') {
-                if(AppSvg.tempCurves.length === 0) {
+                const curPath = AppSvg.curFigure.strokes[AppSvg.curFigure.strokes.length - 1].paths[0];
+                if(curPath.curves.length === 0) {
                     return;
                 } 
-                const p = AppSvg.tempCurves[AppSvg.tempCurves.length - 1].points;
+                const p = curPath.curves[curPath.curves.length - 1].points;
                 p[3] = worldPos;
     
-                if(AppSvg.tempCurves.length === 1) {
-                    const p = AppSvg.tempCurves[AppSvg.tempCurves.length - 1].points;
-                    const v = Vector.subtract(p[2], p[1]);
+                if(curPath.curves.length === 1) {
+                    const p = curPath.curves[curPath.curves.length - 1].points;
+                    const v = Vector.subtract(p[3], p[0]);
                     p[1] = Vector.add(p[0], Vector.scale(v, 1 / 3));
                     p[2] = Vector.add(p[0], Vector.scale(v, 2 / 3));
-                } else if(AppSvg.tempCurves.length >= 2) {
-                    const p = AppSvg.tempCurves[AppSvg.tempCurves.length - 2].points;
-                    const q = AppSvg.tempCurves[AppSvg.tempCurves.length - 1].points;
+                } else if(curPath.curves.length >= 2) {
+                    const p = curPath.curves[curPath.curves.length - 2].points;
+                    const q = curPath.curves[curPath.curves.length - 1].points;
                     const p0q3 = Vector.subtract(q[3], p[0]);
                     p[2] = Vector.add(p[3], Vector.scale(p0q3, -1 / 6));
                     q[1] = Vector.add(p[3], Vector.scale(p0q3, 1 / 6));
-                    if(AppSvg.tempCurves.length === 2) {
+                    if(curPath.curves.length === 2) {
                         p[1] = Vector.center(p[0], p[2]);
                     }
                     q[2] = Vector.center(q[1], q[3]);
                 }
                 AppSvg.onDraw();
             } else if(AppSvg.mode === 'line') {
-                if(AppSvg.tempCurves.length === 0) {
+                const curPath = AppSvg.curFigure.strokes[AppSvg.curFigure.strokes.length - 1].paths[0];
+                if(curPath.curves.length === 0) {
                     return;
                 } 
-                const p = AppSvg.tempCurves[AppSvg.tempCurves.length - 1].points;
+                const p = curPath.curves[curPath.curves.length - 1].points;
                 p[3] = worldPos;
-                const v = Vector.subtract(p[2], p[1]);
-                p[1] = Vector.add(p[0], Vector.scale(v, 1 / 3));
-                p[2] = Vector.add(p[0], Vector.scale(v, 2 / 3));
                 AppSvg.onDraw();
             }
         });
@@ -134,40 +141,90 @@ class AppSvg {
             AppSvg.onDraw();
         });
 
+        // interpolation
         document.querySelector('#avg-interpolation-button').addEventListener('click', e => {
-            AppSvg.mode = 'interpolation';
-            AppSvg.tempCurves = [];
-            AppSvg.onDraw();
+            if(AppSvg.curFigure.strokes === 0
+            || AppSvg.curFigure.strokes[AppSvg.curFigure.strokes.length - 1].paths[0].curves.length !== 0) {       
+                AppSvg.mode = 'interpolation';                     
+                const path = new Path([]);
+                const stroke = new Stroke([ path ]);
+                AppSvg.curFigure.strokes.push(stroke);
+                AppSvg.onDraw();
+            }
         });
     
+        // line
         document.querySelector('#avg-line-button').addEventListener('click', e => {
-            AppSvg.mode = 'line';
-            AppSvg.tempCurves = [];
-            AppSvg.onDraw();
+            if(AppSvg.curFigure.strokes === 0
+            || AppSvg.curFigure.strokes[AppSvg.curFigure.strokes.length - 1].paths[0].curves.length !== 0) {    
+                AppSvg.mode = 'line';
+                const path = new Path([]);
+                const stroke = new Stroke([ path ]);
+                AppSvg.curFigure.strokes.push(stroke);
+                AppSvg.onDraw();
+            }
         });
     
         document.querySelector('#avg-cancel-button').addEventListener('click', e => {
             AppSvg.mode = '';
-            AppSvg.tempCurves = [];
+            if(AppSvg.curFigure.strokes.length) {
+                AppSvg.curFigure.strokes.pop();
+            }            
             AppSvg.onDraw();
         });   
         
         document.querySelector('#avg-save-button').addEventListener('click', e => {
-            if(AppSvg.selectedPathIndex === -1) { return; }
-            const path = AppSvg.mvgData.paths[AppSvg.selectedPathIndex];
-            Model.avgData[path.c] = JSON.parse(JSON.stringify(AppSvg.curvesArray));
-            Utility.saveToLocalStorage('tex2canvas', Model.avgData);
+            if(AppSvg.selectedDataIndex === -1) { return; }
+            if(AppSvg.curFigure.strokes.length === 0) { return; }
+            const data = AppSvg.mvgData.datas[AppSvg.selectedDataIndex];
+            AppSvg.avgFigure[data.c] = AppSvg.curFigure.copy();
+            AppSvg.save(AppSvg.avgFigure);
         });  
         
         document.querySelector('#avg-clear-button').addEventListener('click', e => {
             AppSvg.mode = '';
-            AppSvg.curvesArray = [];
-            AppSvg.tempCurves = [];
+            AppSvg.curFigure = new Figure([]);
             AppSvg.onDraw();
         });  
 
         document.querySelector('#avg-path-select').addEventListener('change', AppSvg.onChange);   
         
+    }
+
+    /**
+     * save figure of avg
+     * @param {Object} avgFigure map of figure
+     * @returns {void}
+     */
+    static save(avgFigure) {
+        // create save data
+        const saveFigure = {};
+        Object.keys(avgFigure).forEach(key => {
+            const figure = avgFigure[key];
+            saveFigure[key] = figure.stringify();
+        });
+        // save
+        Utility.saveJsonFile(saveFigure, 'app-svg.json');
+    }
+
+    /**
+     * load figure of avg
+     * @returns {Promise<Object>} map of figure
+     */
+    static async load() {
+        try {
+            const res = await fetch('app-svg.json');
+            const data = await res.text();
+            const parsed = JSON.parse(data);
+            const loadFigure = {};
+            Object.keys(parsed).forEach(key => {
+                const strFigure = parsed[key];
+                loadFigure[key] = Figure.parse(strFigure);
+            });
+            return loadFigure;
+        } catch(e) {
+            return null;
+        }
     }
 
     static DIALOG_WIDTH = 404;
@@ -179,55 +236,51 @@ class AppSvg {
     static mode = '';
     static curvesArray = [];
     static tempCurves = [];
-    static selectedPathIndex = -1;
+    static selectedDataIndex = -1;
 
-    static onInit(mvgData) {
+    static onInit(avgFigure, mvgData) {
         // コピーする
+        AppSvg.avgFigure = avgFigure;
         AppSvg.mvgData = mvgData;
 
         if(!AppSvg.mvgData || !AppSvg.mvgData.shapes || AppSvg.mvgData.shapes.length === 0) {
             console.error('error');
-            AppSvg.selectedPathIndex = -1;
+            AppSvg.selectedDataIndex = -1;
             document.querySelector('#avg-path-select').innerHTML = '';
             return;
         }
 
         let html = '';
-        AppSvg.mvgData.paths.forEach((path, i) => {
-            html += `<option ${i === 0 ? 'selected' : ''} value='${path.c}'>${path.c}</option>`;
+        AppSvg.mvgData.datas.forEach((data, i) => {
+            html += `<option ${i === 0 ? 'selected' : ''} value='${data.c}'>${data.c}</option>`;
         });
         document.querySelector('#avg-path-select').innerHTML = html;
-        AppSvg.selectedPathIndex = 0;
+        AppSvg.selectedDataIndex = 0;
 
         AppSvg.mode = '';
-        AppSvg.curvesArray = [];
-        AppSvg.tempCurves = [];
-        const currentPath = AppSvg.mvgData.paths[AppSvg.selectedPathIndex];
-        if(Model.avgData[currentPath.c]) {
-            AppSvg.curvesArray = Model.avgData[currentPath.c].map(curves => {
-                return curves.map(elm => new Curve(elm.points));
-            });
-        } 
+        AppSvg.curFigure = new Figure([]);
+        //const currentPath = AppSvg.mvgData.paths[AppSvg.selectedPathIndex];
+        // if(Model.avgFigure[currentPath.c]) {
+        //     AppSvg.curvesArray = Model.avgFigure[currentPath.c].map(curves => {
+        //         return curves.map(elm => new Curve(elm.points));
+        //     });
+        // } 
 
         AppSvg.onDraw(); 
-
-        // const img = document.createElement('img');
-        // img.onload = e => { AppSvg.onDraw(); };
-        //img.src = 'data:image/svg+xml;base64,' + btoa('<?xml version="1.0" encoding="UTF-8" standalone="no" ?>\n' + AppSvg.svgText); 
     
     }
 
     static onChange() {
-        AppSvg.selectedPathIndex = document.querySelector('#avg-path-select').selectedIndex;
+        AppSvg.selectedDataIndex = document.querySelector('#avg-path-select').selectedIndex;
         AppSvg.mode = '';
-        AppSvg.curvesArray = [];
-        AppSvg.tempCurves = [];
-        const currentPath = AppSvg.mvgData.paths[AppSvg.selectedPathIndex];
-        if(Model.avgData[currentPath.c]) {
-            AppSvg.curvesArray = Model.avgData[currentPath.c].map(curves => {
-                return curves.map(elm => new Curve(elm.points));
-            });
-        } 
+        AppSvg.curFigure = new Figure([]);
+        // AppSvg.tempCurves = [];
+        // const currentPath = AppSvg.mvgData.paths[AppSvg.selectedPathIndex];
+        // if(Model.avgFigure[currentPath.c]) {
+        //     AppSvg.curvesArray = Model.avgFigure[currentPath.c].map(curves => {
+        //         return curves.map(elm => new Curve(elm.points));
+        //     });
+        // } 
         AppSvg.onDraw();
     }
 
@@ -243,27 +296,37 @@ class AppSvg {
         ctx.save();
         Matrix.setTransform(ctx, scaleMat);
 
+        // draw bezier curve
         ctx.beginPath();      
-        AppSvg.curvesArray.forEach(curves => {
-            curves.forEach((curve, i) => { 
-                curve.path(ctx, i === 0); 
+        AppSvg.curFigure.strokes.forEach(stroke => {
+            stroke.paths.forEach(path => {
+                path.curves.forEach((curve, i) => {
+                    curve.createPath(ctx, i === 0);
+                });
             });
-        });        
+        }); 
         ctx.stroke();
 
-        ctx.beginPath();        
-        AppSvg.tempCurves.forEach((curve, i) => { 
-            curve.path(ctx, i === 0); 
-        });
-        ctx.stroke();
-
-        AppSvg.tempCurves.forEach((curve, i) => { 
-            curve.points.forEach((point, j) => {
-                if(j === 0 || j === 3) { ctx.fillStyle = 'blue'; }
-                else { ctx.fillStyle = 'green'; }
-                Utility.fillCircle(ctx, point, 1);
-            }); 
-        });
+        if(AppSvg.mode) {
+            // draw control points of current path
+            const curPath = AppSvg.curFigure.strokes[AppSvg.curFigure.strokes.length - 1].paths[0];
+            curPath.curves.forEach((curve, i) => { 
+                if(curve.src === Define.CUBIC_BEZIER_CURVE) {// cubic bezier curve
+                    curve.points.forEach((point, j) => {
+                        if(j === 0 || j === 3) { ctx.fillStyle = 'blue'; }
+                        else { ctx.fillStyle = 'green'; }
+                        Utility.fillCircle(ctx, point, 1);
+                    }); 
+                } else {// line segment
+                    curve.points.forEach((point, j) => {
+                        if(j === 0 || j === 3) {                        
+                            ctx.fillStyle = 'blue';
+                            Utility.fillCircle(ctx, point, 1);
+                        }
+                    }); 
+                }
+            });
+        }        
 
         ctx.restore();
     }
@@ -275,11 +338,12 @@ class AppSvg {
 
         let shape = mvgData.shapes[0];
 
-        // 描画するpathを取得する
-        const path = AppSvg.mvgData.paths[AppSvg.selectedPathIndex];
-        if(!path) { return; } // continue;
+        // get data to draw
+        const data = AppSvg.mvgData.datas[AppSvg.selectedDataIndex];
+        if(!data) { return; } // continue;
+        const figure = data.figure;
 
-        let screenRect = Matrix.multiplyRect(shape.mat, path.rect);
+        let screenRect = Matrix.multiplyRect(shape.mat, figure.rect);
 
         const transMat = Matrix.translate(-screenRect.x, -screenRect.y);
 
@@ -309,9 +373,11 @@ class AppSvg {
             ctx.fillStyle = options.fillStyle ? options.fillStyle : 'green';
             ctx.lineWidth = 10;
             ctx.beginPath();
-            path.curvesArray.forEach(curves => {
-                curves.forEach((curve, i) => { 
-                    curve.path(ctx, i === 0); 
+            figure.strokes.forEach(stroke => {
+                stroke.paths.forEach(path => {
+                    path.curves.forEach((curve, i) => {
+                        curve.createPath(ctx, i === 0);
+                    });
                 });
             });
             ctx.closePath();
@@ -319,7 +385,7 @@ class AppSvg {
         }       
             
         if(options.strokeRect) {
-            const rect = path.rect;
+            const rect = figure.rect;
             ctx.strokeStyle = options.strokeStyle ? options.strokeStyle : 'red';
             ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
         }         

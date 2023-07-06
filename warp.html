@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <script id="MathJax-script" async src="js/tex-svg-full.js"></script>
 <script src="js/define.js"></script>
+<script src="js/app-svg.js"></script>
 <script src="js/mathjax-svg.js"></script>
 <script src="js/svg-parser.js"></script>
 <script src="js/kanjivg.js"></script>
@@ -210,20 +211,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             }        
         });
-    }    
+    }  
 
-    // #insert-both-button
-    document.querySelector('#insert-both-button').addEventListener('click', e => {
-        figure.stretch(100);
-        document.querySelector('#done-button').click();
+    // #avg-button click
+    document.querySelector('#avg-button').addEventListener('click', e => {
+        AppSvg.show(avgData, mvgData);
     });
 
-    // #transform-button
-    document.querySelector('#transform-button').addEventListener('click', e => {        
-        const m = Matrix.scale(1.2, 1.2);
-        figure.transform(m);
-        document.querySelector('#done-button').click();
-    });
+    let avgData = {};
+    let mvgData;
 
     // #mathjax-button
     document.querySelector('#mathjax-button').addEventListener('click', async e => {     
@@ -232,10 +228,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         const ctx = canvas.getContext('2d', { willReadFrequently: true });
         ctx.reset();
 
-        const avgData = await loadAvgFile();
-        debugger;
         const kvgCodes = await loadKvgCodes();
-        const equation = '\\begin{eqnarray}\\frac{4}{3}あ\\end{eqnarray}';
+        const equation = '\\begin{eqnarray}\\frac{4}{3}abcあ\\end{eqnarray}';
         const display = true;
         // get svg
         const svg = MathJaxSvg.getMathJaxSvg(equation, display);  
@@ -255,7 +249,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         await View.drawSvg(svgCtx, svg, { translate, scale, color: [0, 255, 255] });
         
         // parse
-        const mvgData = MathJaxSvg.parseMathJaxSvg(svg);
+        mvgData = MathJaxSvg.parseMathJaxSvg(svg);
 
         // get kvg figure
         const kvgFigure = await loadKvgFiles(mvgData, kvgCodes);
@@ -300,17 +294,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         
     });
 });
-
-async function loadAvgFile() {
-    try {
-        const res = await fetch('avg.json');
-        const data = await res.text();
-        const parsed = JSON.parse(data);
-        return parsed;
-    } catch(e) {
-        return null;
-    }
-}
 
 function getPreAnimDatas(mvgData, kvgFigure, avgData) {
     const ret = [];
@@ -609,9 +592,9 @@ point = { x: 124.23983, y: 6.356, }
 <body>
     <button id="done-button">done</button>
     &nbsp;
-    <button id="insert-both-button">insert both</button>
-    <button id="transform-button">transform</button>
     <button id="mathjax-button">mathjax</button>
+    &nbsp;
+    <button id="avg-button">avg</button>
     &nbsp;
     <span id="time-span"></span>
     <canvas id="back-canvas" class="my-canvas" width="800" height="800"></canvas>
