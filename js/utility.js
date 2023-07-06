@@ -70,20 +70,6 @@ class Utility {
     }
 
     /**
-	 * 線分を描画する
-	 * @param {CanvasRenderingContext2D} ctx Canvasのコンテキスト
-	 * @param {{ x: number, y: number }} pos0 線分の始点座標
-	 * @param {{ x: number, y: number }} pos1 線分の終点座標
-	 * @return {void} なし
-	 */
-	static drawLine(ctx, pos0, pos1) {
-		ctx.beginPath();
-		ctx.moveTo(pos0.x, pos0.y);
-		ctx.lineTo(pos1.x, pos1.y);
-		ctx.stroke();
-	}	
-
-    /**
      * パスをstrokeする
      * @param {CanvasRenderingContext2D} ctx Canvasのコンテキスト
      * @param {Array<{ x: number, y: number, }>} points 点群
@@ -121,18 +107,76 @@ class Utility {
 	}
 
 	/**
-     * 文字の UTF-16 コードを16進数で取得
+     * character to hex
      * ex. '山' -> '05c71'
-     * @param {string} str 文字列(長さは1であること) 
-     * @returns {string} 16進数の文字列(長さは5) 
+     * @param {string} str string (length is 1) 
+     * @param {number} length length of string
+     * @returns {string} string of hex 
      */
-	static getCodeByChar(str) {
-		let ret;
+	static getCodeByChar(str, length) {
 		if(str.length !== 1) { return ''; }
-		ret = str.charCodeAt(0).toString(16);	// 16進数で取得
-		ret = Utility.zeroPadding(ret, 5);	// 0 padding する
-		return ret;
+		return str.charCodeAt(0).toString(16).padStart(length, '0');	// hex
+
+        /**
+         * string to buffer
+         * @param {string} src string
+         * @returns {ArrayBuffer} array buffer
+         */
+        function str2buf(str) {
+            return (new Uint16Array([].map.call(str, c => c.charCodeAt(0)))).buffer;
+        }
+
+        /**
+         * buffer to hex
+         * @param {ArrayBuffer} buf array buffer
+         * @returns {string} hex
+         */
+        function buf2hex(buf) {
+            const array = [...new Uint8Array(buf)].map(x => x.toString(16).padStart(2, '0'));
+            return array.reverse().join('');
+        }
 	}
+
+    /**
+     * hex to character
+     * ex. '05c71' -> '山'
+     * @param {string} code code (length is 2 or 4 or 5) 
+     * @returns {string} string of char 
+     */
+    static getCharByCode(code) {  
+        let hex;
+        // length to 4.
+        if(code.length === 5) {
+            hex = code.substring(1);
+        } else if(code.length === 2) {
+            hex = code.padStart(4, '0');
+        } else if(code.length === 4) {
+            hex = code;
+        }
+        // hex -> buf -> string
+        return buf2str(hex2buf(hex));
+
+        /**
+         * hex to buffer
+         * @param {string} hex hex
+         * @returns {ArrayBuffer} array buffer
+         */
+        function hex2buf(hex) {
+            hex = hex.padStart(4, '0'); // length to 4
+            const array = [0, 1].map(i => parseInt(hex.substring(i * 2, (i + 1) * 2), 16));
+            return new Uint8Array(array.reverse()).buffer;
+        }
+
+        /**
+         * buffer to string
+         * @param {ArrayBuffer} buf array buffer
+         * @returns {string} string
+         */
+        function buf2str(buf) {
+            return String.fromCharCode.apply('', new Uint16Array(buf))
+        }
+
+    }
 
     /**
      * 全角文字かどうか
@@ -146,10 +190,7 @@ class Utility {
         } else {// 全角文字以外
             return false;
         }
-    }
-
-    // debug 中
-    static getCharByCode(code) {    }
+    }    
 
 	/**
      * 0 paddingする

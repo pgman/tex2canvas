@@ -37,7 +37,7 @@ class AppSvg {
                 <button id="avg-clear-button">clear</button>
             </div>
             <div style="margin-bottom: 8px;">
-                <span>save</span>
+                <span id="strokes-length-span"></span>
             </div>
             <div style="border: 2px solid black; width: ${AppSvg.CANVAS_SIZE}px; height: ${AppSvg.CANVAS_SIZE}px;">
                 <canvas id="avg-char-canvas"></canvas>
@@ -273,7 +273,15 @@ class AppSvg {
         AppSvg.onDraw();
     }
 
+    /**
+     * draw figure
+     * @returns {void} nothing
+     */
     static onDraw() {
+        // update length of strokes
+        const length = AppSvg.curFigure.strokes.length;
+        document.querySelector('#strokes-length-span').innerHTML = `${length} ${length > 1 ? 'strokes' : 'stroke'}`;
+
         const canvas = document.querySelector('#avg-char-canvas');
         const ctx = canvas.getContext('2d', { willReadFrequently: true });
 

@@ -264,12 +264,10 @@ class SvgParser {
             // a: 1D44E => 00061, z: 1D467 => 0007a
             const diff = Number(`0x${code}`) - Number('0x1D44E');
             code = (Number('0x00061')+ diff).toString(16);
-            //code = Utility.zeroPadding(code, Define.SVG_FILE_NAME_LENGTH);
         } else if(type === 'I' && code.length === 5 && '1D434' <= code && code <= '1D44D') {// I-1D434 ～ I-1D44D: A ～ Z
             // A: 1D434 => 00041, Z: 1D44D => 0005a
             const diff = Number(`0x${code}`) - Number('0x1D434');
             code = (Number('0x00041')+ diff).toString(16);
-            //code = Utility.zeroPadding(code, Define.SVG_FILE_NAME_LENGTH);
         } else if(type === 'B' && code.length === 5 && '1D41A' <= code && code <= '1D433') {// B-1D41A ～ B-1D433: {\bf a} ～ {\bf z}
             //console.log('bold lowercase alphabet.');
         } else if(type === 'B' && code.length === 5 && '1D400' <= code && code <= '1D419') {// B-1D400 ～ B-1D419: {\bf A} ～ {\bf Z}

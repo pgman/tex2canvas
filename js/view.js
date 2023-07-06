@@ -1,24 +1,6 @@
 class View {
     static init() {
     }
-    static drawPosArray(posArray) {
-        
-        const eraseCanvas = document.querySelector('#erase-canvas');
-        const eraseCtx = eraseCanvas.getContext('2d', { willReadFrequently: true });
-                
-        eraseCtx.save();
-        eraseCtx.strokeStyle = 'white';
-        eraseCtx.lineWidth = 6;
-        eraseCtx.lineCap = 'round';
-        eraseCtx.lineJoin = 'round';
-        eraseCtx.beginPath();
-        posArray.forEach((pos, i) => {
-            if(i === 0) { eraseCtx.moveTo(pos.x, pos.y); }
-            else { eraseCtx.lineTo(pos.x, pos.y); }
-        });
-        eraseCtx.stroke();
-        eraseCtx.restore();
-    }
 
     static drawPreData(ctx, data, options) {
         const figure = data.figure;

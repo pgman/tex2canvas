@@ -230,7 +230,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         ctx.reset();
 
         const kvgCodes = await loadKvgCodes();
-        const equation = '\\begin{eqnarray}\\frac{4}{3}abcあ\\end{eqnarray}';
+        const equation = '\\begin{eqnarray}\\int_a^b \\frac{4}{3}abcライセンス契約\\end{eqnarray}';
         const display = true;
         // get svg
         const svg = MathJaxSvg.getMathJaxSvg(equation, display);  
@@ -412,7 +412,7 @@ function getPreAnimDatas(mvgData, kvgFigure, avgFigure) {
             // MathJax のshape.rectをスクリーン座標系へ変換する
             let screenRect = Matrix.multiplyRect(shape.mat, rect); // スクリーン座標系の矩形      
             screenRect = refineScreenRect(screenRect);
-            const kvgCode = Utility.getCodeByChar(shape.text);
+            const kvgCode = Utility.getCodeByChar(shape.text, Define.SVG_FILE_NAME_LENGTH);
 
             // get kvg figure
             const figure = kvgFigure[kvgCode]; 
@@ -523,7 +523,7 @@ async function loadKvgFiles(mvgData, kvgCodes) {
         if(shape.tagName !== 'text') { continue; }
         if(shape.text.length !== 1) { continue; }
         // あ -> 03042
-        const code = Utility.getCodeByChar(shape.text);
+        const code = Utility.getCodeByChar(shape.text, Define.SVG_FILE_NAME_LENGTH);
         try {
             if(kvgCodes.indexOf(code) >= 0) {
                 const figure = await KanjiVG.loadFile(code);
