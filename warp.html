@@ -26,275 +26,343 @@
 </head>
 <title>bezier image</title>
 <script>
+const global = {
+    imageData: null,
+    kvgCodes: [],
+    avgFigure: {},
+    mvgData: {},
+    preDatas: [],
+    figures: [],
+    intervalId: -1,
+    step: 1,
+    // settings
+    equation: '\\frac{3}{2}',
+    scale: 3,
+    translate: { x: 40, y: 40, },
+    speed: 2,
+    fps: 60,
+    lineWidth: 5,
+    displayMode: true,
+    svgCanvasLayer: false,
+    chalkCanvasLayer: true,
+    handCanvasLayer: true,
+};
 document.addEventListener('DOMContentLoaded', async () => {
 
-    // create model
-    const points0 = [
-        { x: 100, y: 400, },
-        { x: 200, y: 100, },
-        { x: 300, y: 100, },
-        { x: 400, y: 400, },
-    ];
-    const points1 = [
-        { x: 400, y: 400, },
-        { x: 500, y: 700, },
-        { x: 600, y: 700, },
-        { x: 700, y: 400, },
-    ];
-    const points2 = [
-        { x: 700, y: 400, },
-        { x: 100, y: 400, },
-    ];
+    loadSettings();
+    // load data
+    global.avgFigure = await AppSvg.load(); 
+    global.kvgCodes = await loadKvgCodes();
 
-    const lineWidth = 5;
-    const step = 1;
+    initHtml();
 
-    let img;
-
-    try {
-        img = await Utility.loadImage('chalk-lines/chalk-line-1(0-2852-3768-230).png'); 
-    } catch(e) {
-        console.log(e);
-    }
-    //const img = await Utility.loadImage('images/america.png');
-    //const img = await Utility.loadImage('images/yellow.png');
-    const imageData  = GraphicsApi.getImageDataByImage(img);
-    const path = new Path([ new Curve(points0), new Curve(points1), new Curve(points2) ]);
-    const stroke = new Stroke([ path ]);
-    let figure = new Figure([ stroke ]);
-    figure.splitAtNonSmoothPoints();
-    figure.stretch(lineWidth * .5);
-    figure.strokes.forEach(stroke => {
-        stroke.paths.forEach(path => {
-            path.imageData = imageData;
-        });
-    });    
-    let figures = [figure];
-
+    // create image data
+    const img = await Utility.loadImage('chalk-lines/chalk-line-1(0-2852-3768-230).png'); 
+    global.imageData = GraphicsApi.getImageDataByImage(img);
+    
+    // draw background
     const backCanvas = document.querySelector('#back-canvas');
     const backCtx = backCanvas.getContext('2d', { willReadFrequently: true });
-    
-    let backImg;
-    try {
-        backImg = await Utility.loadImage('images/black_board.jpg');
-    } catch(e) {
-        console.log(e);
-    }
+    const backImg = await Utility.loadImage('images/black_board.jpg');
     backCtx.drawImage(backImg, 0, 0, backCtx.canvas.width, backCtx.canvas.height);
 
-    let intervalId = -1;
-
-    // #done-button click
-    document.querySelector('#done-button').addEventListener('click', e => {
-        const canvas = document.querySelector('#my-canvas');
-        const ctx = canvas.getContext('2d', { willReadFrequently: true });
-        const size = { width: ctx.canvas.width, height: ctx.canvas.height, };        
-
-        // clear interval
-        if(intervalId >= 0) { clearInterval(intervalId); }
-        
-        // update segments
-        const startTime = new Date();
-        ctx.reset();
-        let segments = [];
-        figures.forEach(figure => {
-            figure.strokes.forEach(stroke => {
-                stroke.paths.forEach(path => {
-                    path.updateSegments(size, lineWidth, step);
-                    segments = segments.concat(path.segments);
-                });
-            });
-        });        
-        const endTime = new Date();
-
-        const workCanvas = Utility.createCanvas(ctx.canvas.width, ctx.canvas.height);
-        const workCtx = workCanvas.getContext('2d', { willReadFrequently: true });
-        const workImageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
-            
-        let animCnt = 0;
-        let blured = {};
-        intervalId = setInterval(() => {
-            ctx.reset();
-            const pixels = segments[animCnt].pixels;
-            pixels.forEach(elm => {
-                if(elm.a) {
-                    Graphics.setColorByIndex(workImageData, elm.i, [255, 255, 255, elm.a]);
-                }                
-            });
-            antiAlias(workImageData, pixels, [255, 255, 255], blured);
-            workCtx.putImageData(workImageData, 0, 0);
-            ctx.drawImage(workCanvas, 0, 0);
-            
-            if(++animCnt >= segments.length) {
-                clearInterval(intervalId);
-            }
-        }, 1 / 60);
-        document.querySelector('#time-span').innerHTML = `${endTime - startTime} ms`;
-    });
-
-    /**
-     * anti-aliasing
-     * @param {ImageData} imageData image data
-     * @param {Array<Object>} pixels data of pixel
-     * @param {Array<number>} color color
-     * @param {Object} blured avoid overlapping pixel sources
-     * @returns {void} nothing
-     */
-    function antiAlias(imageData, pixels, color, blured) {
-        const data = imageData.data;
-        const width = imageData.width;
-        const height = imageData.height;
-        const radius = 1;
-        const alpha = { start: 256 / 8, end: 256 / 8 / 1.414 };
-
-        // Get pixels that have at least one unfilled pixel around them
-        const filtered = pixels.filter(elm => {
-            const targetX = elm.i % width;
-            const targetY = Math.floor(elm.i / width);
-            if(elm.a < 128) {// no filled
-                return;
-            }
-            // check filled around 8px
-            const filledArray = [];
-            let filled = false;
-            for(let x = targetX - radius; x <= targetX + radius; x += 1) {
-                for(let y = targetY - radius; y <= targetY + radius; y += 1) {
-                    if(x < 0 || x >= width || y < 0 || y >= height || (x === targetX && y === targetY)) {
-                        continue;
-                    }
-                    const i = x + y * width;
-                    const key = `i${i}`;
-                    const a = data[i * 4 + 3];
-                    // filled and no blured
-                    filledArray.push(a >= 128 && typeof blured[key] === 'undefined');
-                }
-            }
-            return filledArray.some(e => !e);
-        });
-
-        // update pixel color
-        filtered.forEach(elm => {
-            const targetX = elm.i % width;
-            const targetY = Math.floor(elm.i / width);
-            for(let x = targetX - radius; x <= targetX + radius; x += 1) {
-                for(let y = targetY - radius; y <= targetY + radius; y += 1) {
-                    if(x < 0 || x >= width || y < 0 || y >= height || (x === targetX && y === targetY)) {
-                        continue;
-                    }
-                    const i = x + y * width;
-                    const key = `i${i}`;
-                    const adx = Math.abs(x - targetX);
-                    const ady = Math.abs(y - targetY);
-                    let dist = Math.sqrt(adx ** 2 + ady ** 2) - 1;
-                    if(dist < 0) { dist = 0; }
-                    const maxDist = radius * Math.sqrt(2) - 1;
-                    // get a 
-                    let a = elm.a / 255;
-                    if(x === targetX || y === targetY) { 
-                        a *= alpha.start; 
-                    } else {
-                        a *= alpha.end;
-                    }
-
-                    if(data[i * 4 + 3] >= 128) { continue; } // limit a
-                    // update pixel color
-                    if(typeof blured[key] === 'undefined') {// at first
-                        blured[key] = [elm.i];
-                        data[i * 4 + 0] = color[0];
-                        data[i * 4 + 1] = color[1];
-                        data[i * 4 + 2] = color[2];
-                        data[i * 4 + 3] = a;
-                    } else if (blured[key].indexOf(elm.i) === -1) {// second, third, ...
-                        blured[key].push(elm.i);
-                        data[i * 4 + 3] = data[i * 4 + 3] + a;
-                    }   
-                }
-            }        
-        });
-    }  
+    // #anim-button click
+    document.querySelector('#anim-button').addEventListener('click', async e => {
+        viewToModel();
+        saveSettings();
+        await getFigures(global.equation, global.displayMode, global.translate, global.scale);
+        anim();
+    });    
 
     // #avg-button click
     document.querySelector('#avg-button').addEventListener('click', e => {
-        AppSvg.show(avgFigure, mvgData);
+        AppSvg.show(global.avgFigure, global.mvgData);
     });
 
-    let avgFigure = {};
-    let mvgData;
-
-    // #mathjax-button
-    document.querySelector('#mathjax-button').addEventListener('click', async e => {
-        avgFigure = await AppSvg.load(); 
-
-        const canvas = document.querySelector('#my-canvas');
-        const ctx = canvas.getContext('2d', { willReadFrequently: true });
-        ctx.reset();
-
-        const kvgCodes = await loadKvgCodes();
-        const equation = '\\begin{eqnarray}\\int_a^b \\frac{4}{3}abcライセンス契約\\end{eqnarray}';
-        const display = true;
-        // get svg
-        const svg = MathJaxSvg.getMathJaxSvg(equation, display);  
-        // check error
-        const error = MathJaxSvg.getError(svg);
-        if(error) {// error
-            alert(error);
-            return;
+    // #tex-textarea - ctrl + s
+    document.querySelector('#tex-textarea').addEventListener('keydown', e => {
+        if(e.ctrlKey && e.key === 's') {// ctrl + s
+            document.querySelector('#anim-button').click();            
+            e.preventDefault(); // Prevent the Save dialog to open
         }
+    });
 
-        const translate = { x: 40, y: 40, };
-        const scale = 3;
-
-        // draw svg (created by mathjax)
-        const svgCtx = GraphicsApi.getContext('#svg-canvas');
-        svgCtx.reset();
-        //await View.drawSvg(svgCtx, svg, { translate, scale, color: [0, 255, 255] });
-        
-        // parse
-        mvgData = MathJaxSvg.parseMathJaxSvg(svg);
-
-        // get kvg figure
-        const kvgFigure = await loadKvgFiles(mvgData, kvgCodes);
-
-        // draw mvg data
-        const mvgDataCtx = GraphicsApi.getContext('#mvg-data-canvas');
-        mvgDataCtx.reset();        
-        View.drawMvgData(mvgDataCtx, mvgData, { translate, scale, fillFigure: true, strokeRect: true, });
-
-        // get pre data
-        const preDatas = getPreAnimDatas(mvgData, kvgFigure, avgFigure);
-
-        // draw pre data
-        const preDataCtx = GraphicsApi.getContext('#pre-data-canvas');
-        preDataCtx.reset();   
-        preDatas.forEach(preData => {
-            View.drawPreData(preDataCtx, preData, { 
-                translate, scale, color: [0, 255, 255], lineWidth: 4,
-            }); 
+    let settingsInputs = document.querySelectorAll('#settings-fieldset input, #settings-fieldset select');
+    settingsInputs = Array.from(settingsInputs);
+    settingsInputs.forEach(input => {
+        input.addEventListener('change', () => {
+            document.querySelector('#anim-button').click();  
         });
-         
-        // create animation
-        figures = [];
-        preDatas.forEach(preData => {
-            const copied = preData.figure.copy();
-            const transMat = Matrix.translate(translate.x, translate.y);
-            const scaleMat = Matrix.scale(scale, scale);
-            let mat = Matrix.multiply(scaleMat, preData.mat);
-            mat = Matrix.multiply(transMat, mat);
-            copied.transform(mat);
-            
-            figures.push(copied);
-        });
+    });
 
-        figures.forEach(figure => {
-            figure.strokes.forEach(stroke => {
-                stroke.paths.forEach(path => {
-                    path.imageData = imageData;
-                });
-            });    
-        });        
-        
+    document.querySelector('#svg-canvas-checkbox').addEventListener('change', () => {
+        viewToModel();
+        modelToCanvas();
+    });
+
+    document.querySelector('#chalk-canvas-checkbox').addEventListener('change', () => {
+        viewToModel();
+        modelToCanvas();
+    });
+
+    document.querySelector('#hand-canvas-checkbox').addEventListener('change', () => {
+        viewToModel();
+        modelToCanvas();
     });
 });
+
+function initHtml() {
+    const scales = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    const paddings = [0, 10, 20, 30, 40, 50, 100, 200];
+    const speeds = [0.25, 0.5, 0.75, 1, 2, 3, 4, 5, 10];
+    const fpss = [6, 12, 24, 30, 60, 120];
+    const lineWidths = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 16, 18, 20];
+
+    document.querySelector('#tex-textarea').value = global.equation;
+    createSelect(scales, '#scale-select', global.scale);
+    createSelect(paddings, '#padding-x-select', global.translate.x);
+    createSelect(paddings, '#padding-y-select', global.translate.y);
+    createSelect(speeds, '#speed-select', global.speed);
+    createSelect(fpss, '#fps-select', global.fps);
+    createSelect(lineWidths, '#line-width-select', global.lineWidth);
+    document.querySelector('#display-mode-checkbox').checked = global.displayMode;
+    document.querySelector('#svg-canvas-checkbox').checked = global.svgCanvasLayer;
+    document.querySelector('#chalk-canvas-checkbox').checked = global.chalkCanvasLayer;
+    document.querySelector('#hand-canvas-checkbox').checked = global.handCanvasLayer;
+
+    modelToCanvas();
+
+    function createSelect(array, selector, value) {
+        const html = array.reduce((p, c) => `${p}<option value="${c}" ${c === value ? 'selected' : ''}>${c}</option>`, '');
+        document.querySelector(selector).innerHTML = html;
+    }
+}
+
+function modelToCanvas() {
+    document.querySelector('#svg-canvas').style.display = global.svgCanvasLayer ? 'inline' : 'none';
+    document.querySelector('#chalk-canvas').style.display = global.chalkCanvasLayer ? 'inline' : 'none';
+    document.querySelector('#hand-canvas').style.display = global.handCanvasLayer ? 'inline' : 'none';
+}
+
+function viewToModel() {
+    global.equation = document.querySelector('#tex-textarea').value;
+    global.scale = Number(document.querySelector('#scale-select').value);
+    global.translate.x = Number(document.querySelector('#padding-x-select').value);
+    global.translate.y = Number(document.querySelector('#padding-y-select').value);
+    global.speed = Number(document.querySelector('#speed-select').value);
+    global.fps = Number(document.querySelector('#fps-select').value);
+    global.lineWidth = Number(document.querySelector('#line-width-select').value);
+    global.displayMode = document.querySelector('#display-mode-checkbox').checked;
+    global.svgCanvasLayer = document.querySelector('#svg-canvas-checkbox').checked;
+    global.chalkCanvasLayer = document.querySelector('#chalk-canvas-checkbox').checked;
+    global.handCanvasLayer = document.querySelector('#hand-canvas-checkbox').checked;
+}
+
+function saveSettings() {
+    const props = [ 'equation' ,'scale', 'translate', 'speed', 'fps', 
+                    'lineWidth', 'displayMode', 'svgCanvasLayer', 'chalkCanvasLayer', 'handCanvasLayer' ];
+    const obj = props.reduce((p, c) => ({ ...p, [c]: global[c], }), {});
+    Utility.saveToLocalStorage('tex2movie-settings', obj);  
+}
+
+function loadSettings() {
+    const obj = Utility.loadFromLocalStorage('tex2movie-settings');
+    Object.keys(obj).forEach(key => { global[key] = obj[key]; });
+}
+
+function anim() {
+    const canvas = document.querySelector('#chalk-canvas');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    const size = { width: ctx.canvas.width, height: ctx.canvas.height, };        
+
+    // clear interval
+    if(global.intervalId >= 0) { clearInterval(global.intervalId); }
+    
+    // update segments
+    const startTime = new Date();
+    ctx.reset();
+    let segments = [];
+    global.figures.forEach(figure => {
+        figure.strokes.forEach(stroke => {
+            stroke.paths.forEach(path => {
+                path.updateSegments(size, global.lineWidth, global.step);
+                segments = segments.concat(path.segments);
+            });
+        });
+    });        
+    const endTime = new Date();    
+    document.querySelector('#time-span').innerHTML = `${endTime - startTime} ms`;
+    if(segments.length === 0) { return; }
+
+    const workCanvas = Utility.createCanvas(ctx.canvas.width, ctx.canvas.height);
+    const workCtx = workCanvas.getContext('2d', { willReadFrequently: true });
+    const workImageData = ctx.getImageData(0, 0, workCtx.canvas.width, workCtx.canvas.height);
+        
+    let animCnt = 0;
+    let blured = {};
+    global.intervalId = setInterval(() => {
+        ctx.reset();
+        const pixels = segments[animCnt].pixels;
+        pixels.forEach(elm => {
+            if(elm.a) {
+                Graphics.setColorByIndex(workImageData, elm.i, [255, 255, 255, elm.a]);
+            }                
+        });
+        antiAlias(workImageData, pixels, [255, 255, 255], blured);
+        workCtx.putImageData(workImageData, 0, 0);
+        ctx.drawImage(workCanvas, 0, 0);
+        
+        if(++animCnt >= segments.length) {
+            clearInterval(global.intervalId);
+            global.intervalId = -1;
+        }
+    }, 1 / 60);
+}
+
+/**
+ * anti-aliasing
+ * @param {ImageData} imageData image data
+ * @param {Array<Object>} pixels data of pixel
+ * @param {Array<number>} color color
+ * @param {Object} blured avoid overlapping pixel sources
+ * @returns {void} nothing
+ */
+function antiAlias(imageData, pixels, color, blured) {
+    const data = imageData.data;
+    const width = imageData.width;
+    const height = imageData.height;
+    const radius = 1;
+    const alpha = { start: 256 / 8, end: 256 / 8 / 1.414 };
+
+    // Get pixels that have at least one unfilled pixel around them
+    const filtered = pixels.filter(elm => {
+        const targetX = elm.i % width;
+        const targetY = Math.floor(elm.i / width);
+        if(elm.a < 128) {// no filled
+            return;
+        }
+        // check filled around 8px
+        const filledArray = [];
+        let filled = false;
+        for(let x = targetX - radius; x <= targetX + radius; x += 1) {
+            for(let y = targetY - radius; y <= targetY + radius; y += 1) {
+                if(x < 0 || x >= width || y < 0 || y >= height || (x === targetX && y === targetY)) {
+                    continue;
+                }
+                const i = x + y * width;
+                const key = `i${i}`;
+                const a = data[i * 4 + 3];
+                // filled and no blured
+                filledArray.push(a >= 128 && typeof blured[key] === 'undefined');
+            }
+        }
+        return filledArray.some(e => !e);
+    });
+
+    // update pixel color
+    filtered.forEach(elm => {
+        const targetX = elm.i % width;
+        const targetY = Math.floor(elm.i / width);
+        for(let x = targetX - radius; x <= targetX + radius; x += 1) {
+            for(let y = targetY - radius; y <= targetY + radius; y += 1) {
+                if(x < 0 || x >= width || y < 0 || y >= height || (x === targetX && y === targetY)) {
+                    continue;
+                }
+                const i = x + y * width;
+                const key = `i${i}`;
+                const adx = Math.abs(x - targetX);
+                const ady = Math.abs(y - targetY);
+                let dist = Math.sqrt(adx ** 2 + ady ** 2) - 1;
+                if(dist < 0) { dist = 0; }
+                const maxDist = radius * Math.sqrt(2) - 1;
+                // get a 
+                let a = elm.a / 255;
+                if(x === targetX || y === targetY) { 
+                    a *= alpha.start; 
+                } else {
+                    a *= alpha.end;
+                }
+
+                if(data[i * 4 + 3] >= 128) { continue; } // limit a
+                // update pixel color
+                if(typeof blured[key] === 'undefined') {// at first
+                    blured[key] = [elm.i];
+                    data[i * 4 + 0] = color[0];
+                    data[i * 4 + 1] = color[1];
+                    data[i * 4 + 2] = color[2];
+                    data[i * 4 + 3] = a;
+                } else if (blured[key].indexOf(elm.i) === -1) {// second, third, ...
+                    blured[key].push(elm.i);
+                    data[i * 4 + 3] = data[i * 4 + 3] + a;
+                }   
+            }
+        }        
+    });
+}  
+
+async function getFigures(equation, displayMode, translate, scale) {
+    const canvas = document.querySelector('#chalk-canvas');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    ctx.reset();
+    
+    // get svg
+    const svg = MathJaxSvg.getMathJaxSvg(equation, displayMode);  
+    // check error
+    const error = MathJaxSvg.getError(svg);
+    if(error) {// error
+        alert(error);
+        return;
+    }
+
+    // draw svg (created by mathjax)
+    const svgCtx = GraphicsApi.getContext('#svg-canvas');
+    svgCtx.reset();
+    await View.drawSvg(svgCtx, svg, { translate, scale, color: [0, 255, 255] });
+    
+    // parse
+    global.mvgData = MathJaxSvg.parseMathJaxSvg(svg);
+
+    // get kvg figure
+    global.kvgFigure = await loadKvgFiles(global.mvgData, global.kvgCodes);
+
+    // draw mvg data
+    const mvgDataCtx = GraphicsApi.getContext('#mvg-data-canvas');
+    mvgDataCtx.reset();        
+    //View.drawMvgData(mvgDataCtx, global.mvgData, { translate, scale, fillFigure: true, strokeRect: true, });
+
+    // get pre data
+    global.preDatas = getPreAnimDatas(global.mvgData, global.kvgFigure, global.avgFigure);
+
+    // draw pre data
+    const preDataCtx = GraphicsApi.getContext('#pre-data-canvas');
+    preDataCtx.reset();   
+    global.preDatas.forEach(preData => {
+        // View.drawPreData(preDataCtx, preData, { 
+        //     translate, scale, color: [0, 255, 255], lineWidth: 4,
+        // }); 
+    });
+        
+    // create animation
+    global.figures = [];
+    global.preDatas.forEach(preData => {
+        const copied = preData.figure.copy();
+        const transMat = Matrix.translate(translate.x, translate.y);
+        const scaleMat = Matrix.scale(scale, scale);
+        let mat = Matrix.multiply(scaleMat, preData.mat);
+        mat = Matrix.multiply(transMat, mat);
+        copied.transform(mat);
+        
+        global.figures.push(copied);
+    });
+
+    global.figures.forEach(figure => {
+        figure.strokes.forEach(stroke => {
+            stroke.paths.forEach(path => {
+                path.imageData = global.imageData;
+            });
+        });    
+    });    
+}
 
 function getPreAnimDatas(mvgData, kvgFigure, avgFigure) {
     const ret = [];
@@ -372,7 +440,7 @@ function getPreAnimDatas(mvgData, kvgFigure, avgFigure) {
                     const nextFirstPoint = nextFirstCurve.points[0];
 
                     const insertedStart = Matrix.multiplyVec(preData.mat, preLastPoint);
-                    const insertedEnd = Matrix.multiplyVec(curData.mat, nextFirstPoint);
+                    const insertedEnd = Matrix.multiplyVec(nextData.mat, nextFirstPoint);
 
                     const newCurve = new Curve([insertedStart, insertedEnd]);
                     const newPath = new Path([newCurve]);
@@ -582,25 +650,77 @@ point = { x: 124.23983, y: 6.356, }
 .my-canvas {
     position: absolute;
     left: 8px;
-    top: 60px;
+    top: 360px;
 }
-#svg-text-canvas, #mvg-data-canvas, #pre-data-canvas {
+#mvg-data-canvas, #pre-data-canvas {
     display: none;
+}
+#settings-fieldset, #canvas-fieldset {
+    width: 930px;
+    margin-bottom: 8px;
+}
+#settings-tex-area {
+    float: left;
+}
+#settings-value-area {
+    float: left;
+    margin-left: 20px;
+}
+#tex-textarea {
+    font-size: 20px;
+    width: 600px;
+    height: 160px;
+    resize: none;
+}
+label, input[type='checkbox'] {
+    cursor: pointer;
 }
 </style>
 </head>
 <body>
-    <button id="done-button">done</button>
-    &nbsp;
-    <button id="mathjax-button">mathjax</button>
-    &nbsp;
-    <button id="avg-button">avg</button>
-    &nbsp;
-    <span id="time-span"></span>
-    <canvas id="back-canvas" class="my-canvas" width="800" height="800"></canvas>
-    <canvas id="pre-data-canvas" class="my-canvas" width="800" height="800"></canvas>
-    <canvas id="mvg-data-canvas" class="my-canvas" width="800" height="800"></canvas>
-    <canvas id="svg-canvas" class="my-canvas" width="800" height="800"></canvas>    
-    <canvas id="my-canvas" class="my-canvas" width="800" height="800"></canvas>
+    <fieldset id="settings-fieldset">
+        <legend>settings</legend>
+        <div id="settings-tex-area">
+            tex<br>
+            <textarea id="tex-textarea"></textarea>
+        </div>
+        <div id="settings-value-area">
+            <br>
+            scale:&nbsp;<select id="scale-select"></select>&nbsp;times<br>
+            padding x:&nbsp;<select id="padding-x-select"></select>&nbsp;px<br>
+            padding y:&nbsp;<select id="padding-y-select"></select>&nbsp;px<br>
+            speed:&nbsp;<select id="speed-select"></select>&nbsp;px per frame<br>
+            fps:&nbsp;<select id="fps-select"></select>&nbsp;frame per second<br>
+            line width:&nbsp;<select id="line-width-select"></select>&nbsp;px<br>
+            <label for="display-mode-checkbox">
+                <input type="checkbox" id="display-mode-checkbox" />display mode
+            </label>
+        </div>        
+    </fieldset>
+    <fieldset id="canvas-fieldset">
+        <legend>canvas(layer)</legend>
+        <label for="svg-canvas-checkbox">
+            <input type="checkbox" id="svg-canvas-checkbox" />svg canvas
+        </label>&nbsp;&nbsp;&nbsp;
+        <label for="chalk-canvas-checkbox">
+            <input type="checkbox" id="chalk-canvas-checkbox" />chalk canvas
+        </label>&nbsp;&nbsp;&nbsp;
+        <label for="hand-canvas-checkbox">
+            <input type="checkbox" id="hand-canvas-checkbox" />hand canvas
+        </label>
+    </fieldset>
+    <div>
+        <button id="anim-button">animate</button>
+        &nbsp;
+        <button id="avg-button">app svg setting</button>
+        &nbsp;
+        <span id="time-span"></span>
+    </div>    
+    <canvas id="back-canvas" class="my-canvas" width="960" height="540"></canvas>
+    <canvas id="pre-data-canvas" class="my-canvas" width="960" height="540"></canvas>
+    <canvas id="mvg-data-canvas" class="my-canvas" width="960" height="540"></canvas>
+    <canvas id="svg-canvas" class="my-canvas" width="960" height="540"></canvas>    
+    <canvas id="chalk-canvas" class="my-canvas" width="960" height="540"></canvas>
+    <canvas id="hand-canvas" class="my-canvas" width="960" height="540"></canvas>
 </body>
 </html>

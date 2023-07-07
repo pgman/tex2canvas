@@ -14,6 +14,13 @@ H-143: 日本語使うとbtoaで落ちる - tex2svgをまねることで対応�
 H-140: AVG対応 - 定義、SVG, 分数、大きな行列
 H-144: avg画数表示対応
 
+2023/07/07:
+L-016:
+・16進数コードから漢字に変換するプログラムを作成する(http://d.hatena.ne.jp/yasuhallabo/20140211/1392131668) -> うまくいっていない(保留)   
+  https://gist.github.com/seekseep/e5c289791265dafee786640942ee2e4d -> これでもうまくいかない -> 16進数コードから日本語の復元がうまくいかない
+  -> Bufferが使えるのはNodeのみなので、おそらくArrayBufferを使う
+H-144: 設定反映、設定保存、設定読み込み
+
 [こちらのチョーク画像の方がすごい]
 https://www.ac-illust.com/main/profile.php?id=kWHdUmkj&area=1&page=2#comment-section
 
@@ -25,11 +32,8 @@ https://www.photo-ac.com/main/search?q=%E3%83%81%E3%83%A7%E3%83%BC%E3%82%AF&%3Bp
 [優先度高め H-XXX]
 H-133: アニメーション時の速度対応、手の対応 
 
-L-016:
-・16進数コードから漢字に変換するプログラムを作成する(http://d.hatena.ne.jp/yasuhallabo/20140211/1392131668) -> うまくいっていない(保留)   
-  https://gist.github.com/seekseep/e5c289791265dafee786640942ee2e4d -> これでもうまくいかない -> 16進数コードから日本語の復元がうまくいかない
-  -> Bufferが使えるのはNodeのみなので、おそらくArrayBufferを使う
-
+H-145: 線幅未満のpathの場合、手を動かさなくてもよいかもしれない
+H-146: 大きな行列のカッコのような場合、補完する線は滑らかに接続して、3つのパスを1つにしたほうが良いかもしれない
 H-141: KVGの曲線滑らか対応。
 H-142: figure作成後、線分の端をlineWidth / 2 だけ伸ばさないといけない
  
